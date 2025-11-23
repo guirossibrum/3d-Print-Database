@@ -994,6 +994,16 @@ def update_popup_tag_display(tags_list, display_frame):
         remove_btn.grid(row=i // 4, column=(i % 4) * 2 + 1, padx=2, pady=2)
 
 
+def add_tag_from_list_popup(listbox, current_tags, display_frame):
+    """Add tag from listbox in popup dialog"""
+    selection = listbox.curselection()
+    if selection:
+        tag = listbox.get(selection[0])
+        if tag not in current_tags:
+            current_tags.append(tag)
+            update_popup_tag_display(current_tags, display_frame)
+
+
 def apply_inventory_adjustment(
     sku: str, operation: str, quantity: int, current_stock: int
 ):
@@ -1210,6 +1220,35 @@ def show_edit_product_dialog(product):
 
     # Initialize tag display
     update_popup_tag_display(edit_current_tags, edit_tags_frame)
+
+    # Available tags list
+    tk.Label(main_frame, text="Available Tags:").grid(
+        row=7, column=0, sticky="ne", pady=5, padx=5
+    )
+
+    edit_tag_list_frame = tk.Frame(main_frame)
+    edit_tag_list_frame.grid(row=7, column=1, columnspan=3, pady=5, padx=5, sticky="w")
+
+    edit_tag_listbox = tk.Listbox(edit_tag_list_frame, height=6, width=40)
+    edit_tag_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+    edit_tag_scrollbar = tk.Scrollbar(edit_tag_list_frame)
+    edit_tag_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    edit_tag_listbox.config(yscrollcommand=edit_tag_scrollbar.set)
+    edit_tag_scrollbar.config(command=edit_tag_listbox.yview)
+
+    # Populate listbox
+    for tag in all_available_tags:
+        edit_tag_listbox.insert(tk.END, tag)
+
+    # Bind double-click to add
+    edit_tag_listbox.bind(
+        "<Double-1>",
+        lambda e: add_tag_from_list_popup(
+            edit_tag_listbox, edit_current_tags, edit_tags_frame
+        ),
+    )
 
     # Action buttons
     button_frame = tk.Frame(dialog)
