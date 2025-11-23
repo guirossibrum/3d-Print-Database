@@ -121,6 +121,57 @@ def list_all_tags():
         db.close()
 
 
+@app.delete("/products/{sku}")
+def delete_product(
+    sku: str = Path(..., description="SKU of the product to delete"),
+    delete_files: bool = Query(False, description="Also delete files from filesystem"),
+):
+    """
+    Delete a product by SKU
+    Options: Delete from database only, or database + filesystem
+    """
+    db: Session = SessionLocal()
+    try:
+        # Find the product
+        product = (
+            db.query(crud.models.Product).filter(crud.models.Product.sku == sku).first()
+        )
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+
+        # Store folder path for file deletion
+        folder_path = product.folder_path
+
+        # Delete from database
+        db.delete(product)
+        db.commit()
+
+        # Delete files if requested
+        if delete_files and folder_path:
+            try:
+                import shutil
+                import os
+
+                if os.path.exists(folder_path):
+                    shutil.rmtree(folder_path)
+            except Exception as e:
+                # Log error but don't fail the request
+                print(f"Warning: Could not delete folder {folder_path}: {e}")
+
+        return {
+            "message": f"Product {sku} deleted successfully",
+            "files_deleted": delete_files,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error deleting product: {str(e)}")
+    finally:
+        db.close()
+
+
 @app.get("/products/search")
 def search_products(
     q: str = Query(

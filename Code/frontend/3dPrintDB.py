@@ -318,6 +318,100 @@ def discard_edit():
     messagebox.showinfo("Info", "Edit discarded")
 
 
+def open_product_folder():
+    """Open the product folder in file explorer"""
+    try:
+        index_text = edit_index_entry.get().strip()
+        if not index_text:
+            messagebox.showwarning("Warning", "Please enter an index number first")
+            return
+
+        index = int(index_text) - 1
+        if index < 0 or index >= len(search_results):
+            messagebox.showerror(
+                "Error", f"Index out of range. Enter 1-{len(search_results)}"
+            )
+            return
+
+        product = search_results[index]
+        sku = product["sku"]
+
+        # Construct folder path (assuming standard structure)
+        folder_path = f"/home/grbrum/Work/3d_print/Products/{sku}"
+
+        # Open folder using system default file manager
+        import subprocess
+
+        subprocess.run(["xdg-open", folder_path], check=False)
+
+    except ValueError:
+        messagebox.showerror("Error", "Please enter a valid number")
+    except Exception as e:
+        messagebox.showerror("Error", f"Could not open folder: {str(e)}")
+
+
+def delete_product():
+    """Delete the selected product with confirmation"""
+    try:
+        index_text = edit_index_entry.get().strip()
+        if not index_text:
+            messagebox.showwarning("Warning", "Please enter an index number first")
+            return
+
+        index = int(index_text) - 1
+        if index < 0 or index >= len(search_results):
+            messagebox.showerror(
+                "Error", f"Index out of range. Enter 1-{len(search_results)}"
+            )
+            return
+
+        product = search_results[index]
+        sku = product["sku"]
+        name = product["name"]
+
+        # Confirmation dialog with options
+        confirm = messagebox.askyesno(
+            "Confirm Deletion",
+            f"Are you sure you want to delete product:\n\nSKU: {sku}\nName: {name}\n\nThis action cannot be undone!",
+        )
+
+        if not confirm:
+            return
+
+        # Ask for deletion scope
+        delete_choice = messagebox.askquestion(
+            "Deletion Options",
+            "Choose deletion method:\n\nYes = Delete from database AND file system\nNo = Delete from database only",
+            icon="question",
+        )
+
+        delete_files = delete_choice == "yes"
+
+        # Make API call to delete
+        try:
+            response = requests.delete(f"{API_URL}{sku}?delete_files={delete_files}")
+            if response.status_code == 200:
+                messagebox.showinfo(
+                    "Success",
+                    f"Product {sku} deleted successfully!\n\n"
+                    f"Database: ✓ Deleted\n"
+                    f"Files: {'✓ Deleted' if delete_files else '✗ Preserved'}",
+                )
+                # Refresh search results
+                search_products()
+            else:
+                messagebox.showerror(
+                    "Error", f"Failed to delete product\n{response.text}"
+                )
+        except Exception as e:
+            messagebox.showerror("Error", f"Error deleting product: {str(e)}")
+
+    except ValueError:
+        messagebox.showerror("Error", "Please enter a valid number")
+    except Exception as e:
+        messagebox.showerror("Error", f"Error: {str(e)}")
+
+
 # --- Edit Tag Management Functions ---
 edit_current_tags = []
 
@@ -460,6 +554,12 @@ edit_index_entry = tk.Entry(edit_controls_frame, width=5)
 edit_index_entry.pack(side=tk.LEFT, padx=(0, 10))
 tk.Button(
     edit_controls_frame, text="Load for Edit", command=load_product_for_edit
+).pack(side=tk.LEFT, padx=(0, 5))
+tk.Button(edit_controls_frame, text="Open Folder", command=open_product_folder).pack(
+    side=tk.LEFT, padx=(0, 5)
+)
+tk.Button(
+    edit_controls_frame, text="Delete Record", command=delete_product, fg="red"
 ).pack(side=tk.LEFT)
 
 # Edit section
