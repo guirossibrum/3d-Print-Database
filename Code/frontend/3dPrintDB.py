@@ -298,8 +298,14 @@ def add_tag():
         update_tag_display()
         tag_entry.delete(0, tk.END)  # Clear the input
         tag_entry.focus()
-        # Refresh the available tags list in case a new tag was added
-        load_all_tags_for_list()  # Keep focus on input
+        # Add to available tags immediately
+        global all_available_tags
+        if tag_text not in all_available_tags:
+            all_available_tags.append(tag_text)
+            all_available_tags.sort()
+            tag_listbox.delete(0, tk.END)
+            for tag in all_available_tags:
+                tag_listbox.insert(tk.END, tag)
 
 
 def remove_tag(tag_to_remove):
