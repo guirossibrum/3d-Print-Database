@@ -951,13 +951,26 @@ def load_product_from_search():
         messagebox.showwarning("Error", f"Could not load product: {str(e)}")
 
 
-def add_popup_tag(combo_widget, tags_list, display_frame):
+def add_popup_tag(widget, tags_list, display_frame, listbox=None):
     """Add a tag to the popup dialog"""
-    tag_text = combo_widget.get().strip()
+    tag_text = widget.get().strip()
     if tag_text and tag_text not in tags_list:
         tags_list.append(tag_text)
         update_popup_tag_display(tags_list, display_frame)
-        combo_widget.set("")
+        if hasattr(widget, "set"):
+            widget.set("")
+        else:
+            widget.delete(0, tk.END)
+
+        # Add to available tags if new
+        global all_available_tags
+        if tag_text not in all_available_tags:
+            all_available_tags.append(tag_text)
+            all_available_tags.sort()
+            if listbox:
+                listbox.delete(0, tk.END)
+                for tag in all_available_tags:
+                    listbox.insert(tk.END, tag)
 
 
 def remove_popup_tag(tag_to_remove, tags_list, display_frame):
@@ -1197,15 +1210,14 @@ def show_edit_product_dialog(product):
     edit_tag_frame = tk.Frame(main_frame)
     edit_tag_frame.grid(row=5, column=1, columnspan=3, pady=5, padx=5, sticky="w")
 
-    edit_tag_combo = ttk.Combobox(edit_tag_frame, width=30)
-    edit_tag_combo.pack(side=tk.LEFT, padx=(0, 5))
-    # Disabled autocomplete for edit dialog - use manual entry
+    edit_tag_entry = tk.Entry(edit_tag_frame, width=30)
+    edit_tag_entry.pack(side=tk.LEFT, padx=(0, 5))
 
     edit_add_btn = tk.Button(
         edit_tag_frame,
         text="Add Tag",
         command=lambda: add_popup_tag(
-            edit_tag_combo, edit_current_tags, edit_tags_frame
+            edit_tag_entry, edit_current_tags, edit_tags_frame, edit_tag_listbox
         ),
     )
     edit_add_btn.pack(side=tk.LEFT)
