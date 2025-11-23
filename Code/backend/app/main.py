@@ -119,3 +119,51 @@ def list_all_tags():
         ]
     finally:
         db.close()
+
+
+@app.get("/products/search")
+def search_products(
+    name: str = Query(None, description="Search by product name (partial match)"),
+    sku: str = Query(None, description="Search by SKU (exact or partial match)"),
+    tag: str = Query(None, description="Search by tag name"),
+    production: bool = Query(None, description="Filter by production status"),
+):
+    """
+    Search products by name, SKU, tag, or production status
+    Returns list of matching products
+    """
+    db: Session = SessionLocal()
+    try:
+        query = db.query(crud.models.Product)
+
+        # Apply filters
+        if name:
+            query = query.filter(crud.models.Product.name.ilike(f"%{name}%"))
+        if sku:
+            query = query.filter(crud.models.Product.sku.ilike(f"%{sku}%"))
+        if tag:
+            # Join with tags to filter by tag name
+            query = query.join(crud.models.Product.tags).filter(
+                crud.models.Tag.name.ilike(f"%{tag}%")
+            )
+        if production is not None:
+            query = query.filter(crud.models.Product.production == production)
+
+        # Get results
+        products = query.all()
+        result = []
+        for p in products:
+            result.append(
+                {
+                    "id": p.id,
+                    "sku": p.sku,
+                    "name": p.name,
+                    "description": p.description,
+                    "production": p.production,
+                    "tags": [t.name for t in p.tags],
+                }
+            )
+
+        return result
+    finally:
+        db.close()
