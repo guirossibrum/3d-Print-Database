@@ -1,4 +1,4 @@
-#!/home/grbrum/Work/3d_print/Code/.venv/bin/python
+#!/usr/bin/env python3
 
 import tkinter as tk
 from tkinter import messagebox
