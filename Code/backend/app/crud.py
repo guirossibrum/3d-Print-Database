@@ -8,14 +8,26 @@ from ensure_file_structure import create_product_folder  # import to create fold
 
 def generate_sku(db: Session, prefix: str = "PROD") -> str:
     """
-    Generate a SKU like PROD-0001
+    Generate a unique SKU like PROD-0001
+    Finds the highest existing number for the prefix and increments it
     """
-    last_sku = db.query(models.Product).order_by(models.Product.id.desc()).first()
-    if last_sku and last_sku.sku.startswith(prefix):
-        num = int(last_sku.sku.split("-")[-1]) + 1
-    else:
-        num = 1
-    return f"{prefix}-{num:04d}"
+    # Find all SKUs with this prefix, extract numbers, find max
+    existing_skus = (
+        db.query(models.Product.sku)
+        .filter(models.Product.sku.like(f"{prefix}-%"))
+        .all()
+    )
+
+    max_num = 0
+    for sku_row in existing_skus:
+        sku = sku_row.sku
+        try:
+            num = int(sku.split("-")[-1])
+            max_num = max(max_num, num)
+        except (ValueError, IndexError):
+            continue  # Skip malformed SKUs
+
+    return f"{prefix}-{max_num + 1:04d}"
 
 
 def create_product_db(
