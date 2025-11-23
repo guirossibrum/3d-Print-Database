@@ -2,7 +2,9 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from . import models, schemas
+from . import tag_utils
 from ensure_file_structure import create_product_folder  # import to create folders
+
 
 def generate_sku(db: Session, prefix: str = "PROD") -> str:
     """
@@ -16,7 +18,9 @@ def generate_sku(db: Session, prefix: str = "PROD") -> str:
     return f"{prefix}-{num:04d}"
 
 
-def create_product_db(db: Session, product: schemas.ProductCreate, sku: str = None) -> str:
+def create_product_db(
+    db: Session, product: schemas.ProductCreate, sku: str = None
+) -> str:
     """
     Create a new product in the database and return the SKU.
     Folder is created first, then stored in DB.
@@ -31,7 +35,7 @@ def create_product_db(db: Session, product: schemas.ProductCreate, sku: str = No
         name=product.name,
         description=product.description,
         tags=product.tags,
-        production=product.production
+        production=product.production,
     )
 
     # 2️⃣ Save product to DB with folder_path
@@ -40,20 +44,36 @@ def create_product_db(db: Session, product: schemas.ProductCreate, sku: str = No
         name=product.name,
         description=product.description,
         folder_path=folder_path,
-        production=product.production
+        production=product.production,
     )
     db.add(db_product)
     db.commit()
     db.refresh(db_product)
 
-    # 3️⃣ Create tags
+    # 3️⃣ Create tags with normalization
     for tag_name in product.tags:
-        tag_obj = db.query(models.Tag).filter(models.Tag.name == tag_name).first()
+        if not tag_name.strip():
+            continue  # Skip empty tags
+
+        # Normalize the tag
+        normalized_tag = tag_utils.normalize_tag(tag_name)
+
+        if not normalized_tag or not tag_utils.validate_tag(normalized_tag):
+            continue  # Skip invalid tags
+
+        # Check if normalized tag already exists
+        tag_obj = (
+            db.query(models.Tag)
+            .filter(func.lower(models.Tag.name) == normalized_tag.lower())
+            .first()
+        )
+
         if not tag_obj:
-            tag_obj = models.Tag(name=tag_name)
+            tag_obj = models.Tag(name=normalized_tag)
             db.add(tag_obj)
             db.commit()
             db.refresh(tag_obj)
+
         db_product.tags.append(tag_obj)
     db.commit()
 
@@ -78,12 +98,28 @@ def update_product_db(db: Session, sku: str, update: schemas.ProductUpdate):
     if update.tags is not None:
         product.tags.clear()
         for tag_name in update.tags:
-            tag_obj = db.query(models.Tag).filter(models.Tag.name == tag_name).first()
+            if not tag_name.strip():
+                continue  # Skip empty tags
+
+            # Normalize the tag
+            normalized_tag = tag_utils.normalize_tag(tag_name)
+
+            if not normalized_tag or not tag_utils.validate_tag(normalized_tag):
+                continue  # Skip invalid tags
+
+            # Check if normalized tag already exists
+            tag_obj = (
+                db.query(models.Tag)
+                .filter(func.lower(models.Tag.name) == normalized_tag.lower())
+                .first()
+            )
+
             if not tag_obj:
-                tag_obj = models.Tag(name=tag_name)
+                tag_obj = models.Tag(name=normalized_tag)
                 db.add(tag_obj)
                 db.commit()
                 db.refresh(tag_obj)
+
             product.tags.append(tag_obj)
 
     db.commit()

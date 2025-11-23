@@ -1,11 +1,17 @@
 # backend/app/main.py
-from fastapi import FastAPI, HTTPException, Path
+from fastapi import FastAPI, HTTPException, Path, Query
 from sqlalchemy.orm import Session
+from typing import List, Dict, Any
 from . import crud, schemas
 from .database import SessionLocal
-from ensure_file_structure import create_product_folder, update_metadata  # <-- fixed import
+from . import tag_utils
+from ensure_file_structure import (
+    create_product_folder,
+    update_metadata,
+)  # <-- fixed import
 
 app = FastAPI()
+
 
 @app.post("/products/")
 def create_product(product: schemas.ProductCreate):
@@ -20,18 +26,16 @@ def create_product(product: schemas.ProductCreate):
             name=product.name,
             description=product.description,
             tags=product.tags,
-            production=product.production  # <-- updated
+            production=product.production,  # <-- updated
         )
     finally:
         db.close()
 
     return {"sku": sku, "message": "Product created successfully"}
 
+
 @app.put("/products/{sku}")
-def update_product(
-    sku: str = Path(...),
-    update: schemas.ProductUpdate = None
-):
+def update_product(sku: str = Path(...), update: schemas.ProductUpdate = None):
     db: Session = SessionLocal()
     try:
         product_db = crud.update_product_db(db, sku, update)
@@ -44,12 +48,13 @@ def update_product(
             name=update.name,
             description=update.description,
             tags=update.tags,
-            production=update.production  # <-- updated
+            production=update.production,  # <-- updated
         )
     finally:
         db.close()
 
     return {"sku": sku, "message": "Product updated successfully"}
+
 
 @app.get("/products/")
 def list_products():
@@ -58,13 +63,59 @@ def list_products():
         products = db.query(crud.models.Product).all()
         result = []
         for p in products:
-            result.append({
-                "sku": p.sku,
-                "name": p.name,
-                "description": p.description,
-                "production": p.production,  # <-- updated
-                "tags": [t.name for t in p.tags]
-            })
+            result.append(
+                {
+                    "sku": p.sku,
+                    "name": p.name,
+                    "description": p.description,
+                    "production": p.production,  # <-- updated
+                    "tags": [t.name for t in p.tags],
+                }
+            )
     finally:
         db.close()
     return result
+
+
+@app.get("/tags/suggest")
+def suggest_tags(q: str = Query(..., min_length=1, max_length=50)):
+    """
+    Suggest existing tags based on partial input
+    Query params: q=partial_tag_name
+    Returns: [{"name": "tag_name", "usage_count": 5}, ...]
+    """
+    db: Session = SessionLocal()
+    try:
+        return tag_utils.suggest_tags(db, q, limit=10)
+    finally:
+        db.close()
+
+
+@app.get("/tags/stats")
+def get_tag_stats():
+    """
+    Get usage statistics for all tags
+    Returns: {"tag_name": count, ...}
+    """
+    db: Session = SessionLocal()
+    try:
+        return tag_utils.get_tag_stats(db)
+    finally:
+        db.close()
+
+
+@app.get("/tags")
+def list_all_tags():
+    """
+    Get all unique tags with their usage counts
+    Returns: [{"name": "tag_name", "usage_count": 5}, ...]
+    """
+    db: Session = SessionLocal()
+    try:
+        stats = tag_utils.get_tag_stats(db)
+        return [
+            {"name": tag_name, "usage_count": count}
+            for tag_name, count in stats.items()
+        ]
+    finally:
+        db.close()
