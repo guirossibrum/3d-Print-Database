@@ -145,27 +145,18 @@ def create_item():
 
 # --- Update/Search Functions ---
 def search_products():
-    """Search for products based on criteria"""
+    """Search for products using unified search"""
     global search_results
 
-    # Get search criteria
-    name_search = search_name.get().strip()
-    sku_search = search_sku.get().strip()
-    tag_search = search_tag.get().strip()
+    # Get search query
+    query = search_query.get().strip()
 
-    if not any([name_search, sku_search, tag_search]):
-        messagebox.showwarning("Warning", "Please enter at least one search criterion")
+    if not query:
+        messagebox.showwarning("Warning", "Please enter a search query")
         return
 
     # Build query parameters
-    params = {}
-    if name_search:
-        params["name"] = name_search
-    if sku_search:
-        params["sku"] = sku_search
-    if tag_search:
-        # Allow multiple tags separated by commas
-        params["tags"] = tag_search
+    params = {"q": query}
 
     try:
         response = requests.get(SEARCH_URL, params=params)
@@ -186,12 +177,6 @@ def display_search_results():
         results_text.insert(tk.END, "No products found matching the search criteria.")
         return
 
-    # Check if this was a multi-tag search (has match_count)
-    has_match_counts = any(
-        "match_count" in product and product["match_count"] > 0
-        for product in search_results
-    )
-
     results_text.insert(tk.END, f"Found {len(search_results)} product(s):\n\n")
 
     for i, product in enumerate(search_results, 1):
@@ -205,10 +190,13 @@ def display_search_results():
             tk.END,
             f"   Tags: {', '.join(product['tags']) if product['tags'] else 'None'}\n",
         )
-        # Show match count for multi-tag searches
-        if has_match_counts and "match_count" in product:
+        # Show match details
+        if "matches" in product:
+            matches = product["matches"]
             results_text.insert(
-                tk.END, f"   Matches: {product['match_count']} tag(s)\n"
+                tk.END,
+                f"   Matches: {matches['total']} total "
+                f"({matches['name']} name, {matches['sku']} SKU, {matches['tags']} tag)\n",
             )
         results_text.insert(tk.END, "\n")
 
@@ -437,17 +425,12 @@ tk.Button(create_button_frame, text="Create Item", command=create_item).pack(
 search_frame = tk.LabelFrame(update_tab, text="Search Products", padx=10, pady=10)
 search_frame.pack(fill="x", padx=10, pady=5)
 
-tk.Label(search_frame, text="Name:").grid(row=0, column=0, sticky="e", padx=5, pady=2)
-search_name = tk.Entry(search_frame, width=20)
-search_name.grid(row=0, column=1, padx=5, pady=2)
-
-tk.Label(search_frame, text="SKU:").grid(row=0, column=2, sticky="e", padx=5, pady=2)
-search_sku = tk.Entry(search_frame, width=15)
-search_sku.grid(row=0, column=3, padx=5, pady=2)
-
-tk.Label(search_frame, text="Tag:").grid(row=0, column=4, sticky="e", padx=5, pady=2)
-search_tag = tk.Entry(search_frame, width=15)
-search_tag.grid(row=0, column=5, padx=5, pady=2)
+tk.Label(search_frame, text="Search:").grid(row=0, column=0, sticky="e", padx=5, pady=2)
+search_query = tk.Entry(search_frame, width=50)
+search_query.grid(row=0, column=1, padx=5, pady=2)
+tk.Label(search_frame, text="(searches name, SKU, and tags)").grid(
+    row=0, column=2, padx=5, pady=2
+)
 
 tk.Button(search_frame, text="Search", command=search_products).grid(
     row=0, column=6, padx=10, pady=2

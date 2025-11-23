@@ -123,75 +123,73 @@ def list_all_tags():
 
 @app.get("/products/search")
 def search_products(
-    name: str = Query(None, description="Search by product name (partial match)"),
-    sku: str = Query(None, description="Search by SKU (exact or partial match)"),
-    tags: str = Query(None, description="Search by tag names (comma-separated)"),
+    q: str = Query(
+        ..., description="Unified search query (searches name, SKU, and tags)"
+    ),
     production: bool = Query(None, description="Filter by production status"),
 ):
     """
-    Search products by name, SKU, tags, or production status
-    Tags can be comma-separated for multiple tag search
-    Results ordered by tag match count (most matches first), then by SKU
-    Returns list of matching products with match_count for multi-tag searches
+    Unified search across name, SKU, and tags
+    Returns products with match details showing where matches occurred
+    Results ordered by total matches, then by SKU
     """
     db: Session = SessionLocal()
     try:
-        # Parse tags if provided
-        search_tags = []
-        if tags:
-            search_tags = [tag.strip() for tag in tags.split(",") if tag.strip()]
+        if not q or not q.strip():
+            return []
 
-        # Build base query
-        query = db.query(crud.models.Product)
+        search_term = q.strip()
+        search_terms = [term.strip() for term in search_term.split() if term.strip()]
 
-        # Apply filters
-        if name:
-            query = query.filter(crud.models.Product.name.ilike(f"%{name}%"))
-        if sku:
-            query = query.filter(crud.models.Product.sku.ilike(f"%{sku}%"))
+        # Get all products first, then filter in Python for complex matching
+        all_products = db.query(crud.models.Product).all()
 
-        # Handle tag filtering
-        if search_tags:
-            # For multiple tags, we want products that have ANY of the tags
-            # We'll filter and then sort by match count
-            query = (
-                query.join(crud.models.Product.tags)
-                .filter(crud.models.Tag.name.in_(search_tags))
-                .distinct()
-            )
-
-        if production is not None:
-            query = query.filter(crud.models.Product.production == production)
-
-        # Get results
-        products = query.all()
-
-        # Process results and add match count for multi-tag searches
-        result = []
-        for p in products:
+        results = []
+        for p in all_products:
             product_tags = [t.name for t in p.tags]
-            match_count = 0
-            if search_tags:
-                match_count = len(set(product_tags) & set(search_tags))
 
-            result.append(
-                {
-                    "id": p.id,
-                    "sku": p.sku,
-                    "name": p.name,
-                    "description": p.description,
-                    "production": p.production,
-                    "tags": product_tags,
-                    "match_count": match_count,
-                }
+            # Count matches in different fields
+            name_matches = sum(
+                1 for term in search_terms if term.lower() in p.name.lower()
+            )
+            sku_matches = sum(
+                1 for term in search_terms if term.lower() in p.sku.lower()
+            )
+            tag_matches = sum(
+                1
+                for term in search_terms
+                for tag in product_tags
+                if term.lower() in tag.lower()
             )
 
-        # Sort results: most tag matches first, then by SKU alphabetically
-        if search_tags:
-            result.sort(key=lambda x: (-x["match_count"], x["sku"]))
-        else:
-            result.sort(key=lambda x: x["sku"])
+            total_matches = name_matches + sku_matches + tag_matches
 
-        return result
+            # Only include if there's at least one match
+            if total_matches > 0:
+                # Apply production filter if specified
+                if production is not None and p.production != production:
+                    continue
+
+                results.append(
+                    {
+                        "id": p.id,
+                        "sku": p.sku,
+                        "name": p.name,
+                        "description": p.description,
+                        "production": p.production,
+                        "tags": product_tags,
+                        "matches": {
+                            "total": total_matches,
+                            "name": name_matches,
+                            "sku": sku_matches,
+                            "tags": tag_matches,
+                        },
+                    }
+                )
+
+        # Sort by total matches (descending), then by SKU (ascending)
+        results.sort(key=lambda x: (-x["matches"]["total"], x["sku"]))
+
+        return results
     finally:
         db.close()
