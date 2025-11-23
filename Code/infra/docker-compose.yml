@@ -40,7 +40,7 @@ services:
       - "8000:8000"
     volumes:
       - ../backend:/app
-      - ../../Products:/Products
+      - /home/grbrum/Work/3d_print/Products:/Products
     depends_on:
       - db
       - search
