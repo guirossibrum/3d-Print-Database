@@ -10,6 +10,10 @@ import time
 from modules.constants import *
 from modules.api_client import *
 from modules import search
+from modules.tags import (
+    update_tag_display as update_tag_display_mod,
+    add_tag_from_listbox,
+)
 
 # Global variables
 current_tags = []
@@ -278,7 +282,7 @@ def clear_form():
     entry_description.delete(0, tk.END)
     var_production.set(True)
     current_tags.clear()
-    update_tag_display()
+    update_tag_display_mod(current_tags, tags_frame, "pack")
     tag_entry.delete(0, tk.END)
 
 
@@ -291,7 +295,7 @@ def add_tag():
     tag_text = tag_entry.get().strip()
     if tag_text and tag_text not in current_tags:
         current_tags.append(tag_text)
-        update_tag_display()
+        update_tag_display_mod(current_tags, tags_frame, "pack")
         tag_entry.delete(0, tk.END)  # Clear the input
         tag_entry.focus()
         # Add to available tags immediately
@@ -308,26 +312,7 @@ def remove_tag(tag_to_remove):
     """Remove a tag from the current tags list"""
     if tag_to_remove in current_tags:
         current_tags.remove(tag_to_remove)
-        update_tag_display()
-
-
-def update_tag_display():
-    """Update the display of current tags"""
-    # Clear existing tag widgets
-    for widget in tags_frame.winfo_children():
-        widget.destroy()
-
-    # Add current tags with remove buttons
-    for i, tag in enumerate(current_tags):
-        # Tag label
-        tag_label = tk.Label(tags_frame, text=tag, bg="lightblue", padx=5, pady=2)
-        tag_label.grid(row=i // 4, column=(i % 4) * 2, padx=2, pady=2, sticky="w")
-
-        # Remove button
-        remove_btn = tk.Button(
-            tags_frame, text="×", font=("Arial", 8), command=lambda t=tag: remove_tag(t)
-        )
-        remove_btn.grid(row=i // 4, column=(i % 4) * 2 + 1, padx=2, pady=2)
+        update_tag_display_mod(current_tags, tags_frame, "pack")
 
 
 # Removed autocomplete functions - using list-based tag selection now
@@ -370,7 +355,11 @@ def filter_tag_list(event=None):
 
 def add_tag_from_list(event=None):
     """Add selected tag from the listbox"""
-    add_tag_from_listbox(tag_listbox, current_tags, update_tag_display)
+    add_tag_from_listbox(
+        tag_listbox,
+        current_tags,
+        lambda: update_tag_display_mod(current_tags, tags_frame, "pack"),
+    )
     tag_entry.delete(0, tk.END)  # Clear input
     tag_entry.focus()
 
@@ -819,7 +808,7 @@ def add_popup_tag(widget, tags_list, display_frame, listbox=None):
     tag_text = widget.get().strip()
     if tag_text and tag_text not in tags_list:
         tags_list.append(tag_text)
-        update_popup_tag_display(tags_list, display_frame)
+        update_tag_display_mod(tags_list, display_frame, "grid")
         if hasattr(widget, "set"):
             widget.set("")
         else:
@@ -840,29 +829,7 @@ def remove_popup_tag(tag_to_remove, tags_list, display_frame):
     """Remove a tag from the popup dialog"""
     if tag_to_remove in tags_list:
         tags_list.remove(tag_to_remove)
-        update_popup_tag_display(tags_list, display_frame)
-
-
-def update_popup_tag_display(tags_list, display_frame):
-    """Update the display of popup tags"""
-    # Clear existing tag widgets
-    for widget in display_frame.winfo_children():
-        widget.destroy()
-
-    # Add current tags with remove buttons
-    for i, tag in enumerate(tags_list):
-        # Tag label
-        tag_label = tk.Label(display_frame, text=tag, bg="lightgreen", padx=5, pady=2)
-        tag_label.grid(row=i // 4, column=(i % 4) * 2, padx=2, pady=2, sticky="w")
-
-        # Remove button
-        remove_btn = tk.Button(
-            display_frame,
-            text="×",
-            font=("Arial", 8),
-            command=lambda t=tag: remove_popup_tag(t, tags_list, display_frame),
-        )
-        remove_btn.grid(row=i // 4, column=(i % 4) * 2 + 1, padx=2, pady=2)
+        update_tag_display_mod(tags_list, display_frame, "grid")
 
 
 def add_tag_from_listbox(listbox, current_tags, update_func):

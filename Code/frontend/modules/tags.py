@@ -139,7 +139,7 @@ def add_popup_tag(widget, tags_list, display_frame, listbox=None):
     tag_text = widget.get().strip()
     if tag_text and tag_text not in tags_list:
         tags_list.append(tag_text)
-        update_popup_tag_display(tags_list, display_frame)
+        update_tag_display(tags_list, display_frame, "grid")
         if hasattr(widget, "set"):
             widget.set("")
         else:
