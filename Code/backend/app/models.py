@@ -25,9 +25,11 @@ class Product(Base):
     folder_path = Column(Text, nullable=False)
     production = Column(Boolean, nullable=False, default=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
+    category_id = Column(Integer, ForeignKey("categories.id"))
 
-    # many-to-many relationship via association table
+    # Relationships
     tags = relationship("Tag", secondary=product_tags, back_populates="products")
+    category = relationship("Category", back_populates="products")
 
 
 class Tag(Base):
@@ -37,3 +39,18 @@ class Tag(Base):
     name = Column(Text, unique=True, nullable=False, index=True)  # Added index
 
     products = relationship("Product", secondary=product_tags, back_populates="tags")
+
+
+class Category(Base):
+    __tablename__ = "categories"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(Text, unique=True, nullable=False)
+    sku_initials = Column(Text, unique=True, nullable=False)  # 3-letter code
+    description = Column(Text)
+
+    # Relationship to products (optional, for future use)
+    products = relationship("Product", back_populates="category")
+
+    def __str__(self):
+        return f"{self.name} ({self.sku_initials})"

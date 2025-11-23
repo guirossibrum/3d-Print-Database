@@ -1,9 +1,10 @@
 # backend/app/main.py
 from fastapi import FastAPI, HTTPException, Path, Query
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import OperationalError
 from typing import List, Dict, Any
 from . import crud, schemas
-from .database import SessionLocal
+from .database import SessionLocal, create_tables
 from . import tag_utils
 from ensure_file_structure import (
     create_product_folder,
@@ -11,6 +12,13 @@ from ensure_file_structure import (
 )  # <-- fixed import
 
 app = FastAPI()
+
+# Try to create tables on startup, but don't fail if DB isn't ready
+try:
+    create_tables()
+except OperationalError:
+    # Database might not be ready yet, will retry on first request
+    pass
 
 
 @app.post("/products/")
@@ -117,6 +125,131 @@ def list_all_tags():
             {"name": tag_name, "usage_count": count}
             for tag_name, count in stats.items()
         ]
+    finally:
+        db.close()
+
+
+@app.get("/categories")
+def list_categories():
+    """
+    Get all categories
+    Returns: [{"id": 1, "name": "Guitars", "sku_initials": "GUI", "description": "..."}, ...]
+    """
+    db: Session = SessionLocal()
+    try:
+        categories = (
+            db.query(crud.models.Category).order_by(crud.models.Category.name).all()
+        )
+        return [
+            {
+                "id": c.id,
+                "name": c.name,
+                "sku_initials": c.sku_initials,
+                "description": c.description,
+            }
+            for c in categories
+        ]
+    finally:
+        db.close()
+
+
+@app.post("/categories")
+def create_category(category: schemas.CategoryCreate):
+    """
+    Create a new category
+    """
+    db: Session = SessionLocal()
+    try:
+        # Validate SKU initials (must be 3 uppercase letters)
+        if (
+            len(category.sku_initials) != 3
+            or not category.sku_initials.isalpha()
+            or not category.sku_initials.isupper()
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="SKU initials must be exactly 3 uppercase letters",
+            )
+
+        # Check for duplicates
+        existing = (
+            db.query(crud.models.Category)
+            .filter(
+                (crud.models.Category.name == category.name)
+                | (crud.models.Category.sku_initials == category.sku_initials)
+            )
+            .first()
+        )
+
+        if existing:
+            if existing.name == category.name:
+                raise HTTPException(
+                    status_code=400, detail="Category name already exists"
+                )
+            else:
+                raise HTTPException(
+                    status_code=400, detail="SKU initials already exist"
+                )
+
+        db_category = crud.models.Category(
+            name=category.name,
+            sku_initials=category.sku_initials,
+            description=category.description,
+        )
+        db.add(db_category)
+        db.commit()
+        db.refresh(db_category)
+
+        return {"id": db_category.id, "message": "Category created successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Error creating category: {str(e)}"
+        )
+    finally:
+        db.close()
+
+
+@app.delete("/categories/{category_id}")
+def delete_category(category_id: int):
+    """
+    Delete a category (only if no products are using it)
+    """
+    db: Session = SessionLocal()
+    try:
+        category = (
+            db.query(crud.models.Category)
+            .filter(crud.models.Category.id == category_id)
+            .first()
+        )
+        if not category:
+            raise HTTPException(status_code=404, detail="Category not found")
+
+        # Check if any products use this category
+        product_count = (
+            db.query(crud.models.Product)
+            .filter(crud.models.Product.category_id == category_id)
+            .count()
+        )
+        if product_count > 0:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot delete category: {product_count} products are using it",
+            )
+
+        db.delete(category)
+        db.commit()
+
+        return {"message": "Category deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Error deleting category: {str(e)}"
+        )
     finally:
         db.close()
 

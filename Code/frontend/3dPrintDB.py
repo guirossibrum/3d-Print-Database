@@ -11,13 +11,16 @@ import time
 API_URL = "http://localhost:8000/products/"
 TAGS_SUGGEST_URL = "http://localhost:8000/tags/suggest"
 SEARCH_URL = "http://localhost:8000/products/search"
+CATEGORIES_URL = "http://localhost:8000/categories"
 
 # Global variables
 current_tags = []
 tag_suggestions = []
+categories = []
 edit_mode = False
 current_product_data = None
 search_results = []
+selected_category_id = None
 
 
 def clear_form():
@@ -122,12 +125,17 @@ def create_item():
         messagebox.showerror("Error", "Name is required")
         return
 
+    if not selected_category_id:
+        messagebox.showerror("Error", "Please select a category")
+        return
+
     # Build JSON payload
     payload = {
         "name": name,
         "description": description,
         "tags": current_tags.copy(),  # Use current tags list
         "production": production,
+        "category_id": selected_category_id,
     }
 
     try:
@@ -318,6 +326,146 @@ def discard_edit():
     messagebox.showinfo("Info", "Edit discarded")
 
 
+# --- Category Management Functions ---
+def load_categories():
+    """Load categories from API"""
+    global categories
+    try:
+        response = requests.get(CATEGORIES_URL)
+        if response.status_code == 200:
+            categories = response.json()
+            update_category_dropdown()
+        else:
+            messagebox.showerror("Error", f"Failed to load categories: {response.text}")
+    except Exception as e:
+        messagebox.showerror("Error", f"Error loading categories: {str(e)}")
+
+
+def update_category_dropdown():
+    """Update the category dropdown with current categories"""
+    category_combo["values"] = [
+        f"{c['name']} ({c['sku_initials']})" for c in categories
+    ]
+    if categories:
+        category_combo.current(0)  # Select first category by default
+
+
+def create_new_category():
+    """Create a new category via dialog"""
+    # Create a dialog for new category
+    dialog = tk.Toplevel(root)
+    dialog.title("Create New Category")
+    dialog.geometry("400x250")
+
+    tk.Label(dialog, text="Category Name:").grid(
+        row=0, column=0, sticky="e", padx=5, pady=5
+    )
+    name_entry = tk.Entry(dialog, width=30)
+    name_entry.grid(row=0, column=1, padx=5, pady=5)
+
+    tk.Label(dialog, text="SKU Initials (3 letters):").grid(
+        row=1, column=0, sticky="e", padx=5, pady=5
+    )
+    initials_entry = tk.Entry(dialog, width=10)
+    initials_entry.grid(row=1, column=1, sticky="w", padx=5, pady=5)
+
+    tk.Label(dialog, text="Description:").grid(
+        row=2, column=0, sticky="ne", padx=5, pady=5
+    )
+    desc_text = tk.Text(dialog, width=30, height=3)
+    desc_text.grid(row=2, column=1, padx=5, pady=5)
+
+    def save_category():
+        name = name_entry.get().strip()
+        initials = initials_entry.get().strip().upper()
+        description = desc_text.get("1.0", tk.END).strip()
+
+        if not name or not initials:
+            messagebox.showerror("Error", "Name and SKU initials are required")
+            return
+
+        if len(initials) != 3 or not initials.isalpha():
+            messagebox.showerror("Error", "SKU initials must be exactly 3 letters")
+            return
+
+        try:
+            response = requests.post(
+                CATEGORIES_URL,
+                json={
+                    "name": name,
+                    "sku_initials": initials,
+                    "description": description,
+                },
+            )
+
+            if response.status_code == 200:
+                messagebox.showinfo("Success", "Category created successfully")
+                load_categories()  # Refresh categories
+                dialog.destroy()
+            else:
+                messagebox.showerror(
+                    "Error", f"Failed to create category: {response.text}"
+                )
+        except Exception as e:
+            messagebox.showerror("Error", f"Error creating category: {str(e)}")
+
+    def cancel():
+        dialog.destroy()
+
+    tk.Button(dialog, text="Create", command=save_category).grid(
+        row=3, column=0, pady=10
+    )
+    tk.Button(dialog, text="Cancel", command=cancel).grid(row=3, column=1, pady=10)
+
+
+def delete_category():
+    """Delete selected category"""
+    selected = category_combo.get()
+    if not selected:
+        messagebox.showwarning("Warning", "Please select a category to delete")
+        return
+
+    # Extract category name from selection
+    category_name = selected.split(" (")[0]
+
+    # Find category
+    category = next((c for c in categories if c["name"] == category_name), None)
+    if not category:
+        messagebox.showerror("Error", "Category not found")
+        return
+
+    # Confirm deletion
+    confirm = messagebox.askyesno(
+        "Confirm Deletion",
+        f"Are you sure you want to delete category:\n\n{category['name']} ({category['sku_initials']})\n\n"
+        "This will only delete the category if no products are using it.",
+    )
+
+    if not confirm:
+        return
+
+    try:
+        response = requests.delete(f"{CATEGORIES_URL}/{category['id']}")
+        if response.status_code == 200:
+            messagebox.showinfo("Success", "Category deleted successfully")
+            load_categories()  # Refresh categories
+        else:
+            messagebox.showerror("Error", f"Failed to delete category: {response.text}")
+    except Exception as e:
+        messagebox.showerror("Error", f"Error deleting category: {str(e)}")
+
+
+def on_category_select(event):
+    """Handle category selection"""
+    global selected_category_id
+    selected = category_combo.get()
+    if selected:
+        category_name = selected.split(" (")[0]
+        category = next((c for c in categories if c["name"] == category_name), None)
+        if category:
+            selected_category_id = category["id"]
+
+
 def open_product_folder():
     """Open the product folder in file explorer"""
     try:
@@ -489,12 +637,28 @@ tk.Checkbutton(create_tab, text="Production", variable=var_production).grid(
     row=2, column=1, sticky="w", pady=5, padx=5
 )
 
+# Category section
+tk.Label(create_tab, text="Category:").grid(row=3, column=0, sticky="e", pady=5, padx=5)
+category_frame = tk.Frame(create_tab)
+category_frame.grid(row=3, column=1, columnspan=2, pady=5, padx=5, sticky="w")
+
+category_combo = ttk.Combobox(category_frame, width=25, state="readonly")
+category_combo.pack(side=tk.LEFT, padx=(0, 5))
+category_combo.bind("<<ComboboxSelected>>", on_category_select)
+
+tk.Button(category_frame, text="New Category", command=create_new_category).pack(
+    side=tk.LEFT, padx=(0, 5)
+)
+tk.Button(
+    category_frame, text="Delete Category", command=delete_category, fg="red"
+).pack(side=tk.LEFT)
+
 # Tags section
-tk.Label(create_tab, text="Tags:").grid(row=3, column=0, sticky="ne", pady=5, padx=5)
+tk.Label(create_tab, text="Tags:").grid(row=4, column=0, sticky="ne", pady=5, padx=5)
 
 # Tag input frame
 tag_frame = tk.Frame(create_tab)
-tag_frame.grid(row=3, column=1, columnspan=2, pady=5, padx=5, sticky="w")
+tag_frame.grid(row=4, column=1, columnspan=2, pady=5, padx=5, sticky="w")
 
 # Tag input combobox with autocomplete
 tag_combo = ttk.Combobox(tag_frame, width=25)
@@ -508,11 +672,11 @@ add_btn.pack(side=tk.LEFT)
 
 # Current tags display frame
 tags_frame = tk.Frame(create_tab)
-tags_frame.grid(row=4, column=0, columnspan=3, pady=5, padx=5, sticky="w")
+tags_frame.grid(row=5, column=0, columnspan=3, pady=5, padx=5, sticky="w")
 
 # Create tab buttons
 create_button_frame = tk.Frame(create_tab)
-create_button_frame.grid(row=5, column=0, columnspan=3, pady=10)
+create_button_frame.grid(row=6, column=0, columnspan=3, pady=10)
 
 tk.Button(create_button_frame, text="Clear", command=clear_form).pack(
     side=tk.LEFT, padx=5
@@ -616,5 +780,8 @@ tk.Button(edit_button_frame, text="Discard Edit", command=discard_edit).pack(
     side=tk.LEFT, padx=5
 )
 tk.Button(edit_button_frame, text="Exit", command=cancel).pack(side=tk.LEFT, padx=5)
+
+# Load initial data
+load_categories()
 
 root.mainloop()

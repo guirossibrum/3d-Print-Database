@@ -6,11 +6,20 @@ from . import tag_utils
 from ensure_file_structure import create_product_folder  # import to create folders
 
 
-def generate_sku(db: Session, prefix: str = "PROD") -> str:
+def generate_sku(db: Session, category_id: int) -> str:
     """
-    Generate a unique SKU like PROD-0001
-    Finds the highest existing number for the prefix and increments it
+    Generate a unique SKU using category initials
+    Format: XXX-0001 where XXX is the category's sku_initials
     """
+    # Get the category
+    category = (
+        db.query(models.Category).filter(models.Category.id == category_id).first()
+    )
+    if not category:
+        raise ValueError(f"Category with id {category_id} not found")
+
+    prefix = category.sku_initials.upper()
+
     # Find all SKUs with this prefix, extract numbers, find max
     existing_skus = (
         db.query(models.Product.sku)
@@ -38,8 +47,9 @@ def create_product_db(
     Folder is created first, then stored in DB.
     """
     if not sku:
-        sku_prefix = product.name[:3].upper() if product.name else "PROD"
-        sku = generate_sku(db, prefix=sku_prefix)
+        if not product.category_id:
+            raise ValueError("Category is required for SKU generation")
+        sku = generate_sku(db, product.category_id)
 
     # 1️⃣ Create folder & metadata first
     folder_path, _ = create_product_folder(
@@ -57,6 +67,7 @@ def create_product_db(
         description=product.description,
         folder_path=folder_path,
         production=product.production,
+        category_id=product.category_id,
     )
     db.add(db_product)
     db.commit()
