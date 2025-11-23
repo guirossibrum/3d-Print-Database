@@ -145,17 +145,13 @@ def create_item():
 
 # --- Update/Search Functions ---
 def search_products():
-    """Search for products using unified search"""
+    """Search for products using unified search (empty query shows all products)"""
     global search_results
 
-    # Get search query
+    # Get search query (allow empty for "show all")
     query = search_query.get().strip()
 
-    if not query:
-        messagebox.showwarning("Warning", "Please enter a search query")
-        return
-
-    # Build query parameters
+    # Build query parameters (empty q parameter will show all products)
     params = {"q": query}
 
     try:
@@ -174,10 +170,22 @@ def display_search_results():
     results_text.delete(1.0, tk.END)
 
     if not search_results:
-        results_text.insert(tk.END, "No products found matching the search criteria.")
+        results_text.insert(tk.END, "No products found.")
         return
 
-    results_text.insert(tk.END, f"Found {len(search_results)} product(s):\n\n")
+    # Check if this was a search with terms or showing all products
+    has_search_terms = any(
+        product.get("matches", {}).get("total", 0) > 0 for product in search_results
+    )
+
+    if has_search_terms:
+        results_text.insert(
+            tk.END, f"Found {len(search_results)} product(s) matching search:\n\n"
+        )
+    else:
+        results_text.insert(
+            tk.END, f"Showing all {len(search_results)} product(s) in database:\n\n"
+        )
 
     for i, product in enumerate(search_results, 1):
         results_text.insert(tk.END, f"{i}. SKU: {product['sku']}\n")
@@ -190,8 +198,8 @@ def display_search_results():
             tk.END,
             f"   Tags: {', '.join(product['tags']) if product['tags'] else 'None'}\n",
         )
-        # Show match details
-        if "matches" in product:
+        # Show match details only for actual searches
+        if has_search_terms and "matches" in product:
             matches = product["matches"]
             results_text.insert(
                 tk.END,

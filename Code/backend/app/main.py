@@ -124,21 +124,47 @@ def list_all_tags():
 @app.get("/products/search")
 def search_products(
     q: str = Query(
-        ..., description="Unified search query (searches name, SKU, and tags)"
+        "",
+        description="Unified search query (searches name, SKU, and tags). Leave empty to show all products.",
     ),
     production: bool = Query(None, description="Filter by production status"),
 ):
     """
     Unified search across name, SKU, and tags
+    If query is empty, returns all products ordered by SKU
     Returns products with match details showing where matches occurred
-    Results ordered by total matches, then by SKU
+    Results ordered by total matches (descending), then by SKU (ascending)
     """
     db: Session = SessionLocal()
     try:
-        if not q or not q.strip():
-            return []
+        search_term = q.strip() if q else ""
 
-        search_term = q.strip()
+        # If no search term, return all products ordered by SKU
+        if not search_term:
+            all_products = (
+                db.query(crud.models.Product).order_by(crud.models.Product.sku).all()
+            )
+
+            results = []
+            for p in all_products:
+                # Apply production filter if specified
+                if production is not None and p.production != production:
+                    continue
+
+                results.append(
+                    {
+                        "id": p.id,
+                        "sku": p.sku,
+                        "name": p.name,
+                        "description": p.description,
+                        "production": p.production,
+                        "tags": [t.name for t in p.tags],
+                        "matches": {"total": 0, "name": 0, "sku": 0, "tags": 0},
+                    }
+                )
+            return results
+
+        # Perform search with query terms
         search_terms = [term.strip() for term in search_term.split() if term.strip()]
 
         # Get all products first, then filter in Python for complex matching
