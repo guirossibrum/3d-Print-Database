@@ -3,17 +3,169 @@ import tkinter as tk
 from tkinter import messagebox
 import requests
 from .constants import TAGS_URL
-from .api_client import *
 
 
-# Global variables (will be passed or accessed via context)
-# For now, assume they are available
-
-
-def add_tag():
+def add_tag(
+    tag_entry, current_tags, update_display_func, all_available_tags, tag_listbox
+):
     """Add a tag to the current tags list"""
-    # Implementation
-    pass
+    tag_text = tag_entry.get().strip()
+    if tag_text and tag_text not in current_tags:
+        current_tags.append(tag_text)
+        update_display_func()
+        tag_entry.delete(0, tk.END)  # Clear the input
+        tag_entry.focus()
+        # Add to available tags immediately
+        global all_available_tags
+        if tag_text not in all_available_tags:
+            all_available_tags.append(tag_text)
+            all_available_tags.sort()
+            tag_listbox.delete(0, tk.END)
+            for tag in all_available_tags:
+                tag_listbox.insert(tk.END, tag)
+
+
+def remove_tag(tag_to_remove, current_tags, update_display_func):
+    """Remove a tag from the current tags list"""
+    if tag_to_remove in current_tags:
+        current_tags.remove(tag_to_remove)
+        update_display_func()
+
+
+def update_tag_display(current_tags, tags_frame):
+    """Update the display of current tags"""
+    # Clear existing
+    for widget in tags_frame.winfo_children():
+        widget.destroy()
+
+    if not current_tags:
+        tk.Label(tags_frame, text="(no tags)", fg="gray").pack(anchor="w")
+        return
+
+    for tag in current_tags:
+        tag_frame = tk.Frame(tags_frame)
+        tag_frame.pack(anchor="w", pady=1)
+
+        tk.Label(tag_frame, text=tag, bg="lightblue", padx=5, pady=2).pack(side=tk.LEFT)
+
+        remove_btn = tk.Button(
+            tag_frame,
+            text="×",
+            font=("Arial", 8),
+            command=lambda t=tag: remove_tag(
+                t, current_tags, lambda: update_tag_display(current_tags, tags_frame)
+            ),
+        )
+        remove_btn.pack(side=tk.LEFT)
+
+
+def load_all_tags_for_list(all_available_tags_list):
+    """Load all tags for the listbox"""
+    try:
+        response = requests.get(TAGS_URL, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            all_available_tags_list[:] = sorted(
+                [tag["name"] for tag in data if "name" in tag]
+            )
+        else:
+            messagebox.showerror(
+                "Tags Error", f"Failed to load tags: {response.status_code}"
+            )
+    except Exception as e:
+        messagebox.showerror("Tags Error", f"Error loading tags: {str(e)}")
+
+
+def filter_tag_list(tag_filter_entry, all_available_tags, tag_listbox):
+    """Filter the tag list based on entry"""
+    filter_text = tag_filter_entry.get().strip().lower()
+    tag_listbox.delete(0, tk.END)
+    for tag in all_available_tags:
+        if filter_text in tag.lower():
+            tag_listbox.insert(tk.END, tag)
+
+
+def add_tag_from_listbox(listbox, current_tags, update_func):
+    """Generic helper to add tag from listbox"""
+    selection = listbox.curselection()
+    if selection:
+        tag = listbox.get(selection[0])
+        if tag not in current_tags:
+            current_tags.append(tag)
+            update_func(current_tags)
+
+
+def delete_unused_tag(selected_tag, all_available_tags, tag_listbox, update_list_func):
+    """Delete unused tag"""
+    if not selected_tag:
+        messagebox.showwarning("Warning", "Please select a tag to delete")
+        return
+
+    # Check if tag is used
+    try:
+        # This would need API call to check usage, but for now assume
+        confirm = messagebox.askyesno(
+            "Confirm Deletion",
+            f"Are you sure you want to delete tag: {selected_tag}?\n\n"
+            "This will only delete if the tag is not used by any products.",
+        )
+        if confirm:
+            # API call to delete
+            response = requests.delete(f"{TAGS_URL}/{selected_tag}")
+            if response.status_code == 200:
+                messagebox.showinfo("Success", "Tag deleted successfully")
+                if selected_tag in all_available_tags:
+                    all_available_tags.remove(selected_tag)
+                update_list_func()
+            else:
+                messagebox.showerror("Error", f"Failed to delete tag: {response.text}")
+    except Exception as e:
+        messagebox.showerror("Error", f"Error deleting tag: {str(e)}")
+
+
+def add_popup_tag(widget, tags_list, display_frame, listbox=None):
+    """Add a tag to the popup dialog"""
+    tag_text = widget.get().strip()
+    if tag_text and tag_text not in tags_list:
+        tags_list.append(tag_text)
+        update_popup_tag_display(tags_list, display_frame)
+        if hasattr(widget, "set"):
+            widget.set("")
+        else:
+            widget.delete(0, tk.END)
+
+        # Add to available tags if new
+        # Note: This assumes all_available_tags is accessible, may need to pass as param
+        # For now, skip or handle differently
+
+
+def remove_popup_tag(tag_to_remove, tags_list, display_frame):
+    """Remove a tag from the popup dialog"""
+    if tag_to_remove in tags_list:
+        tags_list.remove(tag_to_remove)
+        update_popup_tag_display(tags_list, display_frame)
+
+
+def update_popup_tag_display(tags_list, display_frame):
+    """Update the tag display in popup dialogs"""
+    # Clear existing tag widgets
+    for widget in display_frame.winfo_children():
+        widget.destroy()
+
+    # Add current tags with remove buttons
+    for i, tag in enumerate(tags_list):
+        # Tag label
+        tag_label = tk.Label(display_frame, text=tag, bg="lightgreen", padx=5, pady=2)
+        tag_label.grid(row=i // 4, column=(i % 4) * 2, padx=2, pady=2, sticky="w")
+
+        # Remove button
+        remove_btn = tk.Button(
+            display_frame,
+            text="×",
+            font=("Arial", 8),
+            command=lambda t=tag: remove_popup_tag(t, tags_list, display_frame),
+        )
+        remove_btn.grid(row=i // 4, column=(i % 4) * 2 + 1, padx=2, pady=2)
 
 
 def remove_tag(tag_to_remove):
