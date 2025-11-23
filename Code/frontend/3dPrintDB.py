@@ -221,25 +221,36 @@ def load_product_for_edit():
     """Load selected product into edit form using index number"""
     global current_product_data, edit_mode
 
+    # Check if there are any search results
+    if not search_results:
+        messagebox.showerror(
+            "No Products Found",
+            "There are no products to edit. Please perform a search first.",
+        )
+        return
+
     try:
         # Get the index from the entry field
         index_text = edit_index_entry.get().strip()
         if not index_text:
             messagebox.showwarning(
-                "Warning", "Please enter an index number (1, 2, 3, etc.)"
+                "Index Required",
+                "Please enter an index number (1, 2, 3, etc.) from the search results above.",
             )
             return
 
         try:
             index = int(index_text) - 1  # Convert to 0-based index
         except ValueError:
-            messagebox.showerror("Error", "Please enter a valid number")
+            messagebox.showerror(
+                "Invalid Input", "Please enter a valid number for the index."
+            )
             return
 
         if index < 0 or index >= len(search_results):
             messagebox.showerror(
-                "Error",
-                f"Index out of range. Please enter a number between 1 and {len(search_results)}",
+                "Index Out of Range",
+                f"The index {index_text} is not valid. Please enter a number between 1 and {len(search_results)}.",
             )
             return
 
@@ -273,7 +284,10 @@ def update_product():
     global current_product_data, edit_mode
 
     if not current_product_data or not edit_mode:
-        messagebox.showerror("Error", "No product loaded for editing")
+        messagebox.showerror(
+            "No Product Loaded",
+            "No product is currently loaded for editing. Please use 'Load for Edit' first.",
+        )
         return
 
     name = edit_name.get().strip()
@@ -320,10 +334,17 @@ def clear_edit_form():
 def discard_edit():
     """Discard current edit and reset form"""
     global edit_mode, current_product_data
+
+    if not edit_mode or not current_product_data:
+        messagebox.showinfo("Info", "No active edit to discard.")
+        return
+
     edit_mode = False
     current_product_data = None
     clear_edit_form()
-    messagebox.showinfo("Info", "Edit discarded")
+    messagebox.showinfo(
+        "Edit Discarded", "Changes have been discarded and the form has been cleared."
+    )
 
 
 # --- Category Management Functions ---
@@ -468,16 +489,35 @@ def on_category_select(event):
 
 def open_product_folder():
     """Open the product folder in file explorer"""
+    # Check if there are any search results
+    if not search_results:
+        messagebox.showerror(
+            "No Products Found",
+            "There are no products to open folders for. Please perform a search first.",
+        )
+        return
+
     try:
         index_text = edit_index_entry.get().strip()
         if not index_text:
-            messagebox.showwarning("Warning", "Please enter an index number first")
+            messagebox.showwarning(
+                "Index Required",
+                "Please enter an index number (1, 2, 3, etc.) from the search results above.",
+            )
             return
 
-        index = int(index_text) - 1
+        try:
+            index = int(index_text) - 1
+        except ValueError:
+            messagebox.showerror(
+                "Invalid Input", "Please enter a valid number for the index."
+            )
+            return
+
         if index < 0 or index >= len(search_results):
             messagebox.showerror(
-                "Error", f"Index out of range. Enter 1-{len(search_results)}"
+                "Index Out of Range",
+                f"The index {index_text} is not valid. Please enter a number between 1 and {len(search_results)}.",
             )
             return
 
@@ -487,29 +527,58 @@ def open_product_folder():
         # Construct folder path (assuming standard structure)
         folder_path = f"/home/grbrum/Work/3d_print/Products/{sku}"
 
+        # Check if folder exists
+        import os
+
+        if not os.path.exists(folder_path):
+            messagebox.showerror(
+                "Folder Not Found",
+                f"The folder for product '{sku}' does not exist.\n\nExpected path: {folder_path}",
+            )
+            return
+
         # Open folder using system default file manager
         import subprocess
 
         subprocess.run(["xdg-open", folder_path], check=False)
 
-    except ValueError:
-        messagebox.showerror("Error", "Please enter a valid number")
+        messagebox.showinfo("Folder Opened", f"Opened folder for product {sku}")
+
     except Exception as e:
         messagebox.showerror("Error", f"Could not open folder: {str(e)}")
 
 
 def delete_product():
     """Delete the selected product with confirmation"""
+    # Check if there are any search results
+    if not search_results:
+        messagebox.showerror(
+            "No Products Found",
+            "There are no products to delete. Please perform a search first.",
+        )
+        return
+
     try:
         index_text = edit_index_entry.get().strip()
         if not index_text:
-            messagebox.showwarning("Warning", "Please enter an index number first")
+            messagebox.showwarning(
+                "Index Required",
+                "Please enter an index number (1, 2, 3, etc.) from the search results above.",
+            )
             return
 
-        index = int(index_text) - 1
+        try:
+            index = int(index_text) - 1
+        except ValueError:
+            messagebox.showerror(
+                "Invalid Input", "Please enter a valid number for the index."
+            )
+            return
+
         if index < 0 or index >= len(search_results):
             messagebox.showerror(
-                "Error", f"Index out of range. Enter 1-{len(search_results)}"
+                "Index Out of Range",
+                f"The index {index_text} is not valid. Please enter a number between 1 and {len(search_results)}.",
             )
             return
 
