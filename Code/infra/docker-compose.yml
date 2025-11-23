@@ -12,7 +12,7 @@ services:
     ports:
       - "5432:5432"
 
-   adminer:
+  adminer:
      image: adminer
      container_name: products_adminer
      restart: always

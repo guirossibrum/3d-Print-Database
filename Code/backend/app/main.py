@@ -17,6 +17,67 @@ app = FastAPI()
 create_tables()
 
 
+def handle_product_creation_side_effects(sku: str, product: schemas.ProductCreate):
+    """
+    Handle side effects after product creation: folder and metadata.
+    """
+    # Create folder and metadata.json
+    create_product_folder(
+        sku=sku,
+        name=product.name,
+        description=product.description or "",
+        tags=product.tags,
+        production=product.production,
+    )
+
+    # Update metadata with additional fields
+    update_metadata(
+        sku=sku,
+        material=product.material,
+        color=product.color,
+        print_time=product.print_time,
+        weight=product.weight,
+        stock_quantity=product.stock_quantity,
+        reorder_point=product.reorder_point,
+        unit_cost=product.unit_cost,
+        selling_price=product.selling_price,
+    )
+
+
+def handle_product_update_side_effects(sku: str, update: schemas.ProductUpdate):
+    """
+    Handle side effects after product update: metadata.
+    """
+    update_metadata(
+        sku=sku,
+        name=update.name,
+        description=update.description,
+        tags=update.tags,
+        production=update.production,
+        material=update.material,
+        color=update.color,
+        print_time=update.print_time,
+        weight=update.weight,
+        stock_quantity=update.stock_quantity,
+        reorder_point=update.reorder_point,
+        unit_cost=update.unit_cost,
+        selling_price=update.selling_price,
+    )
+
+
+def handle_inventory_update_side_effects(sku: str, inventory: schemas.InventoryUpdate):
+    """
+    Handle side effects after inventory update: metadata.
+    """
+    update_metadata(
+        sku=sku,
+        stock_quantity=inventory.stock_quantity,
+        reorder_point=inventory.reorder_point,
+        unit_cost=inventory.unit_cost,
+        selling_price=inventory.selling_price,
+    )
+
+
 @app.post("/products/")
 def create_product(product: schemas.ProductCreate):
     db: Session = SessionLocal()
@@ -24,27 +85,8 @@ def create_product(product: schemas.ProductCreate):
         # Create product in DB and get SKU
         sku = crud.create_product_db(db, product)
 
-        # Create folder and metadata.json
-        create_product_folder(
-            sku=sku,
-            name=product.name,
-            description=product.description or "",
-            tags=product.tags,
-            production=product.production,
-        )
-
-        # Update metadata with additional fields
-        update_metadata(
-            sku=sku,
-            material=product.material,
-            color=product.color,
-            print_time=product.print_time,
-            weight=product.weight,
-            stock_quantity=product.stock_quantity,
-            reorder_point=product.reorder_point,
-            unit_cost=product.unit_cost,
-            selling_price=product.selling_price,
-        )
+        # Handle side effects: folder and metadata
+        handle_product_creation_side_effects(sku, product)
     finally:
         db.close()
 
@@ -59,22 +101,8 @@ def update_product(update: schemas.ProductUpdate, sku: str = Path(...)):
         if not product_db:
             raise HTTPException(status_code=404, detail="Product not found")
 
-        # Update metadata.json
-        update_metadata(
-            sku=sku,
-            name=update.name,
-            description=update.description,
-            tags=update.tags,
-            production=update.production,
-            material=update.material,
-            color=update.color,
-            print_time=update.print_time,
-            weight=update.weight,
-            stock_quantity=update.stock_quantity,
-            reorder_point=update.reorder_point,
-            unit_cost=update.unit_cost,
-            selling_price=update.selling_price,
-        )
+        # Handle side effects: metadata update
+        handle_product_update_side_effects(sku, update)
     finally:
         db.close()
 
@@ -574,14 +602,8 @@ def update_inventory(inventory: schemas.InventoryUpdate, sku: str = Path(...)):
         if not product:
             raise HTTPException(status_code=404, detail="Product not found")
 
-        # Update metadata.json
-        update_metadata(
-            sku=sku,
-            stock_quantity=inventory.stock_quantity,
-            reorder_point=inventory.reorder_point,
-            unit_cost=inventory.unit_cost,
-            selling_price=inventory.selling_price,
-        )
+        # Handle side effects: metadata update
+        handle_inventory_update_side_effects(sku, inventory)
 
         return {"sku": sku, "message": "Inventory updated successfully"}
     finally:

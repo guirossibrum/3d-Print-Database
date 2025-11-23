@@ -609,32 +609,19 @@ def create_new_category():
             return
 
         try:
-            response = requests.post(
-                CATEGORIES_URL,
-                json={
-                    "name": name,
-                    "sku_initials": initials,
-                    "description": description,
-                },
-            )
+            create_category_via_api(name, initials, description)
+            messagebox.showinfo("Success", "Category created successfully")
+            load_categories()  # Refresh categories
 
-            if response.status_code == 200:
-                messagebox.showinfo("Success", "Category created successfully")
-                load_categories()  # Refresh categories
+            # Auto-select the newly created category
+            new_category_name = name
+            for i, cat in enumerate(categories):
+                if cat["name"] == new_category_name:
+                    category_combo.current(i)
+                    on_category_select(None)  # Trigger selection handler
+                    break
 
-                # Auto-select the newly created category
-                new_category_name = name
-                for i, cat in enumerate(categories):
-                    if cat["name"] == new_category_name:
-                        category_combo.current(i)
-                        on_category_select(None)  # Trigger selection handler
-                        break
-
-                dialog.destroy()
-            else:
-                messagebox.showerror(
-                    "Error", f"Failed to create category: {response.text}"
-                )
+            dialog.destroy()
         except Exception as e:
             messagebox.showerror("Error", f"Error creating category: {str(e)}")
 
@@ -713,32 +700,19 @@ def edit_category():
             return
 
         try:
-            response = requests.put(
-                f"{CATEGORIES_URL}/{category['id']}",
-                json={
-                    "name": name,
-                    "sku_initials": initials,
-                    "description": description,
-                },
-            )
+            update_category_via_api(category["id"], name, initials, description)
+            messagebox.showinfo("Success", "Category updated successfully")
+            load_categories()  # Refresh categories
 
-            if response.status_code == 200:
-                messagebox.showinfo("Success", "Category updated successfully")
-                load_categories()  # Refresh categories
+            # Update the selection to the edited category
+            updated_name = name
+            for i, cat in enumerate(categories):
+                if cat["id"] == category["id"]:
+                    category_combo.current(i)
+                    on_category_select(None)  # Trigger selection handler
+                    break
 
-                # Update the selection to the edited category
-                updated_name = name
-                for i, cat in enumerate(categories):
-                    if cat["id"] == category["id"]:
-                        category_combo.current(i)
-                        on_category_select(None)  # Trigger selection handler
-                        break
-
-                dialog.destroy()
-            else:
-                messagebox.showerror(
-                    "Error", f"Failed to update category: {response.text}"
-                )
+            dialog.destroy()
         except Exception as e:
             messagebox.showerror("Error", f"Error updating category: {str(e)}")
 
@@ -1020,6 +994,83 @@ def update_popup_tag_display(tags_list, display_frame):
         remove_btn.grid(row=i // 4, column=(i % 4) * 2 + 1, padx=2, pady=2)
 
 
+def apply_inventory_adjustment(
+    sku: str, operation: str, quantity: int, current_stock: int
+):
+    """
+    Apply inventory adjustment via API.
+    Returns success message on success, raises Exception on failure.
+    """
+    if operation == "sold" and quantity > current_stock:
+        raise ValueError(
+            f"Cannot sell {quantity} items. Only {current_stock} in stock."
+        )
+
+    new_stock = (
+        current_stock + quantity if operation == "printed" else current_stock - quantity
+    )
+
+    payload = {"stock_quantity": new_stock}
+    response = requests.put(f"{API_URL}{sku}/inventory", json=payload)
+    if response.status_code == 200:
+        operation_text = "added to" if operation == "printed" else "removed from"
+        return f"{quantity} items {operation_text} inventory for {sku}"
+    else:
+        raise Exception(f"Failed to update inventory: {response.text}")
+
+
+def create_category_via_api(name: str, initials: str, description: str):
+    """
+    Create category via API.
+    Returns the created category data on success, raises Exception on failure.
+    """
+    response = requests.post(
+        CATEGORIES_URL,
+        json={
+            "name": name,
+            "sku_initials": initials,
+            "description": description,
+        },
+    )
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"Failed to create category: {response.text}")
+
+
+def update_category_via_api(
+    category_id: int, name: str, initials: str, description: str
+):
+    """
+    Update category via API.
+    Returns True on success, raises Exception on failure.
+    """
+    response = requests.put(
+        f"{CATEGORIES_URL}/{category_id}",
+        json={
+            "name": name,
+            "sku_initials": initials,
+            "description": description,
+        },
+    )
+    if response.status_code == 200:
+        return True
+    else:
+        raise Exception(f"Failed to update category: {response.text}")
+
+
+def save_product_changes(product_sku: str, payload: dict):
+    """
+    Save product changes via API.
+    Returns True on success, raises Exception on failure.
+    """
+    response = requests.put(f"{API_URL}{product_sku}", json=payload)
+    if response.status_code == 200:
+        return True
+    else:
+        raise Exception(f"Failed to update product: {response.text}")
+
+
 def show_edit_product_dialog(product):
     """Show popup dialog for editing a product"""
     global edit_current_tags, current_product_data, edit_mode
@@ -1192,17 +1243,12 @@ def show_edit_product_dialog(product):
             }
 
             # Update product
-            response = requests.put(f"{API_URL}{product['sku']}", json=payload)
-            if response.status_code == 200:
-                global dialog_open
-                dialog_open = False
-                dialog.destroy()
-                # Refresh search results
-                search_products()
-            else:
-                messagebox.showerror(
-                    "Error", f"Failed to update product: {response.text}"
-                )
+            save_product_changes(product["sku"], payload)
+            global dialog_open
+            dialog_open = False
+            dialog.destroy()
+            # Refresh search results
+            search_products()
 
         except Exception as e:
             messagebox.showerror("Error", f"Error updating product: {str(e)}")
@@ -1395,40 +1441,16 @@ def adjust_inventory_dialog():
 
             operation = operation_var.get()
 
-            if operation == "sold" and quantity > current_stock:
-                messagebox.showerror(
-                    "Error",
-                    f"Cannot sell {quantity} items. Only {current_stock} in stock.",
-                )
-                return
-
-            # Calculate new stock level
-            new_stock = (
-                current_stock + quantity
-                if operation == "printed"
-                else current_stock - quantity
+            # Apply adjustment
+            success_message = apply_inventory_adjustment(
+                sku, operation, quantity, current_stock
             )
 
-            # Prepare update payload
-            payload = {"stock_quantity": new_stock}
-
-            # Send update request
-            response = requests.put(f"{API_URL}{sku}/inventory", json=payload)
-            if response.status_code == 200:
-                operation_text = (
-                    "added to" if operation == "printed" else "removed from"
-                )
-                messagebox.showinfo(
-                    "Success", f"{quantity} items {operation_text} inventory for {sku}"
-                )
-                global dialog_open
-                dialog_open = False
-                dialog.destroy()
-                load_inventory_status()  # Refresh inventory display
-            else:
-                messagebox.showerror(
-                    "Error", f"Failed to update inventory: {response.text}"
-                )
+            messagebox.showinfo("Success", success_message)
+            global dialog_open
+            dialog_open = False
+            dialog.destroy()
+            load_inventory_status()  # Refresh inventory display
 
         except ValueError as e:
             messagebox.showerror("Invalid Input", str(e))

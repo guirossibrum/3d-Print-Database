@@ -2,6 +2,7 @@
 from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from typing import List
 from . import models, schemas
 from . import tag_utils
 from ensure_file_structure import create_product_folder  # import to create folders
@@ -82,8 +83,20 @@ def create_product_db(
     db.commit()
     db.refresh(db_product)
 
-    # 3️⃣ Create tags with normalization
-    for tag_name in product.tags:
+    # 3️⃣ Associate tags with product
+    associate_tags_with_product(db, db_product, product.tags)
+    db.commit()
+
+    return sku
+
+
+def associate_tags_with_product(
+    db: Session, product_db: models.Product, tags: List[str]
+):
+    """
+    Associate normalized and validated tags with a product.
+    """
+    for tag_name in tags:
         if not tag_name.strip():
             continue  # Skip empty tags
 
@@ -106,10 +119,15 @@ def create_product_db(
             db.commit()
             db.refresh(tag_obj)
 
-        db_product.tags.append(tag_obj)
-    db.commit()
+        product_db.tags.append(tag_obj)
 
-    return sku
+
+def update_product_tags(db: Session, product: models.Product, new_tags: List[str]):
+    """
+    Update the tags for a product by clearing existing and adding new ones.
+    """
+    product.tags.clear()
+    associate_tags_with_product(db, product, new_tags)
 
 
 def update_product_db(db: Session, sku: str, update: schemas.ProductUpdate):
@@ -144,31 +162,7 @@ def update_product_db(db: Session, sku: str, update: schemas.ProductUpdate):
         product.selling_price = update.selling_price
 
     if update.tags is not None:
-        product.tags.clear()
-        for tag_name in update.tags:
-            if not tag_name.strip():
-                continue  # Skip empty tags
-
-            # Normalize the tag
-            normalized_tag = tag_utils.normalize_tag(tag_name)
-
-            if not normalized_tag or not tag_utils.validate_tag(normalized_tag):
-                continue  # Skip invalid tags
-
-            # Check if normalized tag already exists
-            tag_obj = (
-                db.query(models.Tag)
-                .filter(func.lower(models.Tag.name) == normalized_tag.lower())
-                .first()
-            )
-
-            if not tag_obj:
-                tag_obj = models.Tag(name=normalized_tag)
-                db.add(tag_obj)
-                db.commit()
-                db.refresh(tag_obj)
-
-            product.tags.append(tag_obj)
+        update_product_tags(db, product, update.tags)
 
     db.commit()
     db.refresh(product)
