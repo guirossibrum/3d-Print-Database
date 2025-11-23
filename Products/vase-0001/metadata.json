@@ -1,0 +1,20 @@
+{
+    "sku": "vase-0001",
+    "name": "simple vase",
+    "description": "",
+    "category": "vase",
+    "tags": [simple, vase, smooth, elegant],
+    "created_at": "2025-11-23",
+    "modified_at": "2025-11-23",
+    "sources": {
+        "model_files": [],
+        "print_files": [],
+        "images": []
+    },
+    "dimensions": {
+        "height_mm": 35,
+        "width_mm": 12,
+        "depth_mm": 12
+    },
+    "materials": []
+}

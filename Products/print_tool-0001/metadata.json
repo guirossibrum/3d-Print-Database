@@ -1,0 +1,20 @@
+{
+    "sku": "print_tool-0001",
+    "name": "",
+    "description": "",
+    "category": "",
+    "tags": [],
+    "created_at": "2025-11-23",
+    "modified_at": "2025-11-23",
+    "sources": {
+        "model_files": [],
+        "print_files": [],
+        "images": []
+    },
+    "dimensions": {
+        "height_mm": null,
+        "width_mm": null,
+        "depth_mm": null
+    },
+    "materials": []
+}
