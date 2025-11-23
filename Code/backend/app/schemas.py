@@ -31,6 +31,10 @@ class ProductBase(BaseModel):
     tags: List[str] = []
     production: bool = False  # default = prototype / not production
     category_id: Optional[int] = None
+    material: Optional[str] = None
+    color: Optional[str] = None
+    print_time: Optional[str] = None
+    weight: Optional[int] = None
 
 
 # Schema for creating a product (DB generates SKU and folder_path)

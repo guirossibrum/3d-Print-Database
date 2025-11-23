@@ -1,6 +1,5 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
-from . import models
 
 DATABASE_URL = "postgresql://admin:admin@db:5432/products"
 

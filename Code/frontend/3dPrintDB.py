@@ -27,6 +27,10 @@ def clear_form():
     entry_name.delete(0, tk.END)
     entry_description.delete(0, tk.END)
     var_production.set(True)
+    material_entry.delete(0, tk.END)
+    color_entry.delete(0, tk.END)
+    print_time_entry.delete(0, tk.END)
+    weight_entry.delete(0, tk.END)
     current_tags.clear()
     update_tag_display()
     tag_combo.set("")
@@ -120,6 +124,10 @@ def create_item():
     name = entry_name.get().strip()
     description = entry_description.get().strip()
     production = var_production.get()
+    material = material_entry.get().strip()
+    color = color_entry.get().strip()
+    print_time = print_time_entry.get().strip()
+    weight_text = weight_entry.get().strip()
 
     if not name:
         messagebox.showerror("Error", "Name is required")
@@ -129,6 +137,17 @@ def create_item():
         messagebox.showerror("Error", "Please select a category")
         return
 
+    # Validate weight if provided
+    weight = None
+    if weight_text:
+        try:
+            weight = int(weight_text)
+            if weight < 0:
+                raise ValueError
+        except ValueError:
+            messagebox.showerror("Error", "Weight must be a positive integer")
+            return
+
     # Build JSON payload
     payload = {
         "name": name,
@@ -136,6 +155,10 @@ def create_item():
         "tags": current_tags.copy(),  # Use current tags list
         "production": production,
         "category_id": selected_category_id,
+        "material": material or None,
+        "color": color or None,
+        "print_time": print_time or None,
+        "weight": weight,
     }
 
     try:
@@ -206,6 +229,16 @@ def display_search_results():
             tk.END,
             f"   Tags: {', '.join(product['tags']) if product['tags'] else 'None'}\n",
         )
+
+        # Show new fields if they exist
+        if product.get("material"):
+            results_text.insert(tk.END, f"   Material: {product['material']}\n")
+        if product.get("color"):
+            results_text.insert(tk.END, f"   Color: {product['color']}\n")
+        if product.get("print_time"):
+            results_text.insert(tk.END, f"   Print Time: {product['print_time']}\n")
+        if product.get("weight"):
+            results_text.insert(tk.END, f"   Weight: {product['weight']}g\n")
         # Show match details only for actual searches
         if has_search_terms and "matches" in product:
             matches = product["matches"]
@@ -267,6 +300,20 @@ def load_product_for_edit():
 
         edit_var_production.set(product["production"])
 
+        # Populate new fields
+        edit_material.delete(0, tk.END)
+        edit_material.insert(0, product.get("material", ""))
+
+        edit_color.delete(0, tk.END)
+        edit_color.insert(0, product.get("color", ""))
+
+        edit_print_time.delete(0, tk.END)
+        edit_print_time.insert(0, product.get("print_time", ""))
+
+        edit_weight.delete(0, tk.END)
+        if product.get("weight"):
+            edit_weight.insert(0, str(product["weight"]))
+
         # Clear and populate tags
         edit_current_tags.clear()
         edit_current_tags.extend(product["tags"])
@@ -293,10 +340,25 @@ def update_product():
     name = edit_name.get().strip()
     description = edit_description.get().strip()
     production = edit_var_production.get()
+    material = edit_material.get().strip()
+    color = edit_color.get().strip()
+    print_time = edit_print_time.get().strip()
+    weight_text = edit_weight.get().strip()
 
     if not name:
         messagebox.showerror("Error", "Name is required")
         return
+
+    # Validate weight if provided
+    weight = None
+    if weight_text:
+        try:
+            weight = int(weight_text)
+            if weight < 0:
+                raise ValueError
+        except ValueError:
+            messagebox.showerror("Error", "Weight must be a positive integer")
+            return
 
     # Build update payload
     payload = {
@@ -304,6 +366,10 @@ def update_product():
         "description": description,
         "tags": edit_current_tags.copy(),
         "production": production,
+        "material": material or None,
+        "color": color or None,
+        "print_time": print_time or None,
+        "weight": weight,
     }
 
     try:
@@ -327,6 +393,10 @@ def clear_edit_form():
     edit_name.delete(0, tk.END)
     edit_description.delete(0, tk.END)
     edit_var_production.set(True)
+    edit_material.delete(0, tk.END)
+    edit_color.delete(0, tk.END)
+    edit_print_time.delete(0, tk.END)
+    edit_weight.delete(0, tk.END)
     edit_current_tags.clear()
     update_edit_tag_display()
 
@@ -776,6 +846,30 @@ tk.Checkbutton(create_tab, text="Production", variable=var_production).grid(
     row=2, column=1, sticky="w", pady=5, padx=5
 )
 
+# Material field
+tk.Label(create_tab, text="Material:").grid(row=3, column=0, sticky="e", padx=5, pady=2)
+material_entry = tk.Entry(create_tab, width=30)
+material_entry.grid(row=3, column=1, columnspan=2, pady=2, padx=5)
+
+# Color field
+tk.Label(create_tab, text="Color:").grid(row=4, column=0, sticky="e", padx=5, pady=2)
+color_entry = tk.Entry(create_tab, width=30)
+color_entry.grid(row=4, column=1, columnspan=2, pady=2, padx=5)
+
+# Print time field
+tk.Label(create_tab, text="Print Time (HH:MM):").grid(
+    row=5, column=0, sticky="e", padx=5, pady=2
+)
+print_time_entry = tk.Entry(create_tab, width=30)
+print_time_entry.grid(row=5, column=1, columnspan=2, pady=2, padx=5)
+
+# Weight field
+tk.Label(create_tab, text="Weight (grams):").grid(
+    row=6, column=0, sticky="e", padx=5, pady=2
+)
+weight_entry = tk.Entry(create_tab, width=30)
+weight_entry.grid(row=6, column=1, columnspan=2, pady=2, padx=5)
+
 # Category section
 tk.Label(create_tab, text="Category:").grid(row=3, column=0, sticky="e", pady=5, padx=5)
 category_frame = tk.Frame(create_tab)
@@ -885,11 +979,35 @@ tk.Checkbutton(edit_frame, text="Production", variable=edit_var_production).grid
     row=2, column=1, sticky="w", pady=2, padx=5
 )
 
+# Edit material field
+tk.Label(edit_frame, text="Material:").grid(row=3, column=0, sticky="e", padx=5, pady=2)
+edit_material = tk.Entry(edit_frame, width=30)
+edit_material.grid(row=3, column=1, columnspan=2, pady=2, padx=5)
+
+# Edit color field
+tk.Label(edit_frame, text="Color:").grid(row=4, column=0, sticky="e", padx=5, pady=2)
+edit_color = tk.Entry(edit_frame, width=30)
+edit_color.grid(row=4, column=1, columnspan=2, pady=2, padx=5)
+
+# Edit print time field
+tk.Label(edit_frame, text="Print Time (HH:MM):").grid(
+    row=5, column=0, sticky="e", padx=5, pady=2
+)
+edit_print_time = tk.Entry(edit_frame, width=30)
+edit_print_time.grid(row=5, column=1, columnspan=2, pady=2, padx=5)
+
+# Edit weight field
+tk.Label(edit_frame, text="Weight (grams):").grid(
+    row=6, column=0, sticky="e", padx=5, pady=2
+)
+edit_weight = tk.Entry(edit_frame, width=30)
+edit_weight.grid(row=6, column=1, columnspan=2, pady=2, padx=5)
+
 # Edit tags section
-tk.Label(edit_frame, text="Tags:").grid(row=3, column=0, sticky="ne", pady=2, padx=5)
+tk.Label(edit_frame, text="Tags:").grid(row=7, column=0, sticky="ne", pady=2, padx=5)
 
 edit_tag_frame = tk.Frame(edit_frame)
-edit_tag_frame.grid(row=3, column=1, columnspan=2, pady=2, padx=5, sticky="w")
+edit_tag_frame.grid(row=7, column=1, columnspan=2, pady=2, padx=5, sticky="w")
 
 edit_tag_combo = ttk.Combobox(edit_tag_frame, width=25)
 edit_tag_combo.pack(side=tk.LEFT, padx=(0, 5))

@@ -68,6 +68,10 @@ def create_product_db(
         folder_path=folder_path,
         production=product.production,
         category_id=product.category_id,
+        material=product.material,
+        color=product.color,
+        print_time=product.print_time,
+        weight=product.weight,
     )
     db.add(db_product)
     db.commit()
@@ -117,6 +121,14 @@ def update_product_db(db: Session, sku: str, update: schemas.ProductUpdate):
         product.description = update.description
     if update.production is not None:
         product.production = update.production
+    if update.material is not None:
+        product.material = update.material
+    if update.color is not None:
+        product.color = update.color
+    if update.print_time is not None:
+        product.print_time = update.print_time
+    if update.weight is not None:
+        product.weight = update.weight
 
     if update.tags is not None:
         product.tags.clear()

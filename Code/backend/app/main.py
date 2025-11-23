@@ -13,12 +13,8 @@ from ensure_file_structure import (
 
 app = FastAPI()
 
-# Try to create tables on startup, but don't fail if DB isn't ready
-try:
-    create_tables()
-except OperationalError:
-    # Database might not be ready yet, will retry on first request
-    pass
+# Create tables on startup - this will retry if DB isn't ready
+create_tables()
 
 
 @app.post("/products/")
@@ -34,7 +30,16 @@ def create_product(product: schemas.ProductCreate):
             name=product.name,
             description=product.description,
             tags=product.tags,
-            production=product.production,  # <-- updated
+            production=product.production,
+        )
+
+        # Update metadata with additional fields
+        update_metadata(
+            sku=sku,
+            material=product.material,
+            color=product.color,
+            print_time=product.print_time,
+            weight=product.weight,
         )
     finally:
         db.close()
@@ -56,7 +61,11 @@ def update_product(sku: str = Path(...), update: schemas.ProductUpdate = None):
             name=update.name,
             description=update.description,
             tags=update.tags,
-            production=update.production,  # <-- updated
+            production=update.production,
+            material=update.material,
+            color=update.color,
+            print_time=update.print_time,
+            weight=update.weight,
         )
     finally:
         db.close()
@@ -76,8 +85,12 @@ def list_products():
                     "sku": p.sku,
                     "name": p.name,
                     "description": p.description,
-                    "production": p.production,  # <-- updated
+                    "production": p.production,
                     "tags": [t.name for t in p.tags],
+                    "material": p.material,
+                    "color": p.color,
+                    "print_time": p.print_time,
+                    "weight": p.weight,
                 }
             )
     finally:
@@ -343,6 +356,10 @@ def search_products(
                         "description": p.description,
                         "production": p.production,
                         "tags": [t.name for t in p.tags],
+                        "material": p.material,
+                        "color": p.color,
+                        "print_time": p.print_time,
+                        "weight": p.weight,
                         "matches": {"total": 0, "name": 0, "sku": 0, "tags": 0},
                     }
                 )
@@ -388,6 +405,10 @@ def search_products(
                         "description": p.description,
                         "production": p.production,
                         "tags": product_tags,
+                        "material": p.material,
+                        "color": p.color,
+                        "print_time": p.print_time,
+                        "weight": p.weight,
                         "matches": {
                             "total": total_matches,
                             "name": name_matches,

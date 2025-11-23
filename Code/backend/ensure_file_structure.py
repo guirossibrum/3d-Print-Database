@@ -4,7 +4,10 @@ import json
 
 BASE_DIR = "/Products"
 
-def create_product_folder(sku: str, name: str, description: str = "", tags=None, production: bool = False):
+
+def create_product_folder(
+    sku: str, name: str, description: str = "", tags=None, production: bool = False
+):
     """
     Creates folder structure and metadata.json for a product.
     """
@@ -23,7 +26,11 @@ def create_product_folder(sku: str, name: str, description: str = "", tags=None,
         "name": name,
         "description": description,
         "tags": tags,
-        "production": production   
+        "production": production,
+        "material": None,  # Will be updated when product is created
+        "color": None,
+        "print_time": None,
+        "weight": None,
     }
 
     metadata_file = os.path.join(product_dir, "metadata.json")
@@ -33,7 +40,17 @@ def create_product_folder(sku: str, name: str, description: str = "", tags=None,
     return product_dir, metadata_file
 
 
-def update_metadata(sku: str, name=None, description=None, tags=None, production=None):
+def update_metadata(
+    sku: str,
+    name=None,
+    description=None,
+    tags=None,
+    production=None,
+    material=None,
+    color=None,
+    print_time=None,
+    weight=None,
+):
     """
     Updates metadata.json based on DB changes.
     """
@@ -52,7 +69,15 @@ def update_metadata(sku: str, name=None, description=None, tags=None, production
     if tags is not None:
         data["tags"] = tags
     if production is not None:
-        data["production"] = production  
+        data["production"] = production
+    if material is not None:
+        data["material"] = material
+    if color is not None:
+        data["color"] = color
+    if print_time is not None:
+        data["print_time"] = print_time
+    if weight is not None:
+        data["weight"] = weight
 
     with open(metadata_file, "w") as f:
         json.dump(data, f, indent=4)

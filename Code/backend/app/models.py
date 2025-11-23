@@ -27,6 +27,12 @@ class Product(Base):
     created_at = Column(TIMESTAMP, server_default=func.now())
     category_id = Column(Integer, ForeignKey("categories.id"))
 
+    # New optional fields
+    material = Column(Text)  # Material used (PLA, ABS, etc.)
+    color = Column(Text)  # Color of the print
+    print_time = Column(Text)  # Print time (HH:MM or HH:MM:SS format)
+    weight = Column(Integer)  # Weight in grams
+
     # Relationships
     tags = relationship("Tag", secondary=product_tags, back_populates="products")
     category = relationship("Category", back_populates="products")
