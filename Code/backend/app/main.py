@@ -125,15 +125,23 @@ def list_all_tags():
 def search_products(
     name: str = Query(None, description="Search by product name (partial match)"),
     sku: str = Query(None, description="Search by SKU (exact or partial match)"),
-    tag: str = Query(None, description="Search by tag name"),
+    tags: str = Query(None, description="Search by tag names (comma-separated)"),
     production: bool = Query(None, description="Filter by production status"),
 ):
     """
-    Search products by name, SKU, tag, or production status
-    Returns list of matching products
+    Search products by name, SKU, tags, or production status
+    Tags can be comma-separated for multiple tag search
+    Results ordered by tag match count (most matches first), then by SKU
+    Returns list of matching products with match_count for multi-tag searches
     """
     db: Session = SessionLocal()
     try:
+        # Parse tags if provided
+        search_tags = []
+        if tags:
+            search_tags = [tag.strip() for tag in tags.split(",") if tag.strip()]
+
+        # Build base query
         query = db.query(crud.models.Product)
 
         # Apply filters
@@ -141,18 +149,31 @@ def search_products(
             query = query.filter(crud.models.Product.name.ilike(f"%{name}%"))
         if sku:
             query = query.filter(crud.models.Product.sku.ilike(f"%{sku}%"))
-        if tag:
-            # Join with tags to filter by tag name
-            query = query.join(crud.models.Product.tags).filter(
-                crud.models.Tag.name.ilike(f"%{tag}%")
+
+        # Handle tag filtering
+        if search_tags:
+            # For multiple tags, we want products that have ANY of the tags
+            # We'll filter and then sort by match count
+            query = (
+                query.join(crud.models.Product.tags)
+                .filter(crud.models.Tag.name.in_(search_tags))
+                .distinct()
             )
+
         if production is not None:
             query = query.filter(crud.models.Product.production == production)
 
         # Get results
         products = query.all()
+
+        # Process results and add match count for multi-tag searches
         result = []
         for p in products:
+            product_tags = [t.name for t in p.tags]
+            match_count = 0
+            if search_tags:
+                match_count = len(set(product_tags) & set(search_tags))
+
             result.append(
                 {
                     "id": p.id,
@@ -160,9 +181,16 @@ def search_products(
                     "name": p.name,
                     "description": p.description,
                     "production": p.production,
-                    "tags": [t.name for t in p.tags],
+                    "tags": product_tags,
+                    "match_count": match_count,
                 }
             )
+
+        # Sort results: most tag matches first, then by SKU alphabetically
+        if search_tags:
+            result.sort(key=lambda x: (-x["match_count"], x["sku"]))
+        else:
+            result.sort(key=lambda x: x["sku"])
 
         return result
     finally:

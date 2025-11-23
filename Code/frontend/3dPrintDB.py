@@ -164,7 +164,8 @@ def search_products():
     if sku_search:
         params["sku"] = sku_search
     if tag_search:
-        params["tag"] = tag_search
+        # Allow multiple tags separated by commas
+        params["tags"] = tag_search
 
     try:
         response = requests.get(SEARCH_URL, params=params)
@@ -185,6 +186,12 @@ def display_search_results():
         results_text.insert(tk.END, "No products found matching the search criteria.")
         return
 
+    # Check if this was a multi-tag search (has match_count)
+    has_match_counts = any(
+        "match_count" in product and product["match_count"] > 0
+        for product in search_results
+    )
+
     results_text.insert(tk.END, f"Found {len(search_results)} product(s):\n\n")
 
     for i, product in enumerate(search_results, 1):
@@ -198,40 +205,42 @@ def display_search_results():
             tk.END,
             f"   Tags: {', '.join(product['tags']) if product['tags'] else 'None'}\n",
         )
+        # Show match count for multi-tag searches
+        if has_match_counts and "match_count" in product:
+            results_text.insert(
+                tk.END, f"   Matches: {product['match_count']} tag(s)\n"
+            )
         results_text.insert(tk.END, "\n")
 
 
 def load_product_for_edit():
-    """Load selected product into edit form"""
+    """Load selected product into edit form using index number"""
     global current_product_data, edit_mode
 
     try:
-        selection = results_text.get(tk.SEL_FIRST, tk.SEL_LAST).strip()
-        if not selection:
+        # Get the index from the entry field
+        index_text = edit_index_entry.get().strip()
+        if not index_text:
             messagebox.showwarning(
-                "Warning", "Please select a product from the search results"
+                "Warning", "Please enter an index number (1, 2, 3, etc.)"
             )
             return
 
-        # Extract SKU from selection (format: "1. SKU: ABC-001")
-        lines = selection.split("\n")
-        sku_line = [line for line in lines if "SKU:" in line]
-        if not sku_line:
+        try:
+            index = int(index_text) - 1  # Convert to 0-based index
+        except ValueError:
+            messagebox.showerror("Error", "Please enter a valid number")
+            return
+
+        if index < 0 or index >= len(search_results):
             messagebox.showerror(
                 "Error",
-                f"Could not extract SKU from selection. Selection: '{selection[:100]}...'",
+                f"Index out of range. Please enter a number between 1 and {len(search_results)}",
             )
             return
 
-        # Extract SKU from line like "1. SKU: GUI-0001"
-        sku_line_text = sku_line[0]
-        sku = sku_line_text.split("SKU:", 1)[1].strip()
-
-        # Find product in search results
-        product = next((p for p in search_results if p["sku"] == sku), None)
-        if not product:
-            messagebox.showerror("Error", "Product not found in search results")
-            return
+        # Get the product by index
+        product = search_results[index]
 
         # Populate edit form
         current_product_data = product
@@ -249,7 +258,7 @@ def load_product_for_edit():
         update_edit_tag_display()
 
         edit_mode = True
-        messagebox.showinfo("Success", f"Loaded product {sku} for editing")
+        messagebox.showinfo("Success", f"Loaded product {product['sku']} for editing")
 
     except Exception as e:
         messagebox.showerror("Error", f"Failed to load product: {str(e)}")
@@ -451,9 +460,16 @@ results_frame.pack(fill="both", expand=True, padx=10, pady=5)
 results_text = scrolledtext.ScrolledText(results_frame, height=8, wrap=tk.WORD)
 results_text.pack(fill="both", expand=True)
 
-tk.Button(results_frame, text="Load for Edit", command=load_product_for_edit).pack(
-    pady=5
-)
+# Load for edit controls
+edit_controls_frame = tk.Frame(results_frame)
+edit_controls_frame.pack(pady=5)
+
+tk.Label(edit_controls_frame, text="Index:").pack(side=tk.LEFT, padx=(0, 5))
+edit_index_entry = tk.Entry(edit_controls_frame, width=5)
+edit_index_entry.pack(side=tk.LEFT, padx=(0, 10))
+tk.Button(
+    edit_controls_frame, text="Load for Edit", command=load_product_for_edit
+).pack(side=tk.LEFT)
 
 # Edit section
 edit_frame = tk.LabelFrame(update_tab, text="Edit Product", padx=10, pady=10)
