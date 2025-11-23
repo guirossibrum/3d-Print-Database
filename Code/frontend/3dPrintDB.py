@@ -539,6 +539,9 @@ def open_product_folder():
 
         # Open folder using system default file manager
         import subprocess
+        import platform
+
+        folder_opened = False
 
         # Try different file managers in order of preference
         file_managers = [
@@ -546,27 +549,53 @@ def open_product_folder():
             ["thunar", folder_path],  # XFCE
             ["dolphin", folder_path],  # KDE
             ["pcmanfm", folder_path],  # LXDE
+            ["caja", folder_path],  # MATE
+            ["nemo", folder_path],  # Cinnamon
             ["xdg-open", folder_path],  # Fallback
         ]
 
-        folder_opened = False
+        # Try system-specific commands for different platforms
+        system = platform.system()
+        if system == "Windows":
+            file_managers.insert(0, ["explorer", folder_path])
+        elif system == "Darwin":  # macOS
+            file_managers.insert(0, ["open", folder_path])
+
         for cmd in file_managers:
             try:
-                result = subprocess.run(cmd, check=False, timeout=5)
+                result = subprocess.run(
+                    cmd, check=False, timeout=3, capture_output=True
+                )
                 if result.returncode == 0:
                     folder_opened = True
                     break
-            except (subprocess.TimeoutExpired, FileNotFoundError):
+            except (
+                subprocess.TimeoutExpired,
+                FileNotFoundError,
+                subprocess.SubprocessError,
+            ):
                 continue
 
         if folder_opened:
-            messagebox.showinfo("Folder Opened", f"Opened folder for product {sku}")
-        else:
-            messagebox.showwarning(
-                "Folder Open Attempted",
-                f"Attempted to open folder for product {sku}, but no file manager responded.\n\n"
-                f"You can manually navigate to: {folder_path}",
+            messagebox.showinfo(
+                "Folder Opened", f"Successfully opened folder for product {sku}"
             )
+        else:
+            # As a last resort, try Python's built-in file opening
+            try:
+                import webbrowser
+
+                webbrowser.open(f"file://{folder_path}")
+                messagebox.showinfo(
+                    "Folder Opened",
+                    f"Opened folder for product {sku} using web browser",
+                )
+            except:
+                messagebox.showwarning(
+                    "Could Not Open Folder",
+                    f"Unable to automatically open the folder for product {sku}.\n\n"
+                    f"Please manually navigate to:\n{folder_path}",
+                )
 
     except Exception as e:
         messagebox.showerror("Error", f"Could not open folder: {str(e)}")
