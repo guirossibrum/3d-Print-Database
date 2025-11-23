@@ -746,17 +746,6 @@ except tk.TclError as e:
 
     sys.exit(1)
 
-try:
-    root = tk.Tk()
-    root.title("3D Print Database")
-    root.geometry("800x700")
-    print("GUI window created successfully")
-except Exception as e:
-    print(f"Failed to create GUI window: {e}")
-    import sys
-
-    sys.exit(1)
-
 # Create tabbed interface
 tab_control = ttk.Notebook(root)
 
