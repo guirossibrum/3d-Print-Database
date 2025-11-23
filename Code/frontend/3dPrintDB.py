@@ -7,13 +7,9 @@ import json
 import threading
 import time
 
-# FastAPI endpoints
-API_URL = "http://localhost:8000/products/"
-TAGS_URL = "http://localhost:8000/tags"
-TAGS_SUGGEST_URL = "http://localhost:8000/tags/suggest"
-SEARCH_URL = "http://localhost:8000/products/search"
-CATEGORIES_URL = "http://localhost:8000/categories"
-INVENTORY_URL = "http://localhost:8000/inventory/status"
+from modules.constants import *
+from modules.api_client import *
+from modules import search
 
 # Global variables
 current_tags = []
@@ -453,77 +449,14 @@ def create_item():
 # --- Update/Search Functions ---
 def search_products():
     """Search for products using unified search (empty query shows all products)"""
-    global search_results
-
-    # Get search query (allow empty for "show all")
-    query = search_query.get().strip()
-
-    # Build query parameters (empty q parameter will show all products)
-    params = {"q": query}
-
-    try:
-        response = requests.get(SEARCH_URL, params=params)
-        if response.status_code == 200:
-            search_results = response.json()
-            display_search_results()
-        else:
-            messagebox.showerror("Error", f"Search failed\n{response.text}")
-    except Exception as e:
-        messagebox.showerror("Error", str(e))
+    search.search_products(search_query, results_text, search_results)
 
 
-def display_search_results():
-    """Display search results in the text area"""
-    results_text.delete(1.0, tk.END)
-
-    if not search_results:
-        results_text.insert(tk.END, "No products found.")
-        return
-
-    # Check if this was a search with terms or showing all products
-    has_search_terms = any(
-        product.get("matches", {}).get("total", 0) > 0 for product in search_results
-    )
-
-    if has_search_terms:
-        results_text.insert(
-            tk.END, f"Found {len(search_results)} product(s) matching search:\n\n"
-        )
-    else:
-        results_text.insert(
-            tk.END, f"Showing all {len(search_results)} product(s) in database:\n\n"
-        )
-
-    for i, product in enumerate(search_results, 1):
-        results_text.insert(tk.END, f"{i}. SKU: {product['sku']}\n")
-        results_text.insert(tk.END, f"   Name: {product['name']}\n")
-        results_text.insert(
-            tk.END, f"   Description: {product.get('description', 'N/A')}\n"
-        )
-        results_text.insert(tk.END, f"   Production: {product['production']}\n")
-        results_text.insert(
-            tk.END,
-            f"   Tags: {', '.join(product['tags']) if product['tags'] else 'None'}\n",
-        )
-
-        # Show new fields if they exist
-        if product.get("material"):
-            results_text.insert(tk.END, f"   Material: {product['material']}\n")
-        if product.get("color"):
-            results_text.insert(tk.END, f"   Color: {product['color']}\n")
-        if product.get("print_time"):
-            results_text.insert(tk.END, f"   Print Time: {product['print_time']}\n")
-        if product.get("weight"):
-            results_text.insert(tk.END, f"   Weight: {product['weight']}g\n")
-        # Show match details only for actual searches
-        if has_search_terms and "matches" in product:
-            matches = product["matches"]
-            results_text.insert(
-                tk.END,
-                f"   Matches: {matches['total']} total "
-                f"({matches['name']} name, {matches['sku']} SKU, {matches['tags']} tag)\n",
-            )
-        results_text.insert(tk.END, "\n")
+def show_edit_callback(product):
+    """Callback to show edit dialog and set dialog_open"""
+    global dialog_open
+    dialog_open = True
+    show_edit_product_dialog(product)
 
 
 # load_product_for_edit function removed - now using popup dialogs
@@ -878,83 +811,7 @@ dialog_open = False
 
 def load_product_from_search():
     """Load product from search results for editing (double-click)"""
-    global dialog_open
-
-    # Prevent multiple dialogs
-    if dialog_open:
-        return
-
-    # Get the current line from the text widget
-    try:
-        # Get cursor position
-        cursor_pos = results_text.index(tk.INSERT)
-        line_num = int(cursor_pos.split(".")[0])
-
-        # Extract the line content
-        line_start = f"{line_num}.0"
-        line_end = f"{line_num}.end"
-        line_content = results_text.get(line_start, line_end).strip()
-
-        if not line_content:
-            return
-
-        # Parse the line to extract index number
-        # Check if line starts with a number followed by a dot (e.g., "1. ", "2. ", etc.)
-        import re
-
-        match = re.match(r"^(\d+)\.\s", line_content)
-        if match:
-            try:
-                index_str = match.group(1)
-                index = int(index_str) - 1  # Convert to 0-based index
-
-                if 0 <= index < len(search_results):
-                    product = search_results[index]
-                    dialog_open = True
-                    show_edit_product_dialog(product)
-                else:
-                    messagebox.showwarning(
-                        "Invalid Selection",
-                        "Please double-click on a valid product line.",
-                    )
-            except (ValueError, IndexError):
-                messagebox.showwarning(
-                    "Invalid Selection",
-                    "Please double-click on a product line with a number.",
-                )
-        else:
-            # Check if we're on a line that belongs to a product (contains product data)
-            # Look backwards to find the product header line
-            current_line = line_num
-            while current_line >= 1:
-                check_line_start = f"{current_line}.0"
-                check_line_end = f"{current_line}.end"
-                check_content = results_text.get(
-                    check_line_start, check_line_end
-                ).strip()
-
-                match = re.match(r"^(\d+)\.\s", check_content)
-                if match:
-                    try:
-                        index_str = match.group(1)
-                        index = int(index_str) - 1  # Convert to 0-based index
-
-                        if 0 <= index < len(search_results):
-                            product = search_results[index]
-                            dialog_open = True
-                            show_edit_product_dialog(product)
-                            return
-                    except (ValueError, IndexError):
-                        pass
-                current_line -= 1
-
-            messagebox.showwarning(
-                "Invalid Selection",
-                "Please double-click on a product line or its details.",
-            )
-
-    except Exception as e:
-        messagebox.showwarning("Error", f"Could not load product: {str(e)}")
+    search.load_product_from_search(results_text, search_results, show_edit_callback)
 
 
 def add_popup_tag(widget, tags_list, display_frame, listbox=None):
