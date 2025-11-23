@@ -368,14 +368,9 @@ def filter_tag_list(event=None):
 
 def add_tag_from_list(event=None):
     """Add selected tag from the listbox"""
-    selection = tag_listbox.curselection()
-    if selection:
-        selected_tag = tag_listbox.get(selection[0])
-        if selected_tag and selected_tag not in current_tags:
-            current_tags.append(selected_tag)
-            update_tag_display()
-            tag_entry.delete(0, tk.END)  # Clear input
-            tag_entry.focus()
+    add_tag_from_listbox(tag_listbox, current_tags, update_tag_display)
+    tag_entry.delete(0, tk.END)  # Clear input
+    tag_entry.focus()
 
 
 def delete_unused_tag():
@@ -994,14 +989,14 @@ def update_popup_tag_display(tags_list, display_frame):
         remove_btn.grid(row=i // 4, column=(i % 4) * 2 + 1, padx=2, pady=2)
 
 
-def add_tag_from_list_popup(listbox, current_tags, display_frame):
-    """Add tag from listbox in popup dialog"""
+def add_tag_from_listbox(listbox, current_tags, update_func):
+    """Generic helper to add tag from listbox"""
     selection = listbox.curselection()
     if selection:
         tag = listbox.get(selection[0])
         if tag not in current_tags:
             current_tags.append(tag)
-            update_popup_tag_display(current_tags, display_frame)
+            update_func(current_tags)
 
 
 def apply_inventory_adjustment(
@@ -1245,8 +1240,10 @@ def show_edit_product_dialog(product):
     # Bind double-click to add
     edit_tag_listbox.bind(
         "<Double-1>",
-        lambda e: add_tag_from_list_popup(
-            edit_tag_listbox, edit_current_tags, edit_tags_frame
+        lambda e: add_tag_from_listbox(
+            edit_tag_listbox,
+            edit_current_tags,
+            lambda tags: update_popup_tag_display(tags, edit_tags_frame),
         ),
     )
 
