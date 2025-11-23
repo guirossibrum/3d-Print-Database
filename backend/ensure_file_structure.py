@@ -2,7 +2,7 @@
 import os
 import json
 
-BASE_DIR = os.path.join(os.path.dirname(__file__), "Products")
+BASE_DIR = "/Products"
 
 def create_product_folder(sku: str, name: str, description: str = "", tags=None, production: bool = False):
     """

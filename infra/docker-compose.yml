@@ -39,8 +39,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ../backend:/app        # Mount local code for live editing
-      - ../Products:/Products  # <-- add this line
+      - ../backend:/app
+      - ../Products:/Products
     depends_on:
       - db
       - search
