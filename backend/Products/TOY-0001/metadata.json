@@ -1,0 +1,11 @@
+{
+    "sku": "TOY-0001",
+    "name": "toy car",
+    "description": "A small red toy car",
+    "tags": [
+        "toy",
+        "car",
+        "red"
+    ],
+    "production": true
+}

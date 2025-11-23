@@ -39,11 +39,13 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ../backend:/app   # Mount local code for live editing
+      - ../backend:/app        # Mount local code for live editing
+      - ../Products:/Products  # <-- add this line
     depends_on:
       - db
       - search
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
 
 volumes:
   db_data:

@@ -4,7 +4,7 @@ import json
 
 BASE_DIR = os.path.join(os.path.dirname(__file__), "Products")
 
-def create_product_folder(sku: str, name: str, description: str = "", tags=None, status="prototype"):
+def create_product_folder(sku: str, name: str, description: str = "", tags=None, production: bool = False):
     """
     Creates folder structure and metadata.json for a product.
     """
@@ -23,7 +23,7 @@ def create_product_folder(sku: str, name: str, description: str = "", tags=None,
         "name": name,
         "description": description,
         "tags": tags,
-        "status": status
+        "production": production   
     }
 
     metadata_file = os.path.join(product_dir, "metadata.json")
@@ -32,7 +32,8 @@ def create_product_folder(sku: str, name: str, description: str = "", tags=None,
 
     return product_dir, metadata_file
 
-def update_metadata(sku: str, name=None, description=None, tags=None, status=None):
+
+def update_metadata(sku: str, name=None, description=None, tags=None, production=None):
     """
     Updates metadata.json based on DB changes.
     """
@@ -50,8 +51,8 @@ def update_metadata(sku: str, name=None, description=None, tags=None, status=Non
         data["description"] = description
     if tags is not None:
         data["tags"] = tags
-    if status is not None:
-        data["status"] = status
+    if production is not None:
+        data["production"] = production  
 
     with open(metadata_file, "w") as f:
         json.dump(data, f, indent=4)

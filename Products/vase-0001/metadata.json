@@ -3,7 +3,8 @@
     "name": "simple vase",
     "description": "",
     "category": "vase",
-    "tags": [simple, vase, smooth, elegant],
+    "tags": ["simple", "vase", "smooth", "elegant"],
+    "production": true,
     "created_at": "2025-11-23",
     "modified_at": "2025-11-23",
     "sources": {
