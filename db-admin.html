@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Auto-Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .auto-login {
+            background: #e8f5e8;
+            border: 1px solid #4CAF50;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .btn {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #45a049;
+        }
+        .credentials {
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Database Auto-Login</h1>
+
+        <div class="auto-login">
+            <h3>🚀 Quick Access</h3>
+            <p>Click the button below to automatically log into your database:</p>
+            <button class="btn" onclick="autoLogin()">Login to Database</button>
+        </div>
+
+        <div class="credentials">
+            <h4>📋 Manual Login Credentials:</h4>
+            <p><strong>Server:</strong> db</p>
+            <p><strong>Username:</strong> admin</p>
+            <p><strong>Password:</strong> admin</p>
+            <p><strong>Database:</strong> products</p>
+        </div>
+
+        <h3>🔗 Direct Links</h3>
+        <a href="http://localhost:8080/?pgsql=db&username=admin&db=products&ns=public" class="btn" target="_blank">
+            📊 Adminer (Manual Login)
+        </a>
+        <a href="http://localhost:8000/docs" class="btn" target="_blank">
+            🔌 API Documentation
+        </a>
+        <a href="http://localhost:7700" class="btn" target="_blank">
+            🔍 MeiliSearch
+        </a>
+
+        <h3>💡 Browser Bookmark for Auto-Login</h3>
+        <p>Create a bookmark with this URL for instant database access:</p>
+        <div class="credentials">
+            <code>file:///home/grbrum/Work/3d_print/db-admin.html</code>
+        </div>
+        <h4>⚡ Quick Access Bookmarklet</h4>
+        <p>Drag this link to your browser's bookmarks bar for instant database access:</p>
+        <a href="javascript:(function(){window.open('http://localhost:8080/?pgsql=db&username=admin&db=products&ns=public','_blank');})();" class="btn" title="Drag to bookmarks bar">📌 DB Admin</a>
+
+        <p><small>Note: Opens Adminer login page with pre-filled URL parameters</small></p>
+    </div>
+
+    <script>
+        // Optional: Auto-open database admin (commented out to avoid popup blockers)
+        // setTimeout(() => {
+        //     window.open('http://localhost:8080/?pgsql=db&username=admin&db=products&ns=public', '_blank');
+        // }, 2000);
+    </script>
+</body>
+</html>

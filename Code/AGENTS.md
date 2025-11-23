@@ -26,6 +26,16 @@
 - **Test**: `cd Code/backend && python -m pytest tests/ -v`
 - **Quality**: `cd Code/backend && black . && flake8 . && mypy . && python -m pytest tests/ -v`
 
+## Database Access
+- **Adminer Web Interface**: http://localhost:8080
+- **Auto-Login Page**: Open `db-admin.html` in browser for quick access
+- **Database Credentials**:
+  - Server: db (Docker container)
+  - Username: admin
+  - Password: admin
+  - Database: products
+- **Direct URL**: http://localhost:8080/?pgsql=db&username=admin&db=products&ns=public
+
 ## Code Style & Conventions
 
 ### Python Standards
