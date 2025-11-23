@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException, Path, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import OperationalError
 from typing import List, Dict, Any
-from . import crud, schemas
+from . import crud, schemas, models
 from .database import SessionLocal, create_tables
 from . import tag_utils
 from ensure_file_structure import (
@@ -28,7 +28,7 @@ def create_product(product: schemas.ProductCreate):
         create_product_folder(
             sku=sku,
             name=product.name,
-            description=product.description,
+            description=product.description or "",
             tags=product.tags,
             production=product.production,
         )
@@ -40,6 +40,10 @@ def create_product(product: schemas.ProductCreate):
             color=product.color,
             print_time=product.print_time,
             weight=product.weight,
+            stock_quantity=product.stock_quantity,
+            reorder_point=product.reorder_point,
+            unit_cost=product.unit_cost,
+            selling_price=product.selling_price,
         )
     finally:
         db.close()
@@ -48,7 +52,7 @@ def create_product(product: schemas.ProductCreate):
 
 
 @app.put("/products/{sku}")
-def update_product(sku: str = Path(...), update: schemas.ProductUpdate = None):
+def update_product(update: schemas.ProductUpdate, sku: str = Path(...)):
     db: Session = SessionLocal()
     try:
         product_db = crud.update_product_db(db, sku, update)
@@ -66,6 +70,10 @@ def update_product(sku: str = Path(...), update: schemas.ProductUpdate = None):
             color=update.color,
             print_time=update.print_time,
             weight=update.weight,
+            stock_quantity=update.stock_quantity,
+            reorder_point=update.reorder_point,
+            unit_cost=update.unit_cost,
+            selling_price=update.selling_price,
         )
     finally:
         db.close()
@@ -91,6 +99,10 @@ def list_products():
                     "color": p.color,
                     "print_time": p.print_time,
                     "weight": p.weight,
+                    "stock_quantity": p.stock_quantity,
+                    "reorder_point": p.reorder_point,
+                    "unit_cost": p.unit_cost,
+                    "selling_price": p.selling_price,
                 }
             )
     finally:
@@ -133,11 +145,52 @@ def list_all_tags():
     """
     db: Session = SessionLocal()
     try:
+        # Get all tags from the tags table, even if not used
+        all_tags = db.query(models.Tag).all()
+        tag_names = [tag.name for tag in all_tags]
+
+        # Get usage stats for used tags
         stats = tag_utils.get_tag_stats(db)
+
+        # Return all tags with their usage counts (0 if not used)
         return [
-            {"name": tag_name, "usage_count": count}
-            for tag_name, count in stats.items()
+            {"name": tag_name, "usage_count": stats.get(tag_name, 0)}
+            for tag_name in sorted(tag_names)
         ]
+    finally:
+        db.close()
+
+
+@app.delete("/tags/{tag_name}")
+def delete_tag(tag_name: str):
+    """
+    Delete a tag if it's not used by any products
+    """
+    db: Session = SessionLocal()
+    try:
+        # Find the tag
+        tag = db.query(models.Tag).filter(models.Tag.name == tag_name).first()
+        if not tag:
+            raise HTTPException(status_code=404, detail="Tag not found")
+
+        # Check if tag is used by any products
+        usage_count = len(tag.products)
+        if usage_count > 0:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Tag is used by {usage_count} product(s) and cannot be deleted",
+            )
+
+        # Delete the tag
+        db.delete(tag)
+        db.commit()
+
+        return {"message": "Tag deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         db.close()
 
@@ -348,6 +401,7 @@ def search_products(
                 if production is not None and p.production != production:
                     continue
 
+                product_tags = [t.name for t in p.tags]
                 results.append(
                     {
                         "id": p.id,
@@ -355,11 +409,15 @@ def search_products(
                         "name": p.name,
                         "description": p.description,
                         "production": p.production,
-                        "tags": [t.name for t in p.tags],
+                        "tags": product_tags,
                         "material": p.material,
                         "color": p.color,
                         "print_time": p.print_time,
                         "weight": p.weight,
+                        "stock_quantity": p.stock_quantity,
+                        "reorder_point": p.reorder_point,
+                        "unit_cost": p.unit_cost,
+                        "selling_price": p.selling_price,
                         "matches": {"total": 0, "name": 0, "sku": 0, "tags": 0},
                     }
                 )
@@ -422,5 +480,83 @@ def search_products(
         results.sort(key=lambda x: (-x["matches"]["total"], x["sku"]))
 
         return results
+    finally:
+        db.close()
+
+
+@app.put("/products/{sku}/inventory")
+def update_inventory(inventory: schemas.InventoryUpdate, sku: str = Path(...)):
+    """
+    Update inventory fields for a specific product
+    """
+    if inventory is None:
+        raise HTTPException(status_code=400, detail="Inventory update data required")
+
+    db: Session = SessionLocal()
+    try:
+        product = crud.update_product_inventory(db, sku, inventory)
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+
+        # Update metadata.json
+        update_metadata(
+            sku=sku,
+            stock_quantity=inventory.stock_quantity,
+            reorder_point=inventory.reorder_point,
+            unit_cost=inventory.unit_cost,
+            selling_price=inventory.selling_price,
+        )
+
+        return {"sku": sku, "message": "Inventory updated successfully"}
+    finally:
+        db.close()
+
+
+@app.get("/inventory/status")
+def get_inventory_status():
+    """
+    Get inventory status for all products
+    Returns products with calculated inventory status (in stock, low stock, out of stock)
+    """
+    db: Session = SessionLocal()
+    try:
+        products = db.query(crud.models.Product).all()
+        result = []
+
+        for p in products:
+            # Calculate inventory status
+            if p.stock_quantity == 0:
+                status = "out_of_stock"
+            elif p.stock_quantity <= p.reorder_point:
+                status = "low_stock"
+            else:
+                status = "in_stock"
+
+            # Calculate total value (stock_quantity * unit_cost in cents)
+            total_value = None
+            if p.stock_quantity and p.unit_cost:
+                total_value = p.stock_quantity * p.unit_cost
+
+            # Calculate profit margin if both costs are available
+            profit_margin = None
+            if p.unit_cost and p.selling_price and p.unit_cost > 0:
+                profit_margin = ((p.selling_price - p.unit_cost) / p.unit_cost) * 100
+
+            result.append(
+                {
+                    "sku": p.sku,
+                    "name": p.name,
+                    "stock_quantity": p.stock_quantity,
+                    "reorder_point": p.reorder_point,
+                    "unit_cost": p.unit_cost,
+                    "selling_price": p.selling_price,
+                    "total_value": total_value,
+                    "profit_margin": profit_margin,
+                    "status": status,
+                    "production": p.production,
+                }
+            )
+
+        return result
     finally:
         db.close()

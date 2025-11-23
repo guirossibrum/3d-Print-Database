@@ -31,6 +31,10 @@ def create_product_folder(
         "color": None,
         "print_time": None,
         "weight": None,
+        "stock_quantity": 0,
+        "reorder_point": 0,
+        "unit_cost": None,
+        "selling_price": None,
     }
 
     metadata_file = os.path.join(product_dir, "metadata.json")
@@ -50,6 +54,10 @@ def update_metadata(
     color=None,
     print_time=None,
     weight=None,
+    stock_quantity=None,
+    reorder_point=None,
+    unit_cost=None,
+    selling_price=None,
 ):
     """
     Updates metadata.json based on DB changes.
@@ -78,6 +86,14 @@ def update_metadata(
         data["print_time"] = print_time
     if weight is not None:
         data["weight"] = weight
+    if stock_quantity is not None:
+        data["stock_quantity"] = stock_quantity
+    if reorder_point is not None:
+        data["reorder_point"] = reorder_point
+    if unit_cost is not None:
+        data["unit_cost"] = unit_cost
+    if selling_price is not None:
+        data["selling_price"] = selling_price
 
     with open(metadata_file, "w") as f:
         json.dump(data, f, indent=4)

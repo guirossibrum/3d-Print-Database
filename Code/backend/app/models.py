@@ -33,6 +33,12 @@ class Product(Base):
     print_time = Column(Text)  # Print time (HH:MM or HH:MM:SS format)
     weight = Column(Integer)  # Weight in grams
 
+    # Inventory management fields (sales-focused)
+    stock_quantity = Column(Integer, default=0)  # Current stock count
+    reorder_point = Column(Integer, default=0)  # Minimum stock level before reorder
+    unit_cost = Column(Integer)  # Cost to produce/print (in cents)
+    selling_price = Column(Integer)  # Retail selling price (in cents)
+
     # Relationships
     tags = relationship("Tag", secondary=product_tags, back_populates="products")
     category = relationship("Category", back_populates="products")

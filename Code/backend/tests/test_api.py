@@ -1,0 +1,90 @@
+# tests/test_api.py
+import pytest
+from fastapi.testclient import TestClient
+from ..app.main import app
+from ..app.database import SessionLocal
+from ..app import models
+
+
+@pytest.fixture
+def client():
+    """Create test client"""
+    return TestClient(app)
+
+
+@pytest.fixture
+def db_session():
+    """Create test database session"""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.rollback()
+        db.close()
+
+
+@pytest.fixture
+def sample_category(db_session):
+    """Create a sample category"""
+    category = models.Category(name="Test Toys", sku_initials="TT")
+    db_session.add(category)
+    db_session.commit()
+    db_session.refresh(category)
+    return category
+
+
+def test_create_product_api(client, sample_category):
+    """Test creating a product via API"""
+    product_data = {
+        "name": "API Test Product",
+        "description": "Created via API test",
+        "tags": ["api", "test"],
+        "production": False,
+        "category_id": sample_category.id,
+    }
+
+    response = client.post("/products/", json=product_data)
+    assert response.status_code == 200
+
+    data = response.json()
+    assert "sku" in data
+    assert data["sku"].startswith("TT-")
+    assert data["name"] == "API Test Product"
+
+
+def test_get_products_api_empty(client):
+    """Test getting products when none exist"""
+    response = client.get("/products/")
+    assert response.status_code == 200
+
+    data = response.json()
+    assert isinstance(data, list)
+
+
+def test_search_products_api(client):
+    """Test searching products"""
+    response = client.get("/products/search?q=test")
+    assert response.status_code == 200
+
+    data = response.json()
+    assert isinstance(data, list)
+
+
+def test_get_categories_api(client):
+    """Test getting categories"""
+    response = client.get("/categories/")
+    assert response.status_code == 200
+
+    data = response.json()
+    assert isinstance(data, list)
+
+
+def test_inventory_status_api(client):
+    """Test getting inventory status"""
+    response = client.get("/inventory/status")
+    assert response.status_code == 200
+
+    data = response.json()
+    assert "products" in data
+    assert "summary" in data
+    assert isinstance(data["products"], list)

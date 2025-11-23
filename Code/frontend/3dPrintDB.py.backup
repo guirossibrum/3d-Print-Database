@@ -9,7 +9,6 @@ import time
 
 # FastAPI endpoints
 API_URL = "http://localhost:8000/products/"
-TAGS_URL = "http://localhost:8000/tags"
 TAGS_SUGGEST_URL = "http://localhost:8000/tags/suggest"
 SEARCH_URL = "http://localhost:8000/products/search"
 CATEGORIES_URL = "http://localhost:8000/categories"
@@ -18,7 +17,6 @@ INVENTORY_URL = "http://localhost:8000/inventory/status"
 # Global variables
 current_tags = []
 tag_suggestions = []
-all_available_tags = []  # All existing tags for the list
 categories = []
 edit_mode = False
 current_product_data = None
@@ -110,6 +108,7 @@ def complete_time_with_underscores(entry, text):
         hours_part = text[:-3]  # Remove ":__"
         try:
             hours = int(hours_part)
+            hours = min(hours, 23)
             formatted = f"{hours:02d}:00"
         except ValueError:
             formatted = "00:00"
@@ -123,6 +122,7 @@ def complete_time_with_underscores(entry, text):
                 try:
                     hours = int(parts[0]) if parts[0] else 0
                     minutes = int(parts[1]) if parts[1] else 0
+                    hours = min(hours, 23)
                     minutes = min(minutes, 59)
                     formatted = f"{hours:02d}:{minutes:02d}"
                 except ValueError:
@@ -133,7 +133,7 @@ def complete_time_with_underscores(entry, text):
             # No colon, assume it's HMM format
             digits = "".join(c for c in base if c.isdigit())
             if len(digits) == 3:
-                hours = int(digits[:2])
+                hours = min(int(digits[:2]), 23)
                 minutes = min(int(digits[2]), 59)
                 formatted = f"{hours:02d}:{minutes:02d}"
             else:
@@ -202,14 +202,14 @@ def format_time_complete(entry):
     if len(digits) == 1:
         formatted = f"{digits}0:00"
     elif len(digits) == 2:
-        hour_int = int(digits)
+        hour_int = min(int(digits), 23)
         formatted = f"{hour_int:02d}:00"
     elif len(digits) == 3:
-        hour_int = int(digits[:2])
+        hour_int = min(int(digits[:2]), 23)
         minute_int = int(digits[2])
         formatted = f"{hour_int:02d}:{minute_int:02d}"
     else:  # 4 or more digits
-        hour_int = int(digits[:2])
+        hour_int = min(int(digits[:2]), 23)
         minute_int = min(int(digits[2:4]), 59)
         formatted = f"{hour_int:02d}:{minute_int:02d}"
 
@@ -244,6 +244,7 @@ def format_time_on_focus_out(entry):
             hours = int(hours_part) if hours_part else 0
             minutes = int(minutes_part) if minutes_part else 0
 
+            hours = min(hours, 23)
             minutes = min(minutes, 59)
 
             formatted = f"{hours:02d}:{minutes:02d}"
@@ -277,7 +278,7 @@ def format_time_input_live(entry):
     if digit_count == 4 and not has_colon:
         # User typed exactly 4 digits, format as HH:MM
         digits = "".join(c for c in current_text if c.isdigit())
-        hour_int = int(digits[:2])
+        hour_int = min(int(digits[:2]), 23)
         minute_int = min(int(digits[2:]), 59)
         formatted = f"{hour_int:02d}:{minute_int:02d}"
 
@@ -315,7 +316,14 @@ def format_time_input(entry, placeholder):
             elif len(digits) == 1:
                 formatted = digits
 
-            # No hour limit - allow unlimited hours
+            # Validate hours (00-23)
+            if len(formatted.split(":")) > 0:
+                try:
+                    hours = int(formatted.split(":")[0])
+                    if hours > 23:
+                        formatted = "23" + formatted[2:]
+                except:
+                    pass
 
             # Validate minutes (00-59)
             if ":" in formatted:
@@ -346,7 +354,7 @@ def clear_form():
     var_production.set(True)
     current_tags.clear()
     update_tag_display()
-    tag_entry.delete(0, tk.END)
+    tag_combo.set("")
 
 
 def cancel():
@@ -355,14 +363,12 @@ def cancel():
 
 def add_tag():
     """Add a tag to the current tags list"""
-    tag_text = tag_entry.get().strip()
+    tag_text = tag_combo.get().strip()
     if tag_text and tag_text not in current_tags:
         current_tags.append(tag_text)
         update_tag_display()
-        tag_entry.delete(0, tk.END)  # Clear the input
-        tag_entry.focus()
-        # Refresh the available tags list in case a new tag was added
-        load_all_tags_for_list()  # Keep focus on input
+        tag_combo.set("")  # Clear the input
+        tag_combo.focus()  # Keep focus on input
 
 
 def remove_tag(tag_to_remove):
@@ -391,89 +397,48 @@ def update_tag_display():
         remove_btn.grid(row=i // 4, column=(i % 4) * 2 + 1, padx=2, pady=2)
 
 
-# Removed autocomplete functions - using list-based tag selection now
+def fetch_tag_suggestions(partial_tag, combo_widget=None):
+    """Fetch tag suggestions from API in a separate thread"""
+
+    def _fetch():
+        try:
+            if len(partial_tag.strip()) >= 2:
+                response = requests.get(
+                    f"{TAGS_SUGGEST_URL}?q={partial_tag.strip()}", timeout=2
+                )
+                if response.status_code == 200:
+                    suggestions = [tag["name"] for tag in response.json()]
+                    # Update suggestions on main thread
+                    root.after(
+                        0,
+                        lambda: update_combo_values(
+                            combo_widget or tag_combo, suggestions
+                        ),
+                    )
+        except:
+            pass  # Ignore network errors
+
+    # Run in background thread
+    threading.Thread(target=_fetch, daemon=True).start()
 
 
-def load_all_tags_for_list():
-    """Load all existing tags to populate the listbox"""
-    global all_available_tags
-
-    try:
-        response = requests.get(TAGS_URL, timeout=5)  # Synchronous for debugging
-        if response.status_code == 200:
-            data = response.json()
-            all_available_tags = sorted([tag["name"] for tag in data if "name" in tag])
-            # Update listbox immediately
-            filter_tag_list()
-        else:
-            # Show error for debugging
-            messagebox.showerror(
-                "Tags Error",
-                f"Failed to load tags: {response.status_code} - {response.text[:200]}",
-            )
-    except Exception as e:
-        # Show error for debugging
-        messagebox.showerror("Tags Error", f"Error loading tags: {str(e)}")
+def update_combo_values(combo_widget, suggestions):
+    """Update combobox values"""
+    combo_widget["values"] = suggestions
 
 
-def filter_tag_list(event=None):
-    """Filter the tag list based on input text"""
-    filter_text = tag_entry.get().strip().lower()
-
-    # Clear current list
-    tag_listbox.delete(0, tk.END)
-
-    # Filter and add matching tags
-    for tag in all_available_tags:
-        if not filter_text or filter_text in tag.lower():
-            tag_listbox.insert(tk.END, tag)
+def update_combo_suggestions(suggestions):
+    """Update the combobox with suggestions"""
+    global tag_suggestions
+    tag_suggestions = suggestions
+    tag_combo["values"] = tag_suggestions
 
 
-def add_tag_from_list(event=None):
-    """Add selected tag from the listbox"""
-    selection = tag_listbox.curselection()
-    if selection:
-        selected_tag = tag_listbox.get(selection[0])
-        if selected_tag and selected_tag not in current_tags:
-            current_tags.append(selected_tag)
-            update_tag_display()
-            tag_entry.delete(0, tk.END)  # Clear input
-            tag_entry.focus()
-
-
-def delete_unused_tag():
-    """Delete the selected tag if it's not used by any products"""
-    selection = tag_listbox.curselection()
-    if not selection:
-        messagebox.showwarning("No Selection", "Please select a tag to delete.")
-        return
-
-    selected_tag = tag_listbox.get(selection[0])
-
-    # Confirm deletion
-    if not messagebox.askyesno(
-        "Confirm Deletion",
-        f"Are you sure you want to delete the tag '{selected_tag}'?\n\n"
-        "This will only work if the tag is not used by any products.",
-    ):
-        return
-
-    try:
-        # Check if tag is used and delete if unused
-        response = requests.delete(f"{API_URL}../tags/{selected_tag}")
-        if response.status_code == 200:
-            # Refresh the tag list
-            load_all_tags_for_list()
-        elif response.status_code == 400:
-            messagebox.showerror(
-                "Cannot Delete",
-                f"Tag '{selected_tag}' is still used by products and cannot be deleted.",
-            )
-        else:
-            messagebox.showerror("Error", f"Failed to delete tag: {response.text}")
-    except Exception as e:
-        messagebox.showerror("Error", f"Error deleting tag: {str(e)}")
-        # No need to refresh list since we're using existing tags
+def on_tag_typing(event):
+    """Handle typing in the tag input field"""
+    partial = tag_combo.get()
+    if len(partial.strip()) >= 2:
+        fetch_tag_suggestions(partial, tag_combo)
 
 
 def create_item():
@@ -630,11 +595,6 @@ def create_new_category():
     dialog.title("Create New Category")
     dialog.geometry("400x250")
 
-    def on_dialog_close():
-        dialog.destroy()
-
-    dialog.protocol("WM_DELETE_WINDOW", on_dialog_close)
-
     tk.Label(dialog, text="Category Name:").grid(
         row=0, column=0, sticky="e", padx=5, pady=5
     )
@@ -704,11 +664,6 @@ def create_new_category():
     )
     tk.Button(dialog, text="Cancel", command=cancel).grid(row=3, column=1, pady=10)
 
-    # Make dialog modal
-    dialog.transient(root)
-    dialog.grab_set()
-    root.wait_window(dialog)
-
 
 def delete_category():
     """Delete selected category"""
@@ -740,8 +695,6 @@ def delete_category():
         response = requests.delete(f"{CATEGORIES_URL}/{category['id']}")
         if response.status_code == 200:
             messagebox.showinfo("Success", "Category deleted successfully")
-            # Clear current selection before refreshing
-            category_combo.set("")
             load_categories()  # Refresh categories
         else:
             messagebox.showerror("Error", f"Failed to delete category: {response.text}")
@@ -1193,7 +1146,10 @@ def show_edit_product_dialog(product):
 
     edit_tag_combo = ttk.Combobox(edit_tag_frame, width=30)
     edit_tag_combo.pack(side=tk.LEFT, padx=(0, 5))
-    # Disabled autocomplete for edit dialog - use manual entry
+    edit_tag_combo.bind(
+        "<KeyRelease>",
+        lambda e: fetch_tag_suggestions(edit_tag_combo.get(), edit_tag_combo),
+    )
 
     edit_add_btn = tk.Button(
         edit_tag_frame,
@@ -1244,6 +1200,9 @@ def show_edit_product_dialog(product):
             # Update product
             response = requests.put(f"{API_URL}{product['sku']}", json=payload)
             if response.status_code == 200:
+                messagebox.showinfo(
+                    "Success", f"Product {product['sku']} updated successfully"
+                )
                 global dialog_open
                 dialog_open = False
                 dialog.destroy()
@@ -1278,39 +1237,16 @@ def show_edit_product_dialog(product):
 
             system = platform.system()
             if system == "Linux":
-                # Try different file managers for Linux
-                file_managers = ["dolphin", "nautilus", "thunar", "pcmanfm", "nemo"]
-                opened = False
-                for fm in file_managers:
-                    try:
-                        subprocess.Popen(
-                            [fm, folder_path],
-                            stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL,
-                        )
-                        opened = True
-                        break
-                    except FileNotFoundError:
-                        continue
-                if not opened:
-                    # Fallback to xdg-open
-                    subprocess.Popen(
-                        ["xdg-open", folder_path],
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL,
-                    )
+                subprocess.run(["xdg-open", folder_path], check=False)
             elif system == "Darwin":  # macOS
-                subprocess.Popen(
-                    ["open", folder_path],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
+                subprocess.run(["open", folder_path], check=False)
             elif system == "Windows":
-                subprocess.Popen(
-                    ["explorer", folder_path],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
+                subprocess.run(["explorer", folder_path], check=False)
+
+            messagebox.showinfo(
+                "Folder Opened",
+                f"Successfully opened folder for product {product['sku']}",
+            )
 
         except Exception as e:
             messagebox.showerror("Error", f"Could not open folder: {str(e)}")
@@ -1395,9 +1331,7 @@ def adjust_inventory_dialog():
     """Simple dialog for quick inventory adjustments"""
     selected_item = inventory_tree.selection()
     if not selected_item:
-        messagebox.showwarning(
-            "No Selection", "Please double-click on a product to adjust inventory."
-        )
+        messagebox.showwarning("No Selection", "Please double-click on a product to adjust inventory.")
         return
 
     # Get selected product data
@@ -1412,9 +1346,7 @@ def adjust_inventory_dialog():
     dialog.geometry("350x250")
 
     # Product info
-    tk.Label(dialog, text=f"Product: {product_name}", font=("Arial", 10, "bold")).pack(
-        pady=10
-    )
+    tk.Label(dialog, text=f"Product: {product_name}", font=("Arial", 10, "bold")).pack(pady=10)
     tk.Label(dialog, text=f"Current Stock: {current_stock}").pack(pady=5)
 
     # Quantity input
@@ -1429,12 +1361,8 @@ def adjust_inventory_dialog():
     operation_frame = tk.Frame(dialog)
     operation_frame.pack(pady=10)
 
-    tk.Radiobutton(
-        operation_frame, text="Printed (Add)", variable=operation_var, value="printed"
-    ).pack(side=tk.LEFT, padx=10)
-    tk.Radiobutton(
-        operation_frame, text="Sold (Remove)", variable=operation_var, value="sold"
-    ).pack(side=tk.LEFT, padx=10)
+    tk.Radiobutton(operation_frame, text="Printed (Add)", variable=operation_var, value="printed").pack(side=tk.LEFT, padx=10)
+    tk.Radiobutton(operation_frame, text="Sold (Remove)", variable=operation_var, value="sold").pack(side=tk.LEFT, padx=10)
 
     def adjust_stock():
         """Adjust stock based on selected operation"""
@@ -1444,6 +1372,182 @@ def adjust_inventory_dialog():
                 raise ValueError("Quantity must be positive")
 
             operation = operation_var.get()
+
+            if operation == "sold" and quantity > current_stock:
+                messagebox.showerror("Error", f"Cannot sell {quantity} items. Only {current_stock} in stock.")
+                return
+
+            # Calculate new stock level
+            new_stock = current_stock + quantity if operation == "printed" else current_stock - quantity
+
+            # Prepare update payload
+            payload = {"stock_quantity": new_stock}
+
+            # Send update request
+            response = requests.put(f"{API_URL}{sku}/inventory", json=payload)
+            if response.status_code == 200:
+                operation_text = "added to" if operation == "printed" else "removed from"
+                messagebox.showinfo("Success", f"{quantity} items {operation_text} inventory for {sku}")
+                global dialog_open
+                dialog_open = False
+                dialog.destroy()
+                load_inventory_status()  # Refresh inventory display
+            else:
+                messagebox.showerror("Error", f"Failed to update inventory: {response.text}")
+
+        except ValueError as e:
+            messagebox.showerror("Invalid Input", str(e))
+        except Exception as e:
+            messagebox.showerror("Error", f"Error updating inventory: {str(e)}")
+
+    # Buttons
+    button_frame = tk.Frame(dialog)
+    button_frame.pack(pady=20)
+
+    def cancel_inventory_dialog():
+        global dialog_open
+        dialog_open = False
+        dialog.destroy()
+
+    tk.Button(button_frame, text="Apply", command=adjust_stock, bg="lightgreen").pack(side=tk.LEFT, padx=5)
+    tk.Button(button_frame, text="Cancel", command=cancel_inventory_dialog).pack(side=tk.LEFT, padx=5)
+
+    # Reset flag when dialog closes
+    def on_inventory_dialog_close():
+        global dialog_open
+        dialog_open = False
+        dialog.destroy()
+
+    dialog.protocol("WM_DELETE_WINDOW", on_inventory_dialog_close)
+
+    # Make dialog modal
+    dialog.transient(root)
+    dialog.grab_set()
+    root.wait_window(dialog)
+    tk.Label(header_frame, text=f"Name: {product_name}", font=("Arial", 10)).pack(
+        anchor="w"
+    )
+    tk.Label(
+        header_frame, text=f"Current Stock: {current_stock}", font=("Arial", 9)
+    ).pack(anchor="w")
+
+    # Create scrollable frame for form
+    canvas = tk.Canvas(dialog)
+    scrollbar = tk.Scrollbar(dialog, orient="vertical", command=canvas.yview)
+    scrollable_frame = tk.Frame(canvas)
+
+    scrollable_frame.bind(
+        "<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+    )
+
+    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+    canvas.configure(yscrollcommand=scrollbar.set)
+
+    # Current inventory info
+    info_frame = tk.LabelFrame(
+        scrollable_frame, text="Current Inventory", padx=10, pady=10
+    )
+    info_frame.pack(fill="x", pady=10)
+
+    tk.Label(info_frame, text=f"Stock Quantity: {current_stock}").grid(
+        row=0, column=0, sticky="w", pady=2
+    )
+    tk.Label(info_frame, text=f"Reorder Point: {reorder_point}").grid(
+        row=1, column=0, sticky="w", pady=2
+    )
+    tk.Label(info_frame, text=f"Unit Cost: {unit_cost}").grid(
+        row=2, column=0, sticky="w", pady=2
+    )
+    tk.Label(info_frame, text=f"Selling Price: {selling_price}").grid(
+        row=3, column=0, sticky="w", pady=2
+    )
+
+    # Adjustment section
+    adjust_frame = tk.LabelFrame(
+        scrollable_frame, text="Stock Adjustment", padx=10, pady=10
+    )
+    adjust_frame.pack(fill="x", pady=10)
+
+    tk.Label(adjust_frame, text="Quantity to adjust:").grid(
+        row=0, column=0, sticky="w", pady=5
+    )
+    quantity_entry = tk.Entry(adjust_frame, width=10, justify="center")
+    quantity_entry.insert(0, "1")
+    quantity_entry.grid(row=0, column=1, pady=5, padx=10)
+    quantity_entry.focus()
+
+    tk.Label(adjust_frame, text="Adjustment Type:").grid(
+        row=1, column=0, sticky="w", pady=5
+    )
+
+    # Preview of result
+    preview_label = tk.Label(adjust_frame, text="", font=("Arial", 9, "italic"))
+    preview_label.grid(row=2, column=0, columnspan=2, pady=10)
+
+    def update_preview():
+        """Update the preview of the adjustment result"""
+        try:
+            quantity = int(quantity_entry.get().strip())
+            if quantity <= 0:
+                preview_label.config(text="Quantity must be positive", fg="red")
+                return
+
+            operation = "printed" if printed_var.get() else "sold"
+
+            if operation == "sold" and quantity > current_stock:
+                preview_label.config(
+                    text=f"Cannot sell {quantity} items (only {current_stock} in stock)",
+                    fg="red",
+                )
+                return
+
+            new_stock = (
+                current_stock + quantity
+                if operation == "printed"
+                else current_stock - quantity
+            )
+            operation_text = "add" if operation == "printed" else "remove"
+            preview_label.config(
+                text=f"Will {operation_text} {quantity} items → New stock: {new_stock}",
+                fg="black",
+            )
+        except ValueError:
+            preview_label.config(text="Please enter a valid quantity", fg="red")
+
+    # Radio buttons for operation type
+    operation_frame = tk.Frame(adjust_frame)
+    operation_frame.grid(row=1, column=1, pady=5)
+
+    printed_var = tk.BooleanVar(value=True)
+    tk.Radiobutton(
+        operation_frame,
+        text="Printed",
+        variable=printed_var,
+        value=True,
+        command=update_preview,
+    ).pack(anchor="w")
+    tk.Radiobutton(
+        operation_frame,
+        text="Sold",
+        variable=printed_var,
+        value=False,
+        command=update_preview,
+    ).pack(anchor="w")
+
+    # Bind quantity entry to update preview
+    quantity_entry.bind("<KeyRelease>", lambda e: update_preview())
+
+    # Initial preview update
+    update_preview()
+
+    def adjust_stock():
+        """Adjust stock based on selected operation"""
+        try:
+            quantity = int(quantity_entry.get().strip())
+            if quantity <= 0:
+                raise ValueError("Quantity must be positive")
+
+            operation = "printed" if printed_var.get() else "sold"
 
             if operation == "sold" and quantity > current_stock:
                 messagebox.showerror(
@@ -1485,7 +1589,7 @@ def adjust_inventory_dialog():
         except Exception as e:
             messagebox.showerror("Error", f"Error updating inventory: {str(e)}")
 
-    # Buttons
+    # Action buttons
     button_frame = tk.Frame(dialog)
     button_frame.pack(pady=20)
 
@@ -1494,9 +1598,9 @@ def adjust_inventory_dialog():
         dialog_open = False
         dialog.destroy()
 
-    tk.Button(button_frame, text="Apply", command=adjust_stock, bg="lightgreen").pack(
-        side=tk.LEFT, padx=5
-    )
+    tk.Button(
+        button_frame, text="Apply Adjustment", command=adjust_stock, bg="lightblue"
+    ).pack(side=tk.LEFT, padx=5)
     tk.Button(button_frame, text="Cancel", command=cancel_inventory_dialog).pack(
         side=tk.LEFT, padx=5
     )
@@ -1509,10 +1613,78 @@ def adjust_inventory_dialog():
 
     dialog.protocol("WM_DELETE_WINDOW", on_inventory_dialog_close)
 
+    # Pack canvas and scrollbar
+    canvas.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+    scrollbar.pack(side="right", fill="y")
+
     # Make dialog modal
     dialog.transient(root)
     dialog.grab_set()
     root.wait_window(dialog)
+    tk.Label(dialog, text=f"Current Stock: {current_stock}").pack(pady=5)
+
+    # Quantity input
+    tk.Label(dialog, text="Quantity:").pack(pady=5)
+
+                return
+
+            # Calculate new stock level
+            if operation == "printed":
+                new_stock = current_stock + quantity
+            else:  # sold
+                new_stock = current_stock - quantity
+
+            # Prepare update payload
+            payload = {"stock_quantity": new_stock}
+
+            # Send update request
+            response = requests.put(f"{API_URL}{sku}/inventory", json=payload)
+            if response.status_code == 200:
+                operation_text = (
+                    "added to" if operation == "printed" else "removed from"
+                )
+                messagebox.showinfo(
+                    "Success", f"{quantity} items {operation_text} inventory for {sku}"
+                )
+                dialog.destroy()
+                load_inventory_status()  # Refresh inventory display
+            else:
+                messagebox.showerror(
+                    "Error", f"Failed to update inventory: {response.text}"
+                )
+
+        except ValueError as e:
+            messagebox.showerror("Invalid Input", str(e))
+        except Exception as e:
+            messagebox.showerror("Error", f"Error updating inventory: {str(e)}")
+
+    # Buttons
+    button_frame = tk.Frame(dialog)
+    button_frame.pack(pady=20)
+
+    tk.Button(
+        button_frame,
+        text="Printed",
+        command=lambda: adjust_stock("printed"),
+        bg="lightgreen",
+        width=10,
+    ).pack(side=tk.LEFT, padx=5)
+    tk.Button(
+        button_frame,
+        text="Sold",
+        command=lambda: adjust_stock("sold"),
+        bg="lightcoral",
+        width=10,
+    ).pack(side=tk.LEFT, padx=5)
+
+    def cancel_inventory_dialog():
+        global dialog_open
+        dialog_open = False
+        dialog.destroy()
+
+    tk.Button(
+        button_frame, text="Cancel", command=cancel_inventory_dialog, width=10
+    ).pack(side=tk.LEFT, padx=5)
 
 
 # --- GUI ---
@@ -1550,28 +1722,6 @@ tab_control.add(update_tab, text="Update Product")
 tab_control.add(inventory_tab, text="Inventory")
 tab_control.pack(expand=1, fill="both")
 
-
-# Tab change handler
-def on_tab_change(event):
-    """Handle tab selection changes"""
-    selected_tab = tab_control.select()
-    tab_text = tab_control.tab(selected_tab, "text")
-
-    if tab_text == "Create Product":
-        # Load all existing tags for the list when Create Product tab is selected
-        load_all_tags_for_list()
-    elif tab_text == "Update Product":
-        # Auto-load all products when Update Product tab is selected
-        search_query.delete(0, tk.END)  # Clear search field
-        search_products()  # Load all products
-    elif tab_text == "Inventory":
-        # Auto-load inventory status when Inventory tab is selected
-        load_inventory_status()
-
-
-# Bind tab change event
-tab_control.bind("<<NotebookTabChanged>>", on_tab_change)
-
 # --- CREATE TAB ---
 # Name field (short field, most important)
 tk.Label(create_tab, text="Name:").grid(row=0, column=0, sticky="e", padx=5, pady=5)
@@ -1608,34 +1758,22 @@ tk.Checkbutton(create_tab, text="Production Ready", variable=var_production).gri
 )
 
 
-# Tags section
+# Tags section (complex, at the end)
 tk.Label(create_tab, text="Tags:").grid(row=8, column=0, sticky="ne", pady=5, padx=5)
 
-# Tag input frame (left side)
-tag_input_frame = tk.Frame(create_tab)
-tag_input_frame.grid(row=8, column=1, pady=5, padx=5, sticky="w")
+# Tag input frame
+tag_frame = tk.Frame(create_tab)
+tag_frame.grid(row=8, column=1, columnspan=3, pady=5, padx=5, sticky="w")
 
-# Tag input entry (simple text field)
-tag_entry = tk.Entry(tag_input_frame, width=25)
-tag_entry.pack(side=tk.LEFT, padx=(0, 5))
-tag_entry.bind("<KeyRelease>", filter_tag_list)
+# Tag input combobox with autocomplete
+tag_combo = ttk.Combobox(tag_frame, width=30)
+tag_combo.pack(side=tk.LEFT, padx=(0, 5))
+tag_combo.bind("<KeyRelease>", on_tag_typing)
+tag_combo.bind("<Return>", lambda e: add_tag())  # Enter key adds tag
 
 # Add tag button
-add_btn = tk.Button(tag_input_frame, text="Add Tag", command=add_tag)
+add_btn = tk.Button(tag_frame, text="Add Tag", command=add_tag)
 add_btn.pack(side=tk.LEFT)
-
-# Available tags list (positioned to the right, spanning more columns)
-tag_list_frame = tk.Frame(create_tab)
-tag_list_frame.grid(row=8, column=4, columnspan=2, pady=5, padx=5, sticky="w")
-
-tk.Label(tag_list_frame, text="Available Tags:").pack(anchor="w")
-tag_listbox = tk.Listbox(tag_list_frame, width=25, height=10, selectmode=tk.SINGLE)
-tag_listbox.pack()
-tag_listbox.bind("<Double-1>", add_tag_from_list)
-
-# Delete tag button
-delete_tag_btn = tk.Button(tag_list_frame, text="Delete Tag", command=delete_unused_tag)
-delete_tag_btn.pack(pady=(5, 0))
 
 # Current tags display frame
 tags_frame = tk.Frame(create_tab)
@@ -1661,7 +1799,6 @@ search_frame.pack(fill="x", padx=10, pady=5)
 tk.Label(search_frame, text="Search:").grid(row=0, column=0, sticky="e", padx=5, pady=2)
 search_query = tk.Entry(search_frame, width=50)
 search_query.grid(row=0, column=1, padx=5, pady=2)
-search_query.bind("<KeyRelease>", lambda e: search_products())  # Active filtering
 tk.Label(search_frame, text="(searches name, SKU, and tags)").grid(
     row=0, column=2, padx=5, pady=2
 )
@@ -1716,6 +1853,9 @@ tk.Button(
     inventory_controls_frame,
     text="Refresh Inventory",
     command=lambda: load_inventory_status(),
+).pack(side=tk.LEFT, padx=5)
+tk.Button(
+    inventory_controls_frame, text="Full Edit", command=lambda: update_stock_dialog()
 ).pack(side=tk.LEFT, padx=5)
 
 # Inventory display
@@ -1774,7 +1914,6 @@ summary_text.config(state=tk.DISABLED)
 
 # Load initial data
 load_categories()
-load_all_tags_for_list()
 load_inventory_status()
 
 root.mainloop()

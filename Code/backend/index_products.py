@@ -3,9 +3,13 @@ import os, json
 from sqlalchemy.orm import Session
 from app import crud, schemas
 from app.database import SessionLocal
-from ensure_file_structure import create_product_folder, update_metadata  # <-- fixed import
+from ensure_file_structure import (
+    create_product_folder,
+    update_metadata,
+)  # <-- fixed import
 
 PRODUCTS_DIR = "/Products"
+
 
 def index_products():
     db: Session = SessionLocal()
@@ -18,23 +22,31 @@ def index_products():
                     data = json.load(f)
 
                 # Check if SKU already exists in DB
-                product_in_db = db.query(crud.models.Product).filter(crud.models.Product.sku == data["sku"]).first()
-                
+                product_in_db = (
+                    db.query(crud.models.Product)
+                    .filter(crud.models.Product.sku == data["sku"])
+                    .first()
+                )
+
                 product_schema = schemas.ProductCreate(
                     name=data.get("name", ""),
                     description=data.get("description", ""),
                     tags=data.get("tags", []),
-                    production=data.get("production", True) 
+                    production=data.get("production", True),
                 )
 
                 if product_in_db:
                     # Update metadata in DB
-                    crud.update_product_db(db, data["sku"], schemas.ProductUpdate(
-                        name=data.get("name"),
-                        description=data.get("description"),
-                        tags=data.get("tags"),
-                        production=data.get("production", True)
-                    ))
+                    crud.update_product_db(
+                        db,
+                        data["sku"],
+                        schemas.ProductUpdate(
+                            name=data.get("name"),
+                            description=data.get("description"),
+                            tags=data.get("tags"),
+                            production=data.get("production", True),
+                        ),
+                    )
                 else:
                     # Use folder_name as SKU to match the folder
                     sku = crud.create_product_db(db, product_schema, sku=folder_name)
@@ -42,13 +54,14 @@ def index_products():
                     create_product_folder(
                         sku=sku,
                         name=product_schema.name,
-                        description=product_schema.description,
+                        description=product_schema.description or "",
                         tags=product_schema.tags,
-                        production=product_schema.production
+                        production=product_schema.production,
                     )
     finally:
         db.close()
     print("Indexing complete")
+
 
 if __name__ == "__main__":
     index_products()

@@ -1,4 +1,5 @@
 # backend/app/crud.py
+from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from . import models, schemas
@@ -40,7 +41,7 @@ def generate_sku(db: Session, category_id: int) -> str:
 
 
 def create_product_db(
-    db: Session, product: schemas.ProductCreate, sku: str = None
+    db: Session, product: schemas.ProductCreate, sku: Optional[str] = None
 ) -> str:
     """
     Create a new product in the database and return the SKU.
@@ -55,7 +56,7 @@ def create_product_db(
     folder_path, _ = create_product_folder(
         sku=sku,
         name=product.name,
-        description=product.description,
+        description=product.description or "",
         tags=product.tags,
         production=product.production,
     )
@@ -72,6 +73,10 @@ def create_product_db(
         color=product.color,
         print_time=product.print_time,
         weight=product.weight,
+        stock_quantity=product.stock_quantity or 0,
+        reorder_point=product.reorder_point or 0,
+        unit_cost=product.unit_cost,
+        selling_price=product.selling_price,
     )
     db.add(db_product)
     db.commit()
@@ -129,6 +134,14 @@ def update_product_db(db: Session, sku: str, update: schemas.ProductUpdate):
         product.print_time = update.print_time
     if update.weight is not None:
         product.weight = update.weight
+    if update.stock_quantity is not None:
+        product.stock_quantity = update.stock_quantity
+    if update.reorder_point is not None:
+        product.reorder_point = update.reorder_point
+    if update.unit_cost is not None:
+        product.unit_cost = update.unit_cost
+    if update.selling_price is not None:
+        product.selling_price = update.selling_price
 
     if update.tags is not None:
         product.tags.clear()
@@ -156,6 +169,28 @@ def update_product_db(db: Session, sku: str, update: schemas.ProductUpdate):
                 db.refresh(tag_obj)
 
             product.tags.append(tag_obj)
+
+    db.commit()
+    db.refresh(product)
+    return product
+
+
+def update_product_inventory(db: Session, sku: str, inventory: schemas.InventoryUpdate):
+    """
+    Update inventory fields for a product
+    """
+    product = db.query(models.Product).filter(models.Product.sku == sku).first()
+    if not product:
+        return None
+
+    if inventory.stock_quantity is not None:
+        product.stock_quantity = inventory.stock_quantity
+    if inventory.reorder_point is not None:
+        product.reorder_point = inventory.reorder_point
+    if inventory.unit_cost is not None:
+        product.unit_cost = inventory.unit_cost
+    if inventory.selling_price is not None:
+        product.selling_price = inventory.selling_price
 
     db.commit()
     db.refresh(product)

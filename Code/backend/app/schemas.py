@@ -35,6 +35,11 @@ class ProductBase(BaseModel):
     color: Optional[str] = None
     print_time: Optional[str] = None
     weight: Optional[int] = None
+    # Inventory management fields
+    stock_quantity: Optional[int] = 0
+    reorder_point: Optional[int] = 0
+    unit_cost: Optional[int] = None  # Cost in cents
+    selling_price: Optional[int] = None  # Price in cents
 
 
 # Schema for creating a product (DB generates SKU and folder_path)
@@ -48,6 +53,23 @@ class ProductUpdate(BaseModel):
     description: Optional[str] = None
     tags: Optional[List[str]] = None
     production: Optional[bool] = None  # optional for updates
+    material: Optional[str] = None
+    color: Optional[str] = None
+    print_time: Optional[str] = None
+    weight: Optional[int] = None
+    # Inventory management fields
+    stock_quantity: Optional[int] = None
+    reorder_point: Optional[int] = None
+    unit_cost: Optional[int] = None
+    selling_price: Optional[int] = None
+
+
+# Schema for inventory-specific updates
+class InventoryUpdate(BaseModel):
+    stock_quantity: Optional[int] = None
+    reorder_point: Optional[int] = None
+    unit_cost: Optional[int] = None
+    selling_price: Optional[int] = None
 
 
 # Schema for returning a product from DB
