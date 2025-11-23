@@ -725,9 +725,38 @@ def update_edit_tag_display():
 
 
 # --- GUI ---
+# Check if we can actually display a GUI
+try:
+    # Try to create a test window to see if display works
+    test_root = tk.Tk()
+    test_root.withdraw()  # Hide the test window
+    test_root.destroy()
+except tk.TclError as e:
+    print(
+        f"ERROR: Cannot create GUI window. This appears to be a headless environment."
+    )
+    print(f"Tkinter error: {e}")
+    print("To run this GUI application, you need a graphical desktop environment.")
+    print("Try running from a terminal in your desktop environment, or use:")
+    print("  export DISPLAY=:0  # or appropriate display number")
+    import sys
+
+    sys.exit(1)
+
 root = tk.Tk()
 root.title("3D Print Database")
 root.geometry("800x700")
+
+try:
+    root = tk.Tk()
+    root.title("3D Print Database")
+    root.geometry("800x700")
+    print("GUI window created successfully")
+except Exception as e:
+    print(f"Failed to create GUI window: {e}")
+    import sys
+
+    sys.exit(1)
 
 # Create tabbed interface
 tab_control = ttk.Notebook(root)
