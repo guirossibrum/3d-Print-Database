@@ -41,6 +41,7 @@ services:
     volumes:
       - ../backend:/app
       - /home/grbrum/Work/3d_print/Products:/Products
+    user: "1000:1000"
     depends_on:
       - db
       - search
