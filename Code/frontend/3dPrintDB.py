@@ -540,9 +540,33 @@ def open_product_folder():
         # Open folder using system default file manager
         import subprocess
 
-        subprocess.run(["xdg-open", folder_path], check=False)
+        # Try different file managers in order of preference
+        file_managers = [
+            ["nautilus", folder_path],  # GNOME Files
+            ["thunar", folder_path],  # XFCE
+            ["dolphin", folder_path],  # KDE
+            ["pcmanfm", folder_path],  # LXDE
+            ["xdg-open", folder_path],  # Fallback
+        ]
 
-        messagebox.showinfo("Folder Opened", f"Opened folder for product {sku}")
+        folder_opened = False
+        for cmd in file_managers:
+            try:
+                result = subprocess.run(cmd, check=False, timeout=5)
+                if result.returncode == 0:
+                    folder_opened = True
+                    break
+            except (subprocess.TimeoutExpired, FileNotFoundError):
+                continue
+
+        if folder_opened:
+            messagebox.showinfo("Folder Opened", f"Opened folder for product {sku}")
+        else:
+            messagebox.showwarning(
+                "Folder Open Attempted",
+                f"Attempted to open folder for product {sku}, but no file manager responded.\n\n"
+                f"You can manually navigate to: {folder_path}",
+            )
 
     except Exception as e:
         messagebox.showerror("Error", f"Could not open folder: {str(e)}")
