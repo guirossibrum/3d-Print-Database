@@ -16,7 +16,6 @@ def add_tag(
         tag_entry.delete(0, tk.END)  # Clear the input
         tag_entry.focus()
         # Add to available tags immediately
-        global all_available_tags
         if tag_text not in all_available_tags:
             all_available_tags.append(tag_text)
             all_available_tags.sort()
@@ -32,28 +31,40 @@ def remove_tag(tag_to_remove, current_tags, update_display_func):
         update_display_func()
 
 
-def update_tag_display(current_tags, tags_frame):
-    """Update the display of current tags"""
+def update_tag_display(tags_list, display_frame, layout="pack"):
+    """Update the display of tags with configurable layout"""
     # Clear existing
-    for widget in tags_frame.winfo_children():
+    for widget in display_frame.winfo_children():
         widget.destroy()
 
-    if not current_tags:
-        tk.Label(tags_frame, text="(no tags)", fg="gray").pack(anchor="w")
+    if not tags_list:
+        label = tk.Label(display_frame, text="(no tags)", fg="gray")
+        if layout == "pack":
+            label.pack(anchor="w")
+        else:
+            label.grid(row=0, column=0, sticky="w")
         return
 
-    for tag in current_tags:
-        tag_frame = tk.Frame(tags_frame)
-        tag_frame.pack(anchor="w", pady=1)
+    bg_color = "lightblue" if layout == "pack" else "lightgreen"
 
-        tk.Label(tag_frame, text=tag, bg="lightblue", padx=5, pady=2).pack(side=tk.LEFT)
+    for i, tag in enumerate(tags_list):
+        tag_frame = tk.Frame(display_frame)
+
+        if layout == "pack":
+            tag_frame.pack(anchor="w", pady=1)
+        else:
+            tag_frame.grid(row=i // 4, column=(i % 4) * 2, padx=2, pady=2, sticky="w")
+
+        tk.Label(tag_frame, text=tag, bg=bg_color, padx=5, pady=2).pack(side=tk.LEFT)
 
         remove_btn = tk.Button(
             tag_frame,
             text="×",
             font=("Arial", 8),
             command=lambda t=tag: remove_tag(
-                t, current_tags, lambda: update_tag_display(current_tags, tags_frame)
+                t,
+                tags_list,
+                lambda: update_tag_display(tags_list, display_frame, layout),
             ),
         )
         remove_btn.pack(side=tk.LEFT)
@@ -143,29 +154,7 @@ def remove_popup_tag(tag_to_remove, tags_list, display_frame):
     """Remove a tag from the popup dialog"""
     if tag_to_remove in tags_list:
         tags_list.remove(tag_to_remove)
-        update_popup_tag_display(tags_list, display_frame)
-
-
-def update_popup_tag_display(tags_list, display_frame):
-    """Update the tag display in popup dialogs"""
-    # Clear existing tag widgets
-    for widget in display_frame.winfo_children():
-        widget.destroy()
-
-    # Add current tags with remove buttons
-    for i, tag in enumerate(tags_list):
-        # Tag label
-        tag_label = tk.Label(display_frame, text=tag, bg="lightgreen", padx=5, pady=2)
-        tag_label.grid(row=i // 4, column=(i % 4) * 2, padx=2, pady=2, sticky="w")
-
-        # Remove button
-        remove_btn = tk.Button(
-            display_frame,
-            text="×",
-            font=("Arial", 8),
-            command=lambda t=tag: remove_popup_tag(t, tags_list, display_frame),
-        )
-        remove_btn.grid(row=i // 4, column=(i % 4) * 2 + 1, padx=2, pady=2)
+        update_tag_display(tags_list, display_frame, "grid")
 
 
 def remove_tag(tag_to_remove):
