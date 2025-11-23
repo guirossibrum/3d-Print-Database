@@ -52,30 +52,6 @@ def get_similarity(a: str, b: str) -> float:
     return SequenceMatcher(None, a.lower(), b.lower()).ratio()
 
 
-def find_similar_tags(
-    db: Session, tag_name: str, threshold: float = 0.8, limit: int = 5
-) -> List[Dict[str, Any]]:
-    """
-    Find tags similar to input using fuzzy matching
-    Returns list of dicts with 'name' and 'similarity' keys
-    """
-    normalized_input = normalize_tag(tag_name)
-
-    # Get all existing tags
-    all_tags = db.query(models.Tag.name).all()
-
-    similar = []
-    for tag_row in all_tags:
-        existing_tag = tag_row.name
-        similarity = get_similarity(normalized_input, existing_tag)
-        if similarity >= threshold:
-            similar.append({"name": existing_tag, "similarity": similarity})
-
-    # Sort by similarity (highest first), then by name
-    similar.sort(key=lambda x: (-x["similarity"], x["name"]))
-    return similar[:limit]
-
-
 def suggest_tags(db: Session, query: str, limit: int = 10) -> List[Dict[str, Any]]:
     """
     Suggest tags based on partial input with usage counts

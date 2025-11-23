@@ -26,22 +26,6 @@ search_results = []
 selected_category_id = None
 
 
-def on_entry_focus_in(event, placeholder):
-    """Handle focus in for entry fields with placeholders"""
-    entry = event.widget
-    if entry.get() == placeholder:
-        entry.delete(0, tk.END)
-        entry.config(fg="black")
-
-
-def on_entry_focus_out(event, placeholder):
-    """Handle focus out for entry fields with placeholders"""
-    entry = event.widget
-    if not entry.get().strip():
-        entry.insert(0, placeholder)
-        entry.config(fg="gray")
-
-
 def on_time_focus_in(event):
     """Handle focus in for time entry field"""
     entry = event.widget
@@ -218,46 +202,6 @@ def format_time_complete(entry):
     entry.config(fg="black")
 
 
-def format_time_on_focus_out(entry):
-    """Format time when focus leaves the field"""
-    current_text = entry.get().strip()
-
-    # If it's the placeholder, leave it
-    if current_text == "__:__":
-        return
-
-    # If empty, show placeholder
-    if not current_text:
-        entry.delete(0, tk.END)
-        entry.insert(0, "__:__")
-        entry.config(fg="gray")
-        return
-
-    # Check if it's already in HH:MM format
-    if ":" in current_text and len(current_text.split(":")) == 2:
-        parts = current_text.split(":")
-        hours_part = parts[0]
-        minutes_part = parts[1]
-
-        # Validate and format
-        try:
-            hours = int(hours_part) if hours_part else 0
-            minutes = int(minutes_part) if minutes_part else 0
-
-            minutes = min(minutes, 59)
-
-            formatted = f"{hours:02d}:{minutes:02d}"
-            entry.delete(0, tk.END)
-            entry.insert(0, formatted)
-            entry.config(fg="black")
-            return
-        except ValueError:
-            pass  # Fall through to completion formatting
-
-    # Complete any partial formatting
-    format_time_complete(entry)
-
-
 def format_time_input_live(entry):
     """Very conservative formatting - only help when clearly beneficial"""
     current_text = entry.get()
@@ -331,13 +275,6 @@ def format_time_input(entry, placeholder):
             entry.delete(0, tk.END)
             entry.insert(0, formatted)
             entry.config(fg="black")
-
-
-def on_time_key_release(event):
-    """Handle key release for time input field"""
-    entry = event.widget
-    # Format after a short delay to allow for rapid typing
-    entry.after(100, lambda: format_time_input(entry, "hh:mm"))
 
 
 def clear_form():
@@ -505,6 +442,7 @@ def create_item():
                 "Success", f"Product created: {response.json().get('sku')}"
             )
             clear_form()
+            load_all_tags_for_list()  # Refresh available tags after adding product
         else:
             messagebox.showerror("Error", f"Failed to create product\n{response.text}")
     except Exception as e:
@@ -616,11 +554,15 @@ def load_categories():
 
 def update_category_dropdown():
     """Update the category dropdown with current categories"""
+    global selected_category_id
     category_combo["values"] = [
         f"{c['name']} ({c['sku_initials']})" for c in categories
     ]
     if categories:
         category_combo.current(0)  # Select first category by default
+        selected_category_id = categories[0][
+            "id"
+        ]  # Set the ID for the selected category
 
 
 def create_new_category():
@@ -702,6 +644,108 @@ def create_new_category():
     tk.Button(dialog, text="Create", command=save_category).grid(
         row=3, column=0, pady=10
     )
+    tk.Button(dialog, text="Cancel", command=cancel).grid(row=3, column=1, pady=10)
+
+    # Make dialog modal
+    dialog.transient(root)
+    dialog.grab_set()
+    root.wait_window(dialog)
+
+
+def edit_category():
+    """Edit selected category via dialog"""
+    selected = category_combo.get()
+    if not selected:
+        messagebox.showwarning("Warning", "Please select a category to edit")
+        return
+
+    # Extract category name from selection
+    category_name = selected.split(" (")[0]
+
+    # Find category
+    category = next((c for c in categories if c["name"] == category_name), None)
+    if not category:
+        messagebox.showerror("Error", "Category not found")
+        return
+
+    # Create a dialog for editing category
+    dialog = tk.Toplevel(root)
+    dialog.title("Edit Category")
+    dialog.geometry("400x250")
+
+    def on_dialog_close():
+        dialog.destroy()
+
+    dialog.protocol("WM_DELETE_WINDOW", on_dialog_close)
+
+    tk.Label(dialog, text="Category Name:").grid(
+        row=0, column=0, sticky="e", padx=5, pady=5
+    )
+    name_entry = tk.Entry(dialog, width=30)
+    name_entry.insert(0, category["name"])
+    name_entry.grid(row=0, column=1, padx=5, pady=5)
+
+    tk.Label(dialog, text="SKU Initials (3 letters):").grid(
+        row=1, column=0, sticky="e", padx=5, pady=5
+    )
+    initials_entry = tk.Entry(dialog, width=10)
+    initials_entry.insert(0, category["sku_initials"])
+    initials_entry.grid(row=1, column=1, sticky="w", padx=5, pady=5)
+
+    tk.Label(dialog, text="Description:").grid(
+        row=2, column=0, sticky="ne", padx=5, pady=5
+    )
+    desc_text = tk.Text(dialog, width=30, height=3)
+    desc_text.insert("1.0", category.get("description", ""))
+    desc_text.grid(row=2, column=1, padx=5, pady=5)
+
+    def save_category():
+        name = name_entry.get().strip()
+        initials = initials_entry.get().strip().upper()
+        description = desc_text.get("1.0", tk.END).strip()
+
+        if not name or not initials:
+            messagebox.showerror("Error", "Name and SKU initials are required")
+            return
+
+        if len(initials) != 3 or not initials.isalpha():
+            messagebox.showerror("Error", "SKU initials must be exactly 3 letters")
+            return
+
+        try:
+            response = requests.put(
+                f"{CATEGORIES_URL}/{category['id']}",
+                json={
+                    "name": name,
+                    "sku_initials": initials,
+                    "description": description,
+                },
+            )
+
+            if response.status_code == 200:
+                messagebox.showinfo("Success", "Category updated successfully")
+                load_categories()  # Refresh categories
+
+                # Update the selection to the edited category
+                updated_name = name
+                for i, cat in enumerate(categories):
+                    if cat["id"] == category["id"]:
+                        category_combo.current(i)
+                        on_category_select(None)  # Trigger selection handler
+                        break
+
+                dialog.destroy()
+            else:
+                messagebox.showerror(
+                    "Error", f"Failed to update category: {response.text}"
+                )
+        except Exception as e:
+            messagebox.showerror("Error", f"Error updating category: {str(e)}")
+
+    def cancel():
+        dialog.destroy()
+
+    tk.Button(dialog, text="Save", command=save_category).grid(row=3, column=0, pady=10)
     tk.Button(dialog, text="Cancel", command=cancel).grid(row=3, column=1, pady=10)
 
     # Make dialog modal
@@ -851,100 +895,6 @@ def load_inventory_status():
             messagebox.showerror("Error", f"Failed to load inventory: {response.text}")
     except Exception as e:
         messagebox.showerror("Error", f"Error loading inventory: {str(e)}")
-
-
-def update_stock_dialog():
-    """Dialog to update stock levels for selected product"""
-    selected_item = inventory_tree.selection()
-    if not selected_item:
-        messagebox.showwarning(
-            "No Selection", "Please select a product from the inventory list."
-        )
-        return
-
-    # Get selected product data
-    item_values = inventory_tree.item(selected_item[0], "values")
-    sku = item_values[0]
-    current_stock = item_values[2]
-
-    # Create update dialog
-    dialog = tk.Toplevel(root)
-    dialog.title(f"Update Stock - {sku}")
-    dialog.geometry("400x300")
-
-    tk.Label(
-        dialog, text=f"Product: {item_values[1]}", font=("Arial", 10, "bold")
-    ).pack(pady=10)
-    tk.Label(dialog, text=f"Current Stock: {current_stock}").pack(pady=5)
-
-    # Stock update fields
-    tk.Label(dialog, text="New Stock Quantity:").pack(pady=5)
-    stock_entry = tk.Entry(dialog, width=20)
-    stock_entry.insert(0, str(current_stock))
-    stock_entry.pack(pady=5)
-
-    tk.Label(dialog, text="Reorder Point:").pack(pady=5)
-    reorder_entry = tk.Entry(dialog, width=20)
-    reorder_entry.insert(0, str(item_values[3]))
-    reorder_entry.pack(pady=5)
-
-    tk.Label(dialog, text="Unit Cost:").pack(pady=5)
-    cost_entry = tk.Entry(dialog, width=20)
-    # Keep dollar format for editing
-    current_cost = item_values[4]
-    if current_cost != "N/A":
-        cost_entry.insert(0, current_cost)
-    else:
-        cost_entry.insert(0, "$0.00")
-    cost_entry.pack(pady=5)
-
-    tk.Label(dialog, text="Selling Price:").pack(pady=5)
-    price_entry = tk.Entry(dialog, width=20)
-    current_price = item_values[5]
-    if current_price != "N/A":
-        price_entry.insert(0, current_price)
-    else:
-        price_entry.insert(0, "$0.00")
-    price_entry.pack(pady=5)
-
-    def save_stock_update():
-        try:
-            # Validate inputs
-            new_stock = int(stock_entry.get().strip())
-            reorder_point = int(reorder_entry.get().strip())
-            unit_cost = (
-                int(cost_entry.get().strip()) if cost_entry.get().strip() else None
-            )
-            selling_price = (
-                int(price_entry.get().strip()) if price_entry.get().strip() else None
-            )
-
-            if new_stock < 0 or reorder_point < 0:
-                raise ValueError("Stock and reorder point must be non-negative")
-
-            # Prepare update payload
-            payload = {
-                "stock_quantity": new_stock,
-                "reorder_point": reorder_point,
-                "unit_cost": unit_cost,
-                "selling_price": selling_price,
-            }
-
-            # Send update request
-            response = requests.put(f"{API_URL}{sku}/inventory", json=payload)
-            if response.status_code == 200:
-                messagebox.showinfo("Success", f"Stock updated for {sku}")
-                dialog.destroy()
-                load_inventory_status()  # Refresh inventory display
-            else:
-                messagebox.showerror(
-                    "Error", f"Failed to update stock: {response.text}"
-                )
-
-        except ValueError as e:
-            messagebox.showerror("Invalid Input", str(e))
-        except Exception as e:
-            messagebox.showerror("Error", f"Error updating stock: {str(e)}")
 
 
 # Global flag to prevent multiple dialogs
@@ -1595,6 +1545,9 @@ category_combo.pack(side=tk.LEFT, padx=(0, 5))
 category_combo.bind("<<ComboboxSelected>>", on_category_select)
 
 tk.Button(category_frame, text="New", command=create_new_category).pack(
+    side=tk.LEFT, padx=(0, 5)
+)
+tk.Button(category_frame, text="Edit", command=edit_category).pack(
     side=tk.LEFT, padx=(0, 5)
 )
 tk.Button(category_frame, text="Delete", command=delete_category, fg="red").pack(

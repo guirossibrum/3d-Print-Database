@@ -278,6 +278,82 @@ def create_category(category: schemas.CategoryCreate):
         db.close()
 
 
+@app.put("/categories/{category_id}")
+def update_category(category_id: int, category_update: schemas.CategoryUpdate):
+    """
+    Update an existing category
+    """
+    db: Session = SessionLocal()
+    try:
+        # Check if category exists
+        existing_category = (
+            db.query(crud.models.Category)
+            .filter(crud.models.Category.id == category_id)
+            .first()
+        )
+        if not existing_category:
+            raise HTTPException(status_code=404, detail="Category not found")
+
+        # Validate sku_initials if provided
+        if category_update.sku_initials is not None:
+            if (
+                len(category_update.sku_initials) != 3
+                or not category_update.sku_initials.isalpha()
+                or not category_update.sku_initials.isupper()
+            ):
+                raise HTTPException(
+                    status_code=400,
+                    detail="SKU initials must be exactly 3 uppercase letters",
+                )
+
+        # Check for conflicts with other categories
+        if category_update.name or category_update.sku_initials:
+            conflict_query = db.query(crud.models.Category).filter(
+                crud.models.Category.id != category_id
+            )
+            if category_update.name:
+                conflict_query = conflict_query.filter(
+                    crud.models.Category.name == category_update.name
+                )
+            if category_update.sku_initials:
+                conflict_query = conflict_query.filter(
+                    crud.models.Category.sku_initials == category_update.sku_initials
+                )
+            existing = conflict_query.first()
+            if existing:
+                if existing.name == category_update.name:
+                    raise HTTPException(
+                        status_code=400, detail="Category name already exists"
+                    )
+                else:
+                    raise HTTPException(
+                        status_code=400, detail="SKU initials already exist"
+                    )
+
+        # Update fields
+        if category_update.name is not None:
+            existing_category.name = category_update.name
+        if category_update.sku_initials is not None:
+            existing_category.sku_initials = category_update.sku_initials
+        if category_update.description is not None:
+            existing_category.description = category_update.description
+
+        db.commit()
+        db.refresh(existing_category)
+
+        return {"id": existing_category.id, "message": "Category updated successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Error updating category: {str(e)}"
+        )
+    finally:
+        db.close()
+
+
 @app.delete("/categories/{category_id}")
 def delete_category(category_id: int):
     """

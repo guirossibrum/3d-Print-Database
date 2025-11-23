@@ -21,12 +21,3 @@ def ensure_tables_exist():
     except Exception:
         # Tables might already exist or DB not ready
         pass
-
-
-def get_db():
-    ensure_tables_exist()
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()

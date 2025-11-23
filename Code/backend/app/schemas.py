@@ -17,6 +17,12 @@ class CategoryCreate(CategoryBase):
     pass
 
 
+class CategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    sku_initials: Optional[str] = None
+    description: Optional[str] = None
+
+
 class Category(CategoryBase):
     id: int
 
