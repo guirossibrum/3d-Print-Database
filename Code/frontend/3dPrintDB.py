@@ -215,16 +215,17 @@ def load_product_for_edit():
 
         # Extract SKU from selection (format: "1. SKU: ABC-001")
         lines = selection.split("\n")
-        sku_line = [
-            line
-            for line in lines
-            if line.startswith("   SKU:") or line.startswith("SKU:")
-        ]
+        sku_line = [line for line in lines if "SKU:" in line]
         if not sku_line:
-            messagebox.showerror("Error", "Could not extract SKU from selection")
+            messagebox.showerror(
+                "Error",
+                f"Could not extract SKU from selection. Selection: '{selection[:100]}...'",
+            )
             return
 
-        sku = sku_line[0].split(":", 1)[1].strip()
+        # Extract SKU from line like "1. SKU: GUI-0001"
+        sku_line_text = sku_line[0]
+        sku = sku_line_text.split("SKU:", 1)[1].strip()
 
         # Find product in search results
         product = next((p for p in search_results if p["sku"] == sku), None)
