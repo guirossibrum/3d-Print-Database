@@ -1,5 +1,19 @@
 # AGENTS.md - 3D Print Database Coding Guidelines
 
+## Version Management
+- **Current Version**: 1.0 (Released)
+- **Version Format**: Major.Minor (e.g., 1.1, 1.2, 2.0)
+- **Release Process**:
+  1. Implement and test new features
+  2. Update version in relevant files
+  3. Create annotated git tag: `git tag -a vX.Y -m "Release notes"`
+  4. Push tag: `git push origin vX.Y`
+  5. Update this document with new version number
+- **Version Increment Guidelines**:
+  - **Patch (1.0.x)**: Bug fixes, minor improvements
+  - **Minor (1.x)**: New features, enhancements
+  - **Major (x.0)**: Breaking changes, major rewrites
+
 ## Development Commands
 - **Backend**: `cd Code/backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
 - **Frontend**: `./3dPrintDB.sh` (GUI required)
