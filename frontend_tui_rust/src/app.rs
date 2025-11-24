@@ -275,11 +275,13 @@ impl App {
                 self.current_tab = self.current_tab.prev();
                 self.active_pane = ActivePane::Left;
                 self.selected_index = 0;
+                self.refresh_data();
             }
             KeyCode::Right => {
                 self.current_tab = self.current_tab.next();
                 self.active_pane = ActivePane::Left;
                 self.selected_index = 0;
+                self.refresh_data();
             }
             KeyCode::Char('/') => {
                 if matches!(self.current_tab, Tab::Search) {
@@ -997,6 +999,24 @@ impl App {
 
     fn handle_mouse_event(&mut self, _mouse_event: crossterm::event::MouseEvent) {
         // Mouse handling not yet implemented
+    }
+
+    fn refresh_data(&mut self) {
+        // Refresh products, tags, and categories from the database
+        match self.api_client.get_products() {
+            Ok(products) => self.products = products,
+            Err(e) => self.status_message = format!("Failed to refresh products: {:?}", e),
+        }
+        match self.api_client.get_tags() {
+            Ok(tags) => {
+                self.tags = tags.into_iter().map(|tag| tag.name).collect();
+            }
+            Err(e) => self.status_message = format!("Failed to refresh tags: {:?}", e),
+        }
+        match self.api_client.get_categories() {
+            Ok(categories) => self.categories = categories,
+            Err(e) => self.status_message = format!("Failed to refresh categories: {:?}", e),
+        }
     }
 
     fn save_product(&mut self) -> Result<()> {

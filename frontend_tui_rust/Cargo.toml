@@ -1,6 +1,6 @@
 [package]
 name = "frontend_tui_rust"
-version = "1.4.2"
+version = "1.4.3"
 edition = "2024"
 
 [dependencies]
