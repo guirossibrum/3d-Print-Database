@@ -128,15 +128,11 @@ impl App {
     pub fn new() -> Result<Self> {
         let api_client = ApiClient::new(DEFAULT_API_BASE_URL.to_string());
         let products = api_client.get_products()?;
-        let mut tags = api_client
+        let tags = api_client
             .get_tags()?
             .into_iter()
             .map(|tag| tag.name)
             .collect::<Vec<String>>();
-        // Add dummy tags for testing
-        tags.push("test1".to_string());
-        tags.push("test2".to_string());
-        tags.push("test3".to_string());
         let categories = api_client.get_categories()?;
 
         Ok(Self {
@@ -1313,11 +1309,6 @@ impl App {
         match self.api_client.get_tags() {
             Ok(tags) => {
                 self.tags = tags.into_iter().map(|tag| tag.name).collect();
-                // Add dummy tags for testing
-                self.tags.push("test1".to_string());
-                self.tags.push("test2".to_string());
-                self.tags.push("test3".to_string());
-                self.tags.sort();
             }
             Err(e) => self.status_message = format!("Failed to refresh tags: {:?}", e),
         }
