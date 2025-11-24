@@ -2,7 +2,7 @@ use std::io;
 use ratatui::{backend::CrosstermBackend, Terminal};
 use crossterm::{
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen, Clear, ClearType},
 };
 
 mod app;
@@ -54,12 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let mut stdout = io::stdout();
-    if let Err(e) = execute!(stdout, EnterAlternateScreen) {
-        println!("✗ Failed to enter alternate screen: {:?}", e);
-        let _ = disable_raw_mode(); // Try to restore
-        return Err(e.into());
-    }
-
+    execute!(stdout, Clear(ClearType::All), EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = match Terminal::new(backend) {
         Ok(t) => t,

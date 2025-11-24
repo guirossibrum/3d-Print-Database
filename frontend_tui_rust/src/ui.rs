@@ -19,7 +19,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
             Constraint::Length(3), // Tabs
             Constraint::Min(10),   // Content
             Constraint::Length(3), // Inventory totals (only for inventory tab)
-            Constraint::Length(1), // Footer
+            Constraint::Length(2), // Footer
         ])
         .split(size);
 
@@ -380,12 +380,20 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
         InputMode::EditDescription => "[EDIT DESC]",
     };
 
+    // Truncate status message if too long
+    let max_status_len = 40;
+    let truncated_status = if app.status_message.len() > max_status_len {
+        format!("{}...", &app.status_message[..max_status_len.saturating_sub(3)])
+    } else {
+        app.status_message.clone()
+    };
+
     let footer_text = format!("{} {} | q: quit, Tab: switch tabs, j/k: navigate | v0.2.0",
-        app.status_message, mode_indicator);
+        truncated_status, mode_indicator);
 
     let footer = Paragraph::new(footer_text)
         .style(Style::default().fg(Color::Cyan))
-        .wrap(Wrap { trim: true });
+        .wrap(Wrap { trim: false });
 
     f.render_widget(footer, area);
 }
