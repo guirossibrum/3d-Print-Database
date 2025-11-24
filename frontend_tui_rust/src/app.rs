@@ -707,7 +707,8 @@ impl App {
                     match self.api_client.create_category(&category) {
                         Ok(created_category) => {
                             self.categories.push(created_category);
-                            self.create_form.category_selected_index = self.categories.len() - 1;
+                            self.categories.sort_by(|a, b| a.name.cmp(&b.name));
+                            self.create_form.category_selected_index = self.categories.iter().position(|c| c.name == self.category_form.name).unwrap_or(0);
                             self.status_message = format!("Category '{}' created", self.category_form.name);
                         }
                         Err(e) => {
@@ -766,6 +767,8 @@ impl App {
                         match self.api_client.update_category(&category) {
                             Ok(updated_category) => {
                                 self.categories[self.create_form.category_selected_index] = updated_category;
+                                self.categories.sort_by(|a, b| a.name.cmp(&b.name));
+                                self.create_form.category_selected_index = self.categories.iter().position(|c| c.name == self.category_form.name).unwrap_or(self.create_form.category_selected_index);
                                 self.status_message = format!("Category '{}' updated", self.category_form.name);
                             }
                             Err(e) => {
@@ -823,7 +826,8 @@ impl App {
                     match self.api_client.create_tag(&tag) {
                         Ok(created_tag) => {
                             self.tags.push(created_tag.name.clone());
-                            self.create_form.tag_selected_index = self.tags.len() - 1;
+                            self.tags.sort();
+                            self.create_form.tag_selected_index = self.tags.iter().position(|t| t == &self.tag_form.name).unwrap_or(0);
                             self.status_message = format!("Tag '{}' created", self.tag_form.name);
                         }
                         Err(e) => {
@@ -867,6 +871,8 @@ impl App {
                         match self.api_client.update_tag(&updated_tag) {
                             Ok(_) => {
                                 self.tags[self.create_form.tag_selected_index] = self.tag_form.name.clone();
+                                self.tags.sort();
+                                self.create_form.tag_selected_index = self.tags.iter().position(|t| t == &self.tag_form.name).unwrap_or(self.create_form.tag_selected_index);
                                 self.status_message = format!("Tag '{}' updated", self.tag_form.name);
                             }
                             Err(e) => {
