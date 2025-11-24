@@ -273,11 +273,12 @@ fn draw_create_right_pane(f: &mut Frame, area: Rect, app: &App) {
                 if is_selected {
                     style = style.bg(Color::Yellow);
                 }
-                let prefix = if is_current { "→ " } else { "  " };
-                content.push(Line::from(vec![
-                    Span::raw(prefix),
-                    Span::styled(tag.clone(), style),
-                ]));
+                let line = if is_current {
+                    format!("→ {}", tag)
+                } else {
+                    format!("  {}", tag)
+                };
+                content.push(Line::from(Span::styled(line, style)));
             }
             if app.tags.is_empty() {
                 content.push(Line::from(vec![
