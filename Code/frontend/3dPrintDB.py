@@ -68,16 +68,6 @@ def add_popup_tag(widget, tags_list, display_frame, listbox=None):
         else:
             widget.delete(0, tk.END)
 
-        # Add to available tags immediately
-        global all_available_tags
-        if tag_text not in all_available_tags:
-            all_available_tags.append(tag_text)
-            all_available_tags.sort()
-            if listbox:
-                listbox.delete(0, tk.END)
-                for tag in all_available_tags:
-                    listbox.insert(tk.END, tag)
-
 
 def remove_popup_tag(tag_to_remove, tags_list, display_frame):
     """Remove a tag from the popup dialog"""
@@ -1226,6 +1216,10 @@ def show_edit_product_dialog(product):
 
             # Update product
             save_product_changes(product["sku"], payload)
+            # Add new tags to available tags (not saved to DB)
+            original_tags = product.get("tags", [])
+            new_tags = [t for t in edit_current_tags if t not in original_tags]
+            update_available_tags(new_tags)
             global dialog_open
             dialog_open = False
             dialog.destroy()
