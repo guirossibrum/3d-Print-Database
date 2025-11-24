@@ -386,8 +386,7 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
     let footer_text = format!("{} | {} | q:quit v0.3.0", truncated_status, instructions);
 
     let footer = Paragraph::new(footer_text)
-        .style(Style::default().fg(Color::White).bg(Color::Blue).bold())
-        .block(Block::default().borders(Borders::ALL))
+        .style(Style::default().fg(Color::Cyan))
         .wrap(Wrap { trim: false });
 
     f.render_widget(footer, area);
