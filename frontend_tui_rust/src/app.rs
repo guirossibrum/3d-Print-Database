@@ -1313,6 +1313,11 @@ impl App {
         match self.api_client.get_tags() {
             Ok(tags) => {
                 self.tags = tags.into_iter().map(|tag| tag.name).collect();
+                // Add dummy tags for testing
+                self.tags.push("test1".to_string());
+                self.tags.push("test2".to_string());
+                self.tags.push("test3".to_string());
+                self.tags.sort();
             }
             Err(e) => self.status_message = format!("Failed to refresh tags: {:?}", e),
         }
