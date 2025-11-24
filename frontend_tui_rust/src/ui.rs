@@ -721,11 +721,7 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
             Style::default().fg(Color::Cyan)
         };
 
-        let tags_text = if matches!(app.input_mode, InputMode::EditTags) {
-            app.edit_tags_string.clone()
-        } else {
-            product.tags.join(", ")
-        };
+        let tags_text = product.tags.join(", ");
 
         let mut content = vec![
             Line::from(vec![
