@@ -108,18 +108,7 @@ fn draw_create_tab(f: &mut Frame, area: Rect, app: &App) {
         Line::from(""),
     ];
 
-    // Add instructions based on input mode
-    let instructions = match app.input_mode {
-        InputMode::Normal => "Press 'n' to start creating, Tab to switch tabs",
-        InputMode::CreateName => "Enter product name, Enter to continue, Esc to cancel",
-        InputMode::CreateDescription => "Enter description, Enter to create, Esc to cancel",
-        _ => "Tab to switch tabs",
-    };
-
-    content.push(Line::from(vec![Span::styled(
-        instructions,
-        Style::default().fg(Color::Green),
-    )]));
+    // Instructions moved to footer
 
     let paragraph = Paragraph::new(content)
         .block(Block::default().borders(Borders::ALL).title("Create Product"))
@@ -198,7 +187,7 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
             Style::default().fg(Color::Cyan)
         };
 
-        let mut content = vec![
+    let content = vec![
             Line::from(vec![
                 Span::styled("SKU: ", Style::default().fg(Color::Cyan)),
                 Span::raw(&product.sku),
@@ -239,21 +228,7 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
                 Style::default().fg(Color::Green).bold(),
             )]));
             content.push(Line::from(app.tags.join(", ")));
-            content.push(Line::from(""));
         }
-
-        // Add editing instructions
-        let instructions = match app.input_mode {
-            InputMode::Normal => "Tab: start editing, j/k: navigate, 'd' to delete",
-            InputMode::EditName => "Edit name, →: to description, ←: back to list, ↑: cancel, Enter: to description",
-            InputMode::EditDescription => "Edit desc, ←: to name, ↑: cancel, Enter: save",
-            _ => "Tab: start editing, j/k: navigate, 'd' to delete",
-        };
-
-        content.push(Line::from(vec![Span::styled(
-            instructions,
-            Style::default().fg(Color::Green),
-        )]));
 
         let paragraph = Paragraph::new(content)
             .block(Block::default().borders(Borders::ALL).title("Product Details"))
@@ -380,16 +355,32 @@ fn draw_inventory_totals(f: &mut Frame, area: Rect, app: &App) {
 }
 
 fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
+    // Get instructions based on current tab and mode
+    let instructions = match app.current_tab {
+        Tab::Create => match app.input_mode {
+            InputMode::Normal => "n: create, Tab: switch tabs",
+            InputMode::CreateName => "Enter name, Enter: next, Esc: cancel",
+            InputMode::CreateDescription => "Enter desc, Enter: save, Esc: cancel",
+            _ => "Tab: switch tabs",
+        },
+        Tab::Search => match app.input_mode {
+            InputMode::Normal => "Tab: edit, j/k: select, d: delete",
+            InputMode::EditName => "→: desc, ←: back, ↑: cancel, Enter: desc",
+            InputMode::EditDescription => "←: name, ↑: cancel, Enter: save",
+            _ => "Tab: edit, j/k: select",
+        },
+        Tab::Inventory => "j/k: navigate, +/-/Enter: adjust stock",
+    };
+
     // Truncate status message if too long
-    let max_status_len = 40;
+    let max_status_len = 30;
     let truncated_status = if app.status_message.len() > max_status_len {
         format!("{}...", &app.status_message[..max_status_len.saturating_sub(3)])
     } else {
         app.status_message.clone()
     };
 
-    let footer_text = format!("{} | q:quit Tab:tabs j/k:nav | v0.2.0",
-        truncated_status);
+    let footer_text = format!("{} | {} | q:quit v0.2.0", truncated_status, instructions);
 
     let footer = Paragraph::new(footer_text)
         .style(Style::default().fg(Color::Cyan))
