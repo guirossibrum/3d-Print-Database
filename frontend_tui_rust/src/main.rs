@@ -54,8 +54,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen)?;
+    // Clear screen before entering alternate screen
     execute!(stdout, Clear(ClearType::All))?;
+    execute!(stdout, EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = match Terminal::new(backend) {
         Ok(t) => t,

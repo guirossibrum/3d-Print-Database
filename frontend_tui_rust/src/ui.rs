@@ -11,6 +11,9 @@ use crate::app::{App, Tab, InputMode};
 pub fn draw(f: &mut Frame, app: &mut App) {
     let size = f.size();
 
+    // Clear the frame
+    f.render_widget(Clear, size);
+
     // Ensure minimum terminal size
     if size.height < 20 || size.width < 80 {
         let error_msg = format!("Terminal too small: {}x{}\nMinimum: 80x20", size.width, size.height);
@@ -58,8 +61,8 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         }
     }
 
-    // Draw footer (temporarily at top for debugging)
-    draw_footer(f, chunks[0], app);
+    // Draw footer
+    draw_footer(f, chunks[4], app);
 }
 
 fn draw_header(f: &mut Frame, area: Rect) {
