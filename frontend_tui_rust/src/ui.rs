@@ -94,7 +94,7 @@ fn draw_create_tab(f: &mut Frame, area: Rect, app: &App) {
             Span::styled("Name: ", Style::default().fg(Color::Cyan)),
             Span::raw(&app.create_form.name),
             if matches!(app.input_mode, InputMode::CreateName) {
-                Span::styled(" █", Style::default().fg(Color::White))
+                Span::styled(" _", Style::default().fg(Color::White))
             } else {
                 Span::raw("")
             },
@@ -103,7 +103,7 @@ fn draw_create_tab(f: &mut Frame, area: Rect, app: &App) {
             Span::styled("Description: ", Style::default().fg(Color::Cyan)),
             Span::raw(&app.create_form.description),
             if matches!(app.input_mode, InputMode::CreateDescription) {
-                Span::styled(" █", Style::default().fg(Color::White))
+                Span::styled(" _", Style::default().fg(Color::White))
             } else {
                 Span::raw("")
             },
@@ -296,7 +296,7 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
                 Span::styled("Name: ", name_style),
                 Span::raw(&product.name),
                 if matches!(app.input_mode, InputMode::EditName) {
-                    Span::styled(" █", Style::default().fg(Color::White))
+                    Span::styled(" _", Style::default().fg(Color::White))
                 } else {
                     Span::raw("")
                 },
@@ -305,7 +305,7 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
                 Span::styled("Description: ", desc_style),
                 Span::raw(product.description.as_deref().unwrap_or("")),
                 if matches!(app.input_mode, InputMode::EditDescription) {
-                    Span::styled(" █", Style::default().fg(Color::White))
+                    Span::styled(" _", Style::default().fg(Color::White))
                 } else {
                     Span::raw("")
                 },
@@ -460,24 +460,24 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
             InputMode::Normal => {
                 if app.has_multiple_panes() {
                     match app.active_pane {
-                        ActivePane::Left => "Tab: right pane, j/k: select product, Enter: edit",
-                        ActivePane::Right => "Tab: left pane, arrow keys: navigate fields",
+                        ActivePane::Left => "Tab: right pane, j/k: select product, Enter: edit, /: search",
+                        ActivePane::Right => "Tab: left pane, ↑↓: navigate fields",
                     }
                 } else {
-                    "j/k: select product, Enter: edit"
+                    "j/k: select product, Enter: edit, /: search"
                 }
             }
             InputMode::Search => "Type to search, Enter: confirm, Esc: cancel",
-            InputMode::EditName => "Edit name, →: next field, ←: prev field, Enter: save, Esc: cancel",
-            InputMode::EditDescription => "Edit description, →: next field, ←: prev field, Enter: save, Esc: cancel",
-            InputMode::EditProduction => "Space: toggle production, Enter: save, Esc: cancel",
+            InputMode::EditName => "Edit name, ↑↓: change field, Enter: save, Esc: cancel",
+            InputMode::EditDescription => "Edit description, ↑↓: change field, Enter: save, Esc: cancel",
+            InputMode::EditProduction => "Space: toggle production, ↑↓: change field, Enter: save, Esc: cancel",
             _ => "Tab: switch panes, j/k: navigate",
         },
         Tab::Inventory => match app.input_mode {
             InputMode::Normal => {
                 if app.has_multiple_panes() {
                     match app.active_pane {
-                        ActivePane::Left => "Tab: right pane, j/k: select product",
+                        ActivePane::Left => "Tab: right pane, j/k: select product, /: search",
                         ActivePane::Right => "Tab: left pane, +/-: adjust stock, Enter: confirm",
                     }
                 } else {
@@ -497,7 +497,7 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
         app.status_message.clone()
     };
 
-    let footer_text = format!("{} | {} | q:quit v0.5.0", truncated_status, instructions);
+    let footer_text = format!("{} | {} | q:quit v1.1.0", truncated_status, instructions);
 
     let footer = Paragraph::new(footer_text)
         .style(Style::default().fg(Color::Cyan))

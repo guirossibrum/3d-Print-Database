@@ -156,7 +156,7 @@ impl App {
                 self.active_pane = ActivePane::Left;  // Reset to left pane
                 self.selected_index = 0;
             }
-            KeyCode::BackTab if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            KeyCode::Tab if key.modifiers.contains(KeyModifiers::SHIFT) => {
                 self.current_tab = self.current_tab.prev();
                 self.active_pane = ActivePane::Left;  // Reset to left pane
                 self.selected_index = 0;
@@ -185,7 +185,7 @@ impl App {
             KeyCode::Up | KeyCode::Char('k') => {
                 self.prev_item();
             }
-            KeyCode::Char('s') => {
+            KeyCode::Char('/') => {
                 if matches!(self.current_tab, Tab::Search) {
                     self.input_mode = InputMode::Search;
                 } else if matches!(self.current_tab, Tab::Inventory) {
@@ -216,6 +216,12 @@ impl App {
             KeyCode::Enter => {
                 self.input_mode = InputMode::Normal;
             }
+            KeyCode::Tab => {
+                self.input_mode = InputMode::Normal;
+                if self.has_multiple_panes() {
+                    self.next_pane();
+                }
+            }
             KeyCode::Backspace => {
                 self.search_query.pop();
             }
@@ -235,6 +241,12 @@ impl App {
             }
             KeyCode::Enter => {
                 self.input_mode = InputMode::Normal;
+            }
+            KeyCode::Tab => {
+                self.input_mode = InputMode::Normal;
+                if self.has_multiple_panes() {
+                    self.next_pane();
+                }
             }
             KeyCode::Backspace => {
                 self.inventory_search_query.pop();
@@ -292,8 +304,11 @@ impl App {
             KeyCode::Esc => {
                 self.input_mode = InputMode::Normal;
             }
-            KeyCode::Enter => {
+            KeyCode::Enter | KeyCode::Down => {
                 self.input_mode = InputMode::EditDescription;
+            }
+            KeyCode::Up => {
+                // Already at first field, do nothing
             }
             KeyCode::Backspace => {
                 if let Some(product) = self.products.get_mut(self.selected_index) {
@@ -315,15 +330,18 @@ impl App {
             KeyCode::Esc => {
                 self.input_mode = InputMode::EditName;
             }
-            KeyCode::Enter => {
+            KeyCode::Enter | KeyCode::Down => {
                 self.input_mode = InputMode::EditProduction;
             }
-                KeyCode::Backspace => {
-                    if let Some(product) = self.products.get_mut(self.selected_index)
-                        && let Some(ref mut desc) = product.description {
-                        desc.pop();
-                    }
+            KeyCode::Up => {
+                self.input_mode = InputMode::EditName;
+            }
+            KeyCode::Backspace => {
+                if let Some(product) = self.products.get_mut(self.selected_index)
+                    && let Some(ref mut desc) = product.description {
+                    desc.pop();
                 }
+            }
             KeyCode::Char(c) => {
                 if let Some(product) = self.products.get_mut(self.selected_index) {
                     product.description.get_or_insert_with(String::new).push(c);
@@ -342,6 +360,12 @@ impl App {
             KeyCode::Enter => {
                 // TODO: Save changes
                 self.input_mode = InputMode::Normal;
+            }
+            KeyCode::Up => {
+                self.input_mode = InputMode::EditDescription;
+            }
+            KeyCode::Down => {
+                // Already at last field, do nothing
             }
             KeyCode::Char('y') | KeyCode::Char('Y') => {
                 if let Some(product) = self.products.get_mut(self.selected_index) {
