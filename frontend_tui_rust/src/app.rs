@@ -648,8 +648,19 @@ impl App {
             }
             KeyCode::Enter => {
                 // Save new category
-                // TODO: Implement API call
-                self.status_message = format!("Category '{}' created", self.category_form.name);
+                if !self.category_form.name.trim().is_empty() && self.category_form.sku.len() == 3 {
+                    let new_category = crate::api::Category {
+                        id: (self.categories.len() + 1) as i32, // fake id for local
+                        name: self.category_form.name.clone(),
+                        sku_initials: self.category_form.sku.clone(),
+                        description: if self.category_form.description.trim().is_empty() { None } else { Some(self.category_form.description.clone()) },
+                    };
+                    self.categories.push(new_category);
+                    self.create_form.category_selected_index = self.categories.len() - 1;
+                    self.status_message = format!("Category '{}' created", self.category_form.name);
+                } else {
+                    self.status_message = "Error: Name required, SKU must be 3 letters".to_string();
+                }
                 self.category_form = CategoryForm::default();
                 self.popup_field = 0;
                 self.input_mode = InputMode::CreateCategorySelect;
@@ -690,8 +701,17 @@ impl App {
             }
             KeyCode::Enter => {
                 // Save edited category
-                // TODO: Implement API call
-                self.status_message = format!("Category '{}' updated", self.category_form.name);
+                if !self.category_form.name.trim().is_empty() && self.category_form.sku.len() == 3 {
+                if let Some(category) = self.categories.get_mut(self.create_form.category_selected_index) {
+                            category.name = self.category_form.name.clone();
+                            category.sku_initials = self.category_form.sku.clone();
+                            category.description = if self.category_form.description.trim().is_empty() { None } else { Some(self.category_form.description.clone()) };
+                            self.status_message = format!("Category '{}' updated", self.category_form.name);
+                        }
+                    }
+                } else {
+                    self.status_message = "Error: Name required, SKU must be 3 letters".to_string();
+                }
                 self.category_form = CategoryForm::default();
                 self.popup_field = 0;
                 self.input_mode = InputMode::CreateCategorySelect;
@@ -731,8 +751,17 @@ impl App {
             }
             KeyCode::Enter => {
                 // Save new tag
-                // TODO: Implement API call
-                self.status_message = format!("Tag '{}' created", self.tag_form.name);
+                if !self.tag_form.name.trim().is_empty() {
+                    let new_tag = crate::api::Tag {
+                        name: self.tag_form.name.clone(),
+                        usage_count: 0,
+                    };
+                    self.tags.push(new_tag.name.clone());
+                    self.create_form.tag_selected_index = self.tags.len() - 1;
+                    self.status_message = format!("Tag '{}' created", self.tag_form.name);
+                } else {
+                    self.status_message = "Error: Tag name required".to_string();
+                }
                 self.tag_form = TagForm::default();
                 self.input_mode = InputMode::CreateTagSelect;
             }
@@ -755,8 +784,15 @@ impl App {
             }
             KeyCode::Enter => {
                 // Save edited tag
-                // TODO: Implement API call
-                self.status_message = format!("Tag '{}' updated", self.tag_form.name);
+                if !self.tag_form.name.trim().is_empty() {
+                if let Some(tag) = self.tags.get_mut(self.create_form.tag_selected_index) {
+                            *tag = self.tag_form.name.clone();
+                            self.status_message = format!("Tag '{}' updated", self.tag_form.name);
+                        }
+                    }
+                } else {
+                    self.status_message = "Error: Tag name required".to_string();
+                }
                 self.tag_form = TagForm::default();
                 self.input_mode = InputMode::CreateTagSelect;
             }
