@@ -417,35 +417,34 @@ fn draw_popup(f: &mut Frame, area: Rect, app: &App) {
 
 fn build_tag_selection_content<'a>(app: &'a App, header: &'a str, help: &'a str) -> Vec<Line<'a>> {
     let mut content = vec![];
-    content.push(Line::from(vec![Span::styled(
-        header,
-        Style::default().fg(Color::Green).bold(),
-    )]));
+    content.push(Line::from(vec![
+        Span::styled(header, Style::default().fg(Color::Green).bold()),
+    ]));
     for (i, tag) in app.tags.iter().enumerate() {
         let is_current = i == app.create_form.tag_selected_index;
         let is_selected = app.tag_selection.get(i).copied().unwrap_or(false);
-        let mut style = Style::default().fg(Color::White);
-        if is_selected {
-            style = style.bg(Color::Yellow);
-        }
+        let marker = if is_selected { "[x]" } else { "[ ]" };
         let line = if is_current {
-            format!("→ {}", tag)
+            format!("→ {} {}", marker, tag)
         } else {
-            format!("  {}", tag)
+            format!("  {} {}", marker, tag)
+        };
+        let style = if is_current {
+            Style::default().fg(Color::Black).bg(Color::Cyan)
+        } else {
+            Style::default().fg(Color::White)
         };
         content.push(Line::from(Span::styled(line, style)));
     }
     if app.tags.is_empty() {
-        content.push(Line::from(vec![Span::styled(
-            "No tags available",
-            Style::default().fg(Color::Gray),
-        )]));
+        content.push(Line::from(vec![
+            Span::styled("No tags available", Style::default().fg(Color::Gray)),
+        ]));
     }
     content.push(Line::from(""));
-    content.push(Line::from(vec![Span::styled(
-        help,
-        Style::default().fg(Color::Gray),
-    )]));
+    content.push(Line::from(vec![
+        Span::styled(help, Style::default().fg(Color::Gray)),
+    ]));
     content
 }
 
