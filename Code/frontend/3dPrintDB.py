@@ -68,6 +68,16 @@ def add_popup_tag(widget, tags_list, display_frame, listbox=None):
         else:
             widget.delete(0, tk.END)
 
+        # Add to available tags immediately
+        global all_available_tags
+        if tag_text not in all_available_tags:
+            all_available_tags.append(tag_text)
+            all_available_tags.sort()
+            if listbox:
+                listbox.delete(0, tk.END)
+                for tag in all_available_tags:
+                    listbox.insert(tk.END, tag)
+
 
 def remove_popup_tag(tag_to_remove, tags_list, display_frame):
     """Remove a tag from the popup dialog"""
@@ -387,6 +397,14 @@ def add_tag():
         update_tag_display(current_tags, tags_frame, "pack")
         tag_entry.delete(0, tk.END)  # Clear the input
         tag_entry.focus()
+        # Add to available tags immediately
+        global all_available_tags
+        if tag_text not in all_available_tags:
+            all_available_tags.append(tag_text)
+            all_available_tags.sort()
+            tag_listbox.delete(0, tk.END)
+            for tag in all_available_tags:
+                tag_listbox.insert(tk.END, tag)
 
 
 def remove_tag(tag_to_remove):
