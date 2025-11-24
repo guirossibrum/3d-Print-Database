@@ -408,6 +408,12 @@ impl App {
                 self.input_mode = InputMode::CreateCategorySelect;
                 self.active_pane = ActivePane::Right;
             }
+            KeyCode::Down => {
+                self.input_mode = InputMode::CreateProduction;
+            }
+            KeyCode::Up => {
+                self.input_mode = InputMode::CreateDescription;
+            }
             _ => {}
         }
         Ok(())
@@ -702,12 +708,12 @@ impl App {
             KeyCode::Enter => {
                 // Save edited category
                 if !self.category_form.name.trim().is_empty() && self.category_form.sku.len() == 3 {
-                if let Some(category) = self.categories.get_mut(self.create_form.category_selected_index) {
-                            category.name = self.category_form.name.clone();
-                            category.sku_initials = self.category_form.sku.clone();
-                            category.description = if self.category_form.description.trim().is_empty() { None } else { Some(self.category_form.description.clone()) };
-                            self.status_message = format!("Category '{}' updated", self.category_form.name);
-                        }
+                    if self.create_form.category_selected_index < self.categories.len() {
+                        let category = &mut self.categories[self.create_form.category_selected_index];
+                        category.name = self.category_form.name.clone();
+                        category.sku_initials = self.category_form.sku.clone();
+                        category.description = if self.category_form.description.trim().is_empty() { None } else { Some(self.category_form.description.clone()) };
+                        self.status_message = format!("Category '{}' updated", self.category_form.name);
                     }
                 } else {
                     self.status_message = "Error: Name required, SKU must be 3 letters".to_string();
@@ -785,10 +791,9 @@ impl App {
             KeyCode::Enter => {
                 // Save edited tag
                 if !self.tag_form.name.trim().is_empty() {
-                if let Some(tag) = self.tags.get_mut(self.create_form.tag_selected_index) {
-                            *tag = self.tag_form.name.clone();
-                            self.status_message = format!("Tag '{}' updated", self.tag_form.name);
-                        }
+                    if self.create_form.tag_selected_index < self.tags.len() {
+                        self.tags[self.create_form.tag_selected_index] = self.tag_form.name.clone();
+                        self.status_message = format!("Tag '{}' updated", self.tag_form.name);
                     }
                 } else {
                     self.status_message = "Error: Tag name required".to_string();
