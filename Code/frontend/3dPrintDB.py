@@ -369,6 +369,10 @@ def format_time_input(entry, placeholder):
 def clear_form():
     entry_name.delete(0, tk.END)
     entry_description.delete(0, tk.END)
+    entry_material.delete(0, tk.END)
+    entry_color.delete(0, tk.END)
+    entry_print_time.delete(0, tk.END)
+    entry_weight.delete(0, tk.END)
     var_production.set(True)
     current_tags.clear()
     update_tag_display(current_tags, tags_frame, "pack")
@@ -1548,30 +1552,54 @@ tk.Checkbutton(create_tab, text="Production Ready", variable=var_production).gri
     row=3, column=1, sticky="w", pady=5, padx=5
 )
 
+# Additional fields
+tk.Label(create_tab, text="Material:").grid(row=4, column=0, sticky="e", padx=5, pady=5)
+entry_material = tk.Entry(create_tab, width=30)
+entry_material.grid(row=4, column=1, pady=5, padx=5, sticky="w")
+
+tk.Label(create_tab, text="Color:").grid(row=4, column=2, sticky="e", padx=5, pady=5)
+entry_color = tk.Entry(create_tab, width=30)
+entry_color.grid(row=4, column=3, pady=5, padx=5, sticky="w")
+
+tk.Label(create_tab, text="Print Time:").grid(
+    row=5, column=0, sticky="e", padx=5, pady=5
+)
+entry_print_time = tk.Entry(create_tab, width=30)
+entry_print_time.grid(row=5, column=1, pady=5, padx=5, sticky="w")
+
+tk.Label(create_tab, text="Weight (g):").grid(
+    row=5, column=2, sticky="e", padx=5, pady=5
+)
+entry_weight = tk.Entry(create_tab, width=30)
+entry_weight.grid(row=5, column=3, pady=5, padx=5, sticky="w")
 
 # Tags section
-tk.Label(create_tab, text="Tags:").grid(row=8, column=0, sticky="ne", pady=5, padx=5)
+tk.Label(create_tab, text="Tags:", font=("Arial", 10, "bold")).grid(
+    row=6, column=0, sticky="ne", pady=10, padx=5
+)
 
 # Tag input frame (left side)
 tag_input_frame = tk.Frame(create_tab)
-tag_input_frame.grid(row=8, column=1, pady=5, padx=5, sticky="w")
+tag_input_frame.grid(row=7, column=1, columnspan=2, pady=5, padx=5, sticky="w")
 
 # Tag input entry (simple text field)
-tag_entry = tk.Entry(tag_input_frame, width=25)
-tag_entry.pack(side=tk.LEFT, padx=(0, 5))
+tag_entry = tk.Entry(tag_input_frame, width=30)
+tag_entry.pack(side=tk.LEFT, padx=(0, 10))
 tag_entry.bind("<KeyRelease>", filter_tag_list)
 
 # Add tag button
 add_btn = tk.Button(tag_input_frame, text="Add Tag", command=add_tag)
 add_btn.pack(side=tk.LEFT)
 
-# Available tags list (positioned to the right, spanning more columns)
+# Available tags list (positioned to the right)
 tag_list_frame = tk.Frame(create_tab)
-tag_list_frame.grid(row=8, column=4, columnspan=2, pady=5, padx=5, sticky="w")
+tag_list_frame.grid(row=7, column=3, columnspan=2, pady=5, padx=5, sticky="w")
 
-tk.Label(tag_list_frame, text="Available Tags:").pack(anchor="w")
-tag_listbox = tk.Listbox(tag_list_frame, width=25, height=10, selectmode=tk.SINGLE)
-tag_listbox.pack()
+tk.Label(tag_list_frame, text="Available Tags:", font=("Arial", 9, "bold")).pack(
+    anchor="w"
+)
+tag_listbox = tk.Listbox(tag_list_frame, width=30, height=8, selectmode=tk.SINGLE)
+tag_listbox.pack(fill=tk.BOTH, expand=True)
 tag_listbox.bind("<Double-1>", add_tag_from_list)
 
 # Delete tag button
@@ -1580,11 +1608,11 @@ delete_tag_btn.pack(pady=(5, 0))
 
 # Current tags display frame
 tags_frame = tk.Frame(create_tab)
-tags_frame.grid(row=9, column=0, columnspan=4, pady=5, padx=5, sticky="w")
+tags_frame.grid(row=8, column=0, columnspan=6, pady=10, padx=5, sticky="w")
 
 # Create tab buttons
 create_button_frame = tk.Frame(create_tab)
-create_button_frame.grid(row=10, column=0, columnspan=4, pady=10)
+create_button_frame.grid(row=9, column=0, columnspan=6, pady=15)
 
 tk.Button(create_button_frame, text="Clear", command=clear_form).pack(
     side=tk.LEFT, padx=5
