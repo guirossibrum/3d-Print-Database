@@ -74,6 +74,9 @@ pub struct App {
     pub inventory_search_query: String,
     pub status_message: String,
 
+    // Edit backup (for cancelling changes)
+    pub edit_backup: Option<Product>,
+
     // Create form
     pub create_form: CreateForm,
 }
@@ -105,6 +108,7 @@ impl App {
             search_query: String::new(),
             inventory_search_query: String::new(),
             status_message: String::new(),
+            edit_backup: None,
             create_form: CreateForm::default(),
         })
     }
@@ -159,6 +163,10 @@ impl App {
                 match self.input_mode {
                     InputMode::Normal => {
                         if self.has_multiple_panes() && matches!(self.active_pane, ActivePane::Left) && !self.products.is_empty() {
+                            // Create backup of original product data
+                            if let Some(product) = self.products.get(self.selected_index) {
+                                self.edit_backup = Some(product.clone());
+                            }
                             // Switch to right pane and enter edit mode
                             self.active_pane = ActivePane::Right;
                             self.input_mode = InputMode::EditName;
@@ -326,11 +334,18 @@ impl App {
         match key.code {
             KeyCode::Esc | KeyCode::Tab => {
                 // Cancel changes (discard) and return to normal mode
+                if let Some(original_product) = self.edit_backup.take() {
+                    // Restore original product data
+                    if let Some(current_product) = self.products.get_mut(self.selected_index) {
+                        *current_product = original_product;
+                    }
+                }
                 self.input_mode = InputMode::Normal;
                 self.active_pane = ActivePane::Left;
             }
             KeyCode::Enter => {
                 // Save changes and return to normal mode
+                self.edit_backup = None; // Clear backup since we're saving
                 self.input_mode = InputMode::Normal;
                 self.active_pane = ActivePane::Left;
                 // TODO: Persist changes to backend
@@ -360,11 +375,18 @@ impl App {
         match key.code {
             KeyCode::Esc | KeyCode::Tab => {
                 // Cancel changes (discard) and return to normal mode
+                if let Some(original_product) = self.edit_backup.take() {
+                    // Restore original product data
+                    if let Some(current_product) = self.products.get_mut(self.selected_index) {
+                        *current_product = original_product;
+                    }
+                }
                 self.input_mode = InputMode::Normal;
                 self.active_pane = ActivePane::Left;
             }
             KeyCode::Enter => {
                 // Save changes and return to normal mode
+                self.edit_backup = None; // Clear backup since we're saving
                 self.input_mode = InputMode::Normal;
                 self.active_pane = ActivePane::Left;
                 // TODO: Persist changes to backend
@@ -395,11 +417,18 @@ impl App {
         match key.code {
             KeyCode::Esc | KeyCode::Tab => {
                 // Cancel changes (discard) and return to normal mode
+                if let Some(original_product) = self.edit_backup.take() {
+                    // Restore original product data
+                    if let Some(current_product) = self.products.get_mut(self.selected_index) {
+                        *current_product = original_product;
+                    }
+                }
                 self.input_mode = InputMode::Normal;
                 self.active_pane = ActivePane::Left;
             }
             KeyCode::Enter => {
                 // Save changes and return to normal mode
+                self.edit_backup = None; // Clear backup since we're saving
                 self.input_mode = InputMode::Normal;
                 self.active_pane = ActivePane::Left;
                 // TODO: Persist changes to backend
