@@ -766,11 +766,6 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
             Line::from(vec![
                 Span::styled("Tags: ", tags_style),
                 Span::raw(&tags_text),
-                if matches!(app.input_mode, InputMode::EditTags) {
-                    Span::styled("_", Style::default().fg(Color::White))
-                } else {
-                    Span::raw("")
-                },
             ]),
             Line::from(""),
         ];

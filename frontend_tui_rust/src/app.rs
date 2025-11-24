@@ -89,6 +89,7 @@ pub struct App {
 
     // Edit backup (for cancelling changes)
     pub edit_backup: Option<Product>,
+    pub previous_input_mode: Option<InputMode>,
 
     // Create form
     pub create_form: CreateForm,
@@ -127,11 +128,15 @@ impl App {
     pub fn new() -> Result<Self> {
         let api_client = ApiClient::new(DEFAULT_API_BASE_URL.to_string());
         let products = api_client.get_products()?;
-        let tags = api_client
+        let mut tags = api_client
             .get_tags()?
             .into_iter()
             .map(|tag| tag.name)
             .collect::<Vec<String>>();
+        // Add dummy tags for testing
+        tags.push("test1".to_string());
+        tags.push("test2".to_string());
+        tags.push("test3".to_string());
         let categories = api_client.get_categories()?;
 
         Ok(Self {
@@ -148,6 +153,7 @@ impl App {
             inventory_search_query: String::new(),
             status_message: String::new(),
             edit_backup: None,
+            previous_input_mode: None,
             create_form: CreateForm {
                 production: true, // Default to production ready
                 ..Default::default()
@@ -623,6 +629,54 @@ impl App {
             KeyCode::Char(' ') => {
                 // Toggle selection
                 if self.create_form.tag_selected_index < self.tag_selection.len() {
+                    self.tag_selection[self.create_form.tag_selected_index] = !self.tag_selection[self.create_form.tag_selected_index];
+                }
+            }
+            KeyCode::Char('n') => {
+                self.previous_input_mode = Some(self.input_mode);
+                self.input_mode = InputMode::NewTag;
+            }
+            KeyCode::Char('e') => {
+                if let Some(tag) = self.tags.get(self.create_form.tag_selected_index) {
+                    self.previous_input_mode = Some(self.input_mode);
+                    self.tag_form.name = tag.clone();
+                    self.input_mode = InputMode::EditTag;
+                }
+            }
+            KeyCode::Enter => {
+                // Add selected tags to create_form.tags
+                for (i, &selected) in self.tag_selection.iter().enumerate() {
+                    if selected {
+                        if let Some(tag) = self.tags.get(i) {
+                            if !self.create_form.tags.contains(tag) {
+                                self.create_form.tags.push(tag.clone());
+                            }
+                        }
+                    }
+                }
+                self.tag_selection.clear();
+                self.input_mode = InputMode::CreateTags;
+                self.active_pane = ActivePane::Left;
+            }
+            KeyCode::Down => {
+                if !self.tags.is_empty() {
+                    self.create_form.tag_selected_index =
+                        (self.create_form.tag_selected_index + 1) % self.tags.len();
+                }
+            }
+            KeyCode::Up => {
+                if !self.tags.is_empty() {
+                    self.create_form.tag_selected_index =
+                        if self.create_form.tag_selected_index == 0 {
+                            self.tags.len() - 1
+                        } else {
+                            self.create_form.tag_selected_index - 1
+                        };
+                }
+            }
+            KeyCode::Char(' ') => {
+                // Toggle selection
+                if self.create_form.tag_selected_index < self.tag_selection.len() {
                     self.tag_selection[self.create_form.tag_selected_index] =
                         !self.tag_selection[self.create_form.tag_selected_index];
                 }
@@ -921,7 +975,7 @@ impl App {
         match key.code {
             KeyCode::Esc => {
                 self.tag_form = TagForm::default();
-                self.input_mode = InputMode::CreateTagSelect;
+                self.input_mode = self.previous_input_mode.unwrap_or(InputMode::CreateTagSelect);
             }
             KeyCode::Enter => {
                 // Save new tag
@@ -941,15 +995,15 @@ impl App {
                                 .unwrap_or(0);
                             self.status_message = format!("Tag '{}' created", self.tag_form.name);
                         }
-                        Err(e) => {
-                            self.status_message = format!("Error creating tag: {:?}", e);
-                        }
-                    }
-                } else {
-                    self.status_message = "Error: Tag name required".to_string();
-                }
-                self.tag_form = TagForm::default();
-                self.input_mode = InputMode::CreateTagSelect;
+                         Err(e) => {
+                             self.status_message = format!("Error creating tag: {:?}", e);
+                         }
+                     }
+                 } else {
+                     self.status_message = "Error: Tag name required".to_string();
+                 }
+                 self.tag_form = TagForm::default();
+                 self.input_mode = self.previous_input_mode.unwrap_or(InputMode::CreateTagSelect);
             }
             KeyCode::Backspace => {
                 self.tag_form.name.pop();
@@ -997,11 +1051,11 @@ impl App {
                             }
                         }
                     }
-                } else {
+                 } else {
                     self.status_message = "Error: Tag name required".to_string();
                 }
                 self.tag_form = TagForm::default();
-                self.input_mode = InputMode::CreateTagSelect;
+                self.input_mode = self.previous_input_mode.unwrap_or(InputMode::CreateTagSelect);
             }
             KeyCode::Backspace => {
                 self.tag_form.name.pop();
@@ -1059,12 +1113,6 @@ impl App {
             KeyCode::Up => {
                 self.input_mode = InputMode::EditProduction;
             }
-            KeyCode::Backspace => {
-                self.edit_tags_string.pop();
-            }
-            KeyCode::Char(c) => {
-                self.edit_tags_string.push(c);
-            }
             _ => {}
         }
         Ok(())
@@ -1087,6 +1135,7 @@ impl App {
                             }
                         }
                     }
+                    self.edit_tags_string = product.tags.join(", ");
                 }
                 self.tag_selection.clear();
                 self.input_mode = InputMode::EditTags;
@@ -1116,10 +1165,12 @@ impl App {
                 }
             }
             KeyCode::Char('n') => {
+                self.previous_input_mode = Some(self.input_mode);
                 self.input_mode = InputMode::NewTag;
             }
             KeyCode::Char('e') => {
                 if let Some(tag) = self.tags.get(self.create_form.tag_selected_index) {
+                    self.previous_input_mode = Some(self.input_mode);
                     self.tag_form.name = tag.clone();
                     self.input_mode = InputMode::EditTag;
                 }
