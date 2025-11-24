@@ -98,6 +98,7 @@ pub struct App {
     pub tag_form: TagForm,
     pub popup_field: usize,
     pub tag_selection: Vec<bool>,
+    pub edit_tags_string: String,
 }
 
 #[derive(Debug, Default)]
@@ -156,6 +157,7 @@ impl App {
             tag_form: TagForm::default(),
             popup_field: 0,
             tag_selection: Vec::new(),
+            edit_tags_string: String::new(),
         })
     }
 
@@ -260,6 +262,9 @@ impl App {
                     }
                     InputMode::EditProduction => {
                         self.input_mode = InputMode::EditTags;
+                        if let Some(product) = self.products.get(self.selected_index) {
+                            self.edit_tags_string = product.tags.join(", ");
+                        }
                     }
                     InputMode::EditTags => {
                         self.input_mode = InputMode::EditTagSelect;
@@ -929,13 +934,26 @@ impl App {
                 self.input_mode = InputMode::EditProduction;
             }
             KeyCode::Enter => {
-                // Save changes and return to normal mode
+                // Parse and save changes
+                if let Some(product) = self.products.get_mut(self.selected_index) {
+                    product.tags = self.edit_tags_string.split(',')
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty())
+                        .collect();
+                }
                 self.edit_backup = None;
                 self.input_mode = InputMode::Normal;
                 self.active_pane = ActivePane::Left;
                 // TODO: Persist changes to backend
             }
             KeyCode::Tab => {
+                // Parse current edit_tags_string to product.tags
+                if let Some(product) = self.products.get_mut(self.selected_index) {
+                    product.tags = self.edit_tags_string.split(',')
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty())
+                        .collect();
+                }
                 self.tag_selection = vec![false; self.tags.len()];
                 // Pre-select tags that are already in the current product
                 if let Some(product) = self.products.get(self.selected_index) {
@@ -950,6 +968,12 @@ impl App {
             }
             KeyCode::Up => {
                 self.input_mode = InputMode::EditProduction;
+            }
+            KeyCode::Backspace => {
+                self.edit_tags_string.pop();
+            }
+            KeyCode::Char(c) => {
+                self.edit_tags_string.push(c);
             }
             _ => {}
         }

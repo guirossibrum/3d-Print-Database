@@ -591,6 +591,12 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
             Style::default().fg(Color::Cyan)
         };
 
+        let tags_text = if matches!(app.input_mode, InputMode::EditTags) {
+            app.edit_tags_string.clone()
+        } else {
+            product.tags.join(", ")
+        };
+
         let mut content = vec![
             Line::from(vec![
                 Span::styled("SKU: ", Style::default().fg(Color::Cyan)),
@@ -626,7 +632,7 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
             ]),
             Line::from(vec![
                 Span::styled("Tags: ", tags_style),
-                Span::raw(product.tags.join(", ")),
+                Span::raw(&tags_text),
                 if matches!(app.input_mode, InputMode::EditTags) {
                     Span::styled("_", Style::default().fg(Color::White))
                 } else {
