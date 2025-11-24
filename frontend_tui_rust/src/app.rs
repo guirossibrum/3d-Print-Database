@@ -244,8 +244,15 @@ impl App {
                 KeyCode::Left => self.input_mode = InputMode::EditName,
                 KeyCode::Up | KeyCode::Esc => self.input_mode = InputMode::Normal,
                 KeyCode::Enter => {
-                    self.update_selected_product().await?;
-                    self.input_mode = InputMode::Normal;
+                    match self.update_selected_product().await {
+                        Ok(()) => {
+                            self.input_mode = InputMode::Normal;
+                        }
+                        Err(e) => {
+                            self.status_message = format!("Update failed: {:?}", e);
+                            self.input_mode = InputMode::Normal;
+                        }
+                    }
                 }
                 KeyCode::Backspace => {
                     if let Some(product) = self.products.get_mut(self.selected_index) {
@@ -345,9 +352,14 @@ impl App {
     }
 
     async fn update_selected_product(&mut self) -> Result<()> {
-        if let Some(product) = self.products.get(self.selected_index) {
-            self.api_client.update_product(&product.sku, product).await?;
-            self.status_message = format!("Updated product: {}", product.name);
+        if self.selected_index < self.products.len() {
+            if let Some(product) = self.products.get(self.selected_index) {
+                // TODO: Re-enable API call when backend supports product updates
+                // self.api_client.update_product(&product.sku, product).await?;
+                self.status_message = format!("Updated product: {} (simulated)", product.name);
+            }
+        } else {
+            self.status_message = "Error: Invalid product selection".to_string();
         }
         Ok(())
     }
