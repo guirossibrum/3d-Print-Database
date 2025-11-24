@@ -383,7 +383,7 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
         app.status_message.clone()
     };
 
-    let footer_text = format!("FOOTER: {} | {} | v0.3.0", truncated_status, instructions);
+    let footer_text = format!("{} | {} | q:quit v0.3.0", truncated_status, instructions);
 
     let footer = Paragraph::new(footer_text)
         .style(Style::default().fg(Color::Cyan))

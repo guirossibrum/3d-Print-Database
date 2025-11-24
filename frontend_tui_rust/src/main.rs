@@ -14,23 +14,14 @@ use app::App;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("Starting 3D Print Database TUI...");
-
-    // Test app initialization first
+    // Initialize app without println to avoid text persistence
     let mut app = match App::new().await {
-        Ok(app) => {
-            println!("✓ App initialized successfully!");
-            println!("✓ Found {} products, {} categories, {} tags",
-                     app.products.len(), app.categories.len(), app.tags.len());
-            app
-        }
+        Ok(app) => app,
         Err(e) => {
-            println!("✗ Failed to initialize app: {:?}", e);
+            eprintln!("Failed to initialize app: {:?}", e);
             return Err(e.into());
         }
     };
-
-    println!("Setting up terminal...");
 
     // Setup terminal with error handling
     if let Err(e) = enable_raw_mode() {
@@ -55,9 +46,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let mut stdout = io::stdout();
-    // Clear screen and hide cursor before entering alternate screen
-    execute!(stdout, Clear(ClearType::All), Hide)?;
+    // Aggressive screen clearing
+    execute!(stdout, Clear(ClearType::All))?;
+    execute!(stdout, Hide)?;
     execute!(stdout, EnterAlternateScreen)?;
+    // Clear again after entering alternate screen
+    execute!(stdout, Clear(ClearType::All))?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = match Terminal::new(backend) {
         Ok(t) => t,
@@ -81,9 +75,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _ = execute!(io::stdout(), Show);
 
     match res {
-        Ok(()) => println!("✓ TUI exited normally."),
+        Ok(()) => eprintln!("✓ TUI exited normally."),
         Err(err) => {
-            println!("✗ TUI error: {:?}", err);
+            eprintln!("✗ TUI error: {:?}", err);
             return Err(err.into());
         }
     }
