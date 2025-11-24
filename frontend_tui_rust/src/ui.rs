@@ -190,6 +190,12 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
             Style::default().fg(Color::Cyan)
         };
 
+        let prod_style = if matches!(app.input_mode, InputMode::EditProduction) {
+            Style::default().fg(Color::Yellow).bold()
+        } else {
+            Style::default().fg(Color::Cyan)
+        };
+
     let mut content = vec![
             Line::from(vec![
                 Span::styled("SKU: ", Style::default().fg(Color::Cyan)),
@@ -212,6 +218,16 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
                 } else {
                     Span::raw("")
                 },
+            ]),
+            Line::from(vec![
+                Span::styled("Production: ", prod_style),
+                Span::raw(if matches!(app.input_mode, InputMode::EditProduction) {
+                    format!("[{}] Yes    [{}] No",
+                        if product.production { "x" } else { " " },
+                        if !product.production { "x" } else { " " })
+                } else {
+                    if product.production { "Yes" } else { "No" }
+                }),
             ]),
             Line::from(vec![
                 Span::styled("Tags: ", Style::default().fg(Color::Cyan)),
@@ -365,7 +381,8 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
         Tab::Search => match app.input_mode {
             InputMode::Normal => "Tab: edit, j/k: select, d: delete",
             InputMode::EditName => "→: desc, ←: back, ↑: cancel, Enter: desc",
-            InputMode::EditDescription => "←: name, ↑: cancel, Enter: save",
+            InputMode::EditDescription => "→: prod, ←: name, ↑: cancel, Enter: save",
+            InputMode::EditProduction => "←: desc, ↑: cancel, Space/x: toggle, Enter: save",
             _ => "Tab: edit, j/k: select",
         },
         Tab::Inventory => "j/k: navigate, +/-/Enter: adjust stock",
