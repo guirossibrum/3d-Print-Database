@@ -134,6 +134,15 @@ impl App {
     }
 
     fn handle_key(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+        // Handle TAB specially for edit modes to ensure it cancels
+        if matches!(key.code, KeyCode::Tab) &&
+           matches!(self.input_mode, InputMode::EditName | InputMode::EditDescription | InputMode::EditProduction) {
+            // Cancel editing and return to results
+            self.input_mode = InputMode::Normal;
+            self.active_pane = ActivePane::Left;
+            return Ok(());
+        }
+
         match self.input_mode {
             InputMode::Normal => self.handle_normal_mode(key),
             InputMode::Search => self.handle_search_mode(key),

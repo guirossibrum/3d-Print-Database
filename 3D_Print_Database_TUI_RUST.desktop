@@ -10,3 +10,7 @@ Categories=Utility;Database;Office;ConsoleOnly;
 Keywords=3d;print;database;product;management;tui;terminal;cli;rust;ratatui;navigation;pane;
 StartupNotify=false
 Path=/home/grbrum/Work/3d_print/
+# Hyprland window rules for floating terminal
+X-Hyprland-Window-Rule=float,^(3D Print Database TUI)$
+X-Hyprland-Window-Rule=size 1200 800,^(3D Print Database TUI)$
+X-Hyprland-Window-Rule=center,^(3D Print Database TUI)$
