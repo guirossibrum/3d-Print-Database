@@ -152,12 +152,12 @@ impl App {
                 self.running = false;
             }
             // Global navigation - Ctrl+Tab switches tabs
-            KeyCode::Tab if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            KeyCode::Tab if key.modifiers.intersects(KeyModifiers::CONTROL) => {
                 self.current_tab = self.current_tab.next();
                 self.active_pane = ActivePane::Left;  // Reset to left pane
                 self.selected_index = 0;
             }
-            KeyCode::Tab if key.modifiers.contains(KeyModifiers::SHIFT) => {
+            KeyCode::BackTab if key.modifiers.intersects(KeyModifiers::SHIFT) => {
                 self.current_tab = self.current_tab.prev();
                 self.active_pane = ActivePane::Left;  // Reset to left pane
                 self.selected_index = 0;
@@ -367,6 +367,16 @@ impl App {
             }
             KeyCode::Down => {
                 // Already at last field, do nothing
+            }
+            KeyCode::Left => {
+                if let Some(product) = self.products.get_mut(self.selected_index) {
+                    product.production = false;
+                }
+            }
+            KeyCode::Right => {
+                if let Some(product) = self.products.get_mut(self.selected_index) {
+                    product.production = true;
+                }
             }
             KeyCode::Char('y') | KeyCode::Char('Y') => {
                 if let Some(product) = self.products.get_mut(self.selected_index) {

@@ -249,11 +249,17 @@ fn draw_search_left_pane(f: &mut Frame, area: Rect, app: &App) {
         Style::default().fg(Color::White)
     };
 
+    let title = if matches!(app.input_mode, InputMode::Search) {
+        "Search Products"
+    } else {
+        "Results"
+    };
+
     draw_searchable_pane(
         f,
         area,
         app,
-        "Search Products",
+        title,
         &app.search_query,
         InputMode::Search,
         display_as_list,
@@ -296,7 +302,7 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
                 Span::styled("Name: ", name_style),
                 Span::raw(&product.name),
                 if matches!(app.input_mode, InputMode::EditName) {
-                    Span::styled(" _", Style::default().fg(Color::White))
+                    Span::styled("_", Style::default().fg(Color::White))
                 } else {
                     Span::raw("")
                 },
@@ -305,7 +311,7 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
                 Span::styled("Description: ", desc_style),
                 Span::raw(product.description.as_deref().unwrap_or("")),
                 if matches!(app.input_mode, InputMode::EditDescription) {
-                    Span::styled(" _", Style::default().fg(Color::White))
+                    Span::styled("_", Style::default().fg(Color::White))
                 } else {
                     Span::raw("")
                 },
@@ -470,7 +476,7 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App, version: &str) {
             InputMode::Search => "Type to search, Enter: confirm, Esc: cancel",
             InputMode::EditName => "Edit name, ↑↓: change field, Enter: save, Esc: cancel",
             InputMode::EditDescription => "Edit description, ↑↓: change field, Enter: save, Esc: cancel",
-            InputMode::EditProduction => "Space: toggle production, ↑↓: change field, Enter: save, Esc: cancel",
+            InputMode::EditProduction => "←→: toggle production, ↑↓: change field, Enter: save, Esc: cancel",
             _ => "Tab: switch panes, j/k: navigate",
         },
         Tab::Inventory => match app.input_mode {
