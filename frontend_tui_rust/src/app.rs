@@ -34,6 +34,7 @@ impl Tab {
 pub enum InputMode {
     Normal,
     Search,
+    InventorySearch,
     CreateName,
     CreateDescription,
     EditName,
@@ -57,6 +58,7 @@ pub struct App {
     // UI state
     pub selected_index: usize,
     pub search_query: String,
+    pub inventory_search_query: String,
     pub status_message: String,
 
     // Create form
@@ -91,6 +93,7 @@ impl App {
             tags: tags.into_iter().map(|t| t.name).collect(),
             selected_index: 0,
             search_query: String::new(),
+            inventory_search_query: "v".to_string(), // Test filter
             status_message: "Welcome to 3D Print Database TUI".to_string(),
             create_form: CreateForm::default(),
         })

@@ -133,25 +133,44 @@ fn draw_search_tab(f: &mut Frame, area: Rect, app: &App) {
     draw_search_right_pane(f, chunks[1], app);
 }
 
-fn draw_search_left_pane(f: &mut Frame, area: Rect, app: &App) {
+fn draw_searchable_list_pane(
+    f: &mut Frame,
+    area: Rect,
+    app: &App,
+    title: &str,
+    search_query: &str,
+    input_mode: InputMode,
+    display_format: fn(&crate::api::Product) -> String,
+) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(3), Constraint::Min(5)])
         .split(area);
 
     // Search input
-    let search_text = if matches!(app.input_mode, InputMode::Search) {
-        format!("Search: {}_", app.search_query)
+    let search_text = if matches!(app.input_mode, input_mode) {
+        format!("Search: {}_", search_query)
     } else {
-        format!("Search: {} (press '/' to search)", app.search_query)
+        format!("Search: {} (press '/' to search)", search_query)
     };
     let search_paragraph = Paragraph::new(search_text)
-        .block(Block::default().borders(Borders::ALL).title("Search Products"));
+        .block(Block::default().borders(Borders::ALL).title(title));
     f.render_widget(search_paragraph, chunks[0]);
 
+    // Filter products based on search query
+    let filtered_products: Vec<&crate::api::Product> = if search_query.is_empty() {
+        app.products.iter().collect()
+    } else {
+        app.products.iter()
+            .filter(|product|
+                product.name.to_lowercase().contains(&search_query.to_lowercase()) ||
+                product.sku.to_lowercase().contains(&search_query.to_lowercase())
+            )
+            .collect()
+    };
+
     // Results list
-    let items: Vec<ListItem> = app
-        .products
+    let items: Vec<ListItem> = filtered_products
         .iter()
         .enumerate()
         .map(|(i, product)| {
@@ -161,19 +180,30 @@ fn draw_search_left_pane(f: &mut Frame, area: Rect, app: &App) {
                 Style::default().fg(Color::White)
             };
 
-            ListItem::new(format!("{} - {} ({})",
-                product.sku,
-                product.name,
-                if product.production { "Production" } else { "Prototype" }
-            )).style(style)
+            ListItem::new(display_format(product)).style(style)
         })
         .collect();
 
     let list = List::new(items)
         .block(Block::default().borders(Borders::ALL).title("Results"))
         .highlight_style(Style::default().bold());
-
     f.render_widget(list, chunks[1]);
+}
+
+fn draw_search_left_pane(f: &mut Frame, area: Rect, app: &App) {
+    draw_searchable_list_pane(
+        f,
+        area,
+        app,
+        "Search Products",
+        &app.search_query,
+        InputMode::Search,
+        |product| format!("{} - {} ({})",
+            product.sku,
+            product.name,
+            if product.production { "Production" } else { "Prototype" }
+        ),
+    );
 }
 
 fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
@@ -274,14 +304,41 @@ fn draw_inventory_tab(f: &mut Frame, content_area: Rect, totals_area: Rect, app:
 }
 
 fn draw_inventory_left_pane(f: &mut Frame, area: Rect, app: &App) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(3), Constraint::Min(5)])
+        .split(area);
+
+    // Search input
+    let search_text = if matches!(app.input_mode, InputMode::InventorySearch) {
+        format!("Search inventory: {}_", app.inventory_search_query)
+    } else {
+        format!("Search inventory: {} (press '/' to search)", app.inventory_search_query)
+    };
+    let search_paragraph = Paragraph::new(search_text)
+        .block(Block::default().borders(Borders::ALL).title("Inventory Search"));
+    f.render_widget(search_paragraph, chunks[0]);
+
     // Header
     let header = vec![
         Line::from("SKU         Name                    Qty   Price   Status")
     ];
 
+    // Filter products based on search query
+    let filtered_products: Vec<&crate::api::Product> = if app.inventory_search_query.is_empty() {
+        app.products.iter().collect()
+    } else {
+        app.products.iter()
+            .filter(|product|
+                product.name.to_lowercase().contains(&app.inventory_search_query.to_lowercase()) ||
+                product.sku.to_lowercase().contains(&app.inventory_search_query.to_lowercase())
+            )
+            .collect()
+    };
+
     // Product rows
     let mut rows = vec![];
-    for (i, product) in app.products.iter().enumerate() {
+    for (i, product) in filtered_products.iter().enumerate() {
         let style = if i == app.selected_index {
             Style::default().fg(Color::Black).bg(Color::Cyan)
         } else {
@@ -305,10 +362,10 @@ fn draw_inventory_left_pane(f: &mut Frame, area: Rect, app: &App) {
     let content = [header, rows].concat();
 
     let paragraph = Paragraph::new(content)
-        .block(Block::default().borders(Borders::ALL).title("Inventory"))
+        .block(Block::default().borders(Borders::ALL).title("Inventory Results"))
         .wrap(Wrap { trim: true });
 
-    f.render_widget(paragraph, area);
+    f.render_widget(paragraph, chunks[1]);
 }
 
 fn draw_inventory_right_pane(f: &mut Frame, area: Rect, app: &App) {
@@ -385,7 +442,10 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
             InputMode::EditProduction => "←: desc, ↑: cancel, Space/x: toggle, Enter: save",
             _ => "Tab: edit, j/k: select",
         },
-        Tab::Inventory => "j/k: navigate, +/-/Enter: adjust stock",
+        Tab::Inventory => match app.input_mode {
+            InputMode::InventorySearch => "Type to search inventory, Enter: search, Esc: exit search",
+            _ => "j/k: navigate, /: search inventory, +/-/Enter: adjust stock",
+        },
     };
 
     // Truncate status message if too long
