@@ -12,6 +12,58 @@ mod api;
 
 use app::App;
 
+#[derive(Debug)]
+enum TerminalError {
+    NotInteractive,
+    SetupFailed(Box<dyn std::error::Error>),
+}
+
+fn setup_terminal() -> Result<ratatui::Terminal<ratatui::backend::CrosstermBackend<std::io::Stdout>>, TerminalError> {
+    // Check if we're in an interactive terminal
+    if let Err(e) = enable_raw_mode() {
+        if e.raw_os_error() == Some(6) {
+            return Err(TerminalError::NotInteractive);
+        }
+        return Err(TerminalError::SetupFailed(e.into()));
+    }
+
+    let mut stdout = io::stdout();
+    // Aggressive screen clearing
+    execute!(stdout, Clear(ClearType::All))
+        .map_err(|e| TerminalError::SetupFailed(e.into()))?;
+    execute!(stdout, Hide)
+        .map_err(|e| TerminalError::SetupFailed(e.into()))?;
+    execute!(stdout, EnterAlternateScreen)
+        .map_err(|e| TerminalError::SetupFailed(e.into()))?;
+    // Clear again after entering alternate screen
+    execute!(stdout, Clear(ClearType::All))
+        .map_err(|e| TerminalError::SetupFailed(e.into()))?;
+
+    let backend = CrosstermBackend::new(stdout);
+    let terminal = Terminal::new(backend)
+        .map_err(|e| {
+            let _ = disable_raw_mode();
+            let _ = execute!(io::stdout(), LeaveAlternateScreen);
+            TerminalError::SetupFailed(e.into())
+        })?;
+
+    Ok(terminal)
+}
+
+fn print_usage_instructions() {
+    println!("✗ No interactive terminal detected!");
+    println!();
+    println!("This is a Terminal User Interface (TUI) application that requires an interactive terminal.");
+    println!();
+    println!("To run the application:");
+    println!("1. Open a terminal/command prompt");
+    println!("2. Navigate to the frontend_tui_rust directory");
+    println!("3. Run: cargo run");
+    println!();
+    println!("Make sure the backend is running first:");
+    println!("  cd ../backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload");
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize app without println to avoid text persistence
@@ -23,43 +75,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    // Setup terminal with error handling
-    if let Err(e) = enable_raw_mode() {
-        // Check if this is the "No such device or address" error (code 6)
-        // This typically means we're not in an interactive terminal
-        if e.raw_os_error() == Some(6) {
-            println!("✗ No interactive terminal detected!");
-            println!("");
-            println!("This is a Terminal User Interface (TUI) application that requires an interactive terminal.");
-            println!("");
-            println!("To run the application:");
-            println!("1. Open a terminal/command prompt");
-            println!("2. Navigate to the frontend_tui_rust directory");
-            println!("3. Run: cargo run");
-            println!("");
-            println!("Make sure the backend is running first:");
-            println!("  cd ../backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload");
+    let mut terminal = match setup_terminal() {
+        Ok(terminal) => terminal,
+        Err(TerminalError::NotInteractive) => {
+            print_usage_instructions();
             return Ok(());
         }
-        println!("✗ Failed to enable raw mode: {:?}", e);
-        return Err(e.into());
-    }
-
-    let mut stdout = io::stdout();
-    // Aggressive screen clearing
-    execute!(stdout, Clear(ClearType::All))?;
-    execute!(stdout, Hide)?;
-    execute!(stdout, EnterAlternateScreen)?;
-    // Clear again after entering alternate screen
-    execute!(stdout, Clear(ClearType::All))?;
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = match Terminal::new(backend) {
-        Ok(t) => t,
-        Err(e) => {
-            println!("✗ Failed to create terminal: {:?}", e);
-            let _ = disable_raw_mode();
-            let _ = execute!(io::stdout(), LeaveAlternateScreen);
-            return Err(e.into());
+        Err(TerminalError::SetupFailed(e)) => {
+            eprintln!("✗ Failed to setup terminal: {:?}", e);
+            return Err(e);
         }
     };
 
@@ -67,7 +91,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Press 'q' to quit, use mouse or keyboard to navigate.");
 
     // Create app and run it
-    let res = app.run(&mut terminal).await;
+    let res = app.run(&mut terminal);
 
     // Restore terminal
     let _ = disable_raw_mode();

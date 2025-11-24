@@ -40,9 +40,9 @@
 - **Test builds**: Ensure both debug and release binaries work before release
 
 ## Version Management Strategy
-- **Semantic versioning**: Use MAJOR.MINOR.PATCH format (e.g., v0.4.0)
+- **Semantic versioning**: Use MAJOR.MINOR.PATCH format (e.g., v0.5.0)
 - **Version display**: Always visible in Rust TUI footer (bottom right)
-- **Desktop file naming**: Include version in filename (e.g., `3D_Print_Database_TUI_RUST_v0.4.0.desktop`)
+- **Desktop file naming**: Include version in filename (e.g., `3D_Print_Database_TUI_RUST_v0.5.0.desktop`)
 - **Launcher validation**: Scripts check for binary existence and show version info
 - **Backward compatibility**: Maintain API compatibility across frontend versions
 - **Deployment isolation**: Use versioned binaries to prevent running old versions

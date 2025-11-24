@@ -1,11 +1,16 @@
 use std::time::Duration;
-use crossterm::event::{self, Event, KeyCode, KeyModifiers};
+use crossterm::event::{Event, KeyCode, KeyModifiers};
 use ratatui::Terminal;
 use anyhow::Result;
 
 use crate::ui;
-use crate::api::{ApiClient, Product, Category};
+use crate::api::{ApiClient, Product};
 
+// Constants
+const EVENT_POLL_TIMEOUT_MS: u64 = 100;
+const DEFAULT_API_BASE_URL: &str = "http://localhost:8000";
+
+/// Represents the different tabs in the TUI application
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Tab {
     Create,
@@ -29,6 +34,14 @@ impl Tab {
             Tab::Inventory => Tab::Search,
         }
     }
+}
+
+/// Represents the different input modes for handling user interactions
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ActivePane {
+    Left,
+    Right,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum InputMode {
@@ -44,15 +57,15 @@ pub enum InputMode {
 
 
 
+/// Main application state for the 3D Print Database TUI
 pub struct App {
     pub running: bool,
     pub current_tab: Tab,
     pub input_mode: InputMode,
-    pub api_client: ApiClient,
+    pub active_pane: ActivePane,
 
     // Data
     pub products: Vec<Product>,
-    pub categories: Vec<Category>,
     pub tags: Vec<String>,
 
     // UI state
@@ -69,81 +82,320 @@ pub struct App {
 pub struct CreateForm {
     pub name: String,
     pub description: String,
-    pub category_id: Option<i32>,
-    pub tags: Vec<String>,
-    pub production: bool,
 }
 
 impl App {
+    /// Creates a new App instance, initializing data from the backend API
     pub async fn new() -> Result<Self> {
-        let api_client = ApiClient::new("http://localhost:8000".to_string());
-
-        // Load initial data
-        let categories = api_client.get_categories().await?;
-        let tags = api_client.get_tags().await?;
-        let products = api_client.search_products("").await?;
+        let api_client = ApiClient::new(DEFAULT_API_BASE_URL.to_string());
+        let products = api_client.get_products().await?;
+        let tags = api_client.get_tags().await?
+            .into_iter()
+            .map(|tag| tag.name)
+            .collect::<Vec<String>>();
 
         Ok(Self {
             running: true,
             current_tab: Tab::Search,
             input_mode: InputMode::Normal,
-            api_client,
+            active_pane: ActivePane::Left,
             products,
-            categories,
-            tags: tags.into_iter().map(|t| t.name).collect(),
+            tags,
             selected_index: 0,
             search_query: String::new(),
-            inventory_search_query: "v".to_string(), // Test filter
-            status_message: "Welcome to 3D Print Database TUI".to_string(),
+            inventory_search_query: String::new(),
+            status_message: String::new(),
             create_form: CreateForm::default(),
         })
     }
 
-    pub async fn run(
+    /// Runs the main application loop, handling events and rendering the UI
+    pub fn run(
         &mut self,
         terminal: &mut Terminal<ratatui::backend::CrosstermBackend<std::io::Stdout>>,
     ) -> Result<()> {
-        loop {
-            terminal.draw(|f| ui::draw(f, self))?;
+        while self.running {
+            // Draw the UI
+            terminal.draw(|f| {
+                ui::draw(f, self);
+            })?;
 
-            if event::poll(Duration::from_millis(100))? {
-                match event::read()? {
-                     Event::Key(key) => {
-                         self.handle_key(key)?;
-                     }
-                     Event::Mouse(mouse_event) => {
-                         self.handle_mouse_event(mouse_event);
-                     }
-                     _ => {}
-                 }
-             }
-         }
-     }
-
-    fn handle_key(&mut self, _key: crossterm::event::KeyEvent) -> Result<()> {
-        // Temporarily simplified
+            // Poll for events with timeout
+            if crossterm::event::poll(Duration::from_millis(EVENT_POLL_TIMEOUT_MS))? {
+                match crossterm::event::read()? {
+                    Event::Key(key) => self.handle_key(key)?,
+                    Event::Mouse(mouse) => self.handle_mouse_event(mouse),
+                    _ => {}
+                }
+            }
+        }
         Ok(())
     }
 
-    fn next_item(&mut self) {
-        let max_items = match self.current_tab {
-            Tab::Search => self.products.len(),
-            Tab::Inventory => self.products.len(),
-            Tab::Create => 0,
-        };
+    fn handle_key(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+        match self.input_mode {
+            InputMode::Normal => self.handle_normal_mode(key),
+            InputMode::Search => self.handle_search_mode(key),
+            InputMode::InventorySearch => self.handle_inventory_search_mode(key),
+            InputMode::CreateName => self.handle_create_name_mode(key),
+            InputMode::CreateDescription => self.handle_create_description_mode(key),
+            InputMode::EditName => self.handle_edit_name_mode(key),
+            InputMode::EditDescription => self.handle_edit_description_mode(key),
+            InputMode::EditProduction => self.handle_edit_production_mode(key),
+        }
+    }
 
+    fn handle_normal_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+        match key.code {
+            KeyCode::Char('q') | KeyCode::Esc => {
+                self.running = false;
+            }
+            // Global navigation - Ctrl+Tab switches tabs
+            KeyCode::Tab if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.current_tab = self.current_tab.next();
+                self.active_pane = ActivePane::Left;  // Reset to left pane
+                self.selected_index = 0;
+            }
+            KeyCode::BackTab if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.current_tab = self.current_tab.prev();
+                self.active_pane = ActivePane::Left;  // Reset to left pane
+                self.selected_index = 0;
+            }
+            // Pane navigation - Tab switches panes (if multiple panes exist)
+            KeyCode::Tab if self.has_multiple_panes() => {
+                self.next_pane();
+            }
+            KeyCode::BackTab if self.has_multiple_panes() => {
+                self.prev_pane();
+            }
+            // Regular Tab (no modifier) - fallback for single-pane tabs
+            KeyCode::Tab => {
+                self.current_tab = self.current_tab.next();
+                self.active_pane = ActivePane::Left;
+                self.selected_index = 0;
+            }
+            KeyCode::BackTab => {
+                self.current_tab = self.current_tab.prev();
+                self.active_pane = ActivePane::Left;
+                self.selected_index = 0;
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                self.next_item();
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                self.prev_item();
+            }
+            KeyCode::Char('s') => {
+                if matches!(self.current_tab, Tab::Search) {
+                    self.input_mode = InputMode::Search;
+                } else if matches!(self.current_tab, Tab::Inventory) {
+                    self.input_mode = InputMode::InventorySearch;
+                }
+            }
+            KeyCode::Char('c') => {
+                if matches!(self.current_tab, Tab::Create) {
+                    self.input_mode = InputMode::CreateName;
+                }
+            }
+            KeyCode::Enter => {
+                if matches!(self.current_tab, Tab::Search) && !self.products.is_empty() {
+                    self.input_mode = InputMode::EditName;
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn handle_search_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+        match key.code {
+            KeyCode::Esc => {
+                self.input_mode = InputMode::Normal;
+                self.search_query.clear();
+            }
+            KeyCode::Enter => {
+                self.input_mode = InputMode::Normal;
+            }
+            KeyCode::Backspace => {
+                self.search_query.pop();
+            }
+            KeyCode::Char(c) => {
+                self.search_query.push(c);
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn handle_inventory_search_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+        match key.code {
+            KeyCode::Esc => {
+                self.input_mode = InputMode::Normal;
+                self.inventory_search_query.clear();
+            }
+            KeyCode::Enter => {
+                self.input_mode = InputMode::Normal;
+            }
+            KeyCode::Backspace => {
+                self.inventory_search_query.pop();
+            }
+            KeyCode::Char(c) => {
+                self.inventory_search_query.push(c);
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn handle_create_name_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+        match key.code {
+            KeyCode::Esc => {
+                self.input_mode = InputMode::Normal;
+                self.create_form.name.clear();
+            }
+            KeyCode::Enter => {
+                self.input_mode = InputMode::CreateDescription;
+            }
+            KeyCode::Backspace => {
+                self.create_form.name.pop();
+            }
+            KeyCode::Char(c) => {
+                self.create_form.name.push(c);
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn handle_create_description_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+        match key.code {
+            KeyCode::Esc => {
+                self.input_mode = InputMode::CreateName;
+            }
+            KeyCode::Enter => {
+                // TODO: Save the product
+                self.input_mode = InputMode::Normal;
+            }
+            KeyCode::Backspace => {
+                self.create_form.description.pop();
+            }
+            KeyCode::Char(c) => {
+                self.create_form.description.push(c);
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn handle_edit_name_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+        match key.code {
+            KeyCode::Esc => {
+                self.input_mode = InputMode::Normal;
+            }
+            KeyCode::Enter => {
+                self.input_mode = InputMode::EditDescription;
+            }
+            KeyCode::Backspace => {
+                if let Some(product) = self.products.get_mut(self.selected_index) {
+                    product.name.pop();
+                }
+            }
+            KeyCode::Char(c) => {
+                if let Some(product) = self.products.get_mut(self.selected_index) {
+                    product.name.push(c);
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn handle_edit_description_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+        match key.code {
+            KeyCode::Esc => {
+                self.input_mode = InputMode::EditName;
+            }
+            KeyCode::Enter => {
+                self.input_mode = InputMode::EditProduction;
+            }
+                KeyCode::Backspace => {
+                    if let Some(product) = self.products.get_mut(self.selected_index)
+                        && let Some(ref mut desc) = product.description {
+                        desc.pop();
+                    }
+                }
+            KeyCode::Char(c) => {
+                if let Some(product) = self.products.get_mut(self.selected_index) {
+                    product.description.get_or_insert_with(String::new).push(c);
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn handle_edit_production_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+        match key.code {
+            KeyCode::Esc => {
+                self.input_mode = InputMode::EditDescription;
+            }
+            KeyCode::Enter => {
+                // TODO: Save changes
+                self.input_mode = InputMode::Normal;
+            }
+            KeyCode::Char('y') | KeyCode::Char('Y') => {
+                if let Some(product) = self.products.get_mut(self.selected_index) {
+                    product.production = true;
+                }
+            }
+            KeyCode::Char('n') | KeyCode::Char('N') => {
+                if let Some(product) = self.products.get_mut(self.selected_index) {
+                    product.production = false;
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn get_max_items(&self) -> usize {
+        match self.current_tab {
+            Tab::Search | Tab::Inventory => self.products.len(),
+            Tab::Create => 0,
+        }
+    }
+
+    pub fn has_multiple_panes(&self) -> bool {
+        matches!(self.current_tab, Tab::Search | Tab::Inventory)
+    }
+
+    fn next_pane(&mut self) {
+        if self.has_multiple_panes() {
+            self.active_pane = match self.active_pane {
+                ActivePane::Left => ActivePane::Right,
+                ActivePane::Right => ActivePane::Left,
+            };
+        }
+    }
+
+    fn prev_pane(&mut self) {
+        if self.has_multiple_panes() {
+            self.active_pane = match self.active_pane {
+                ActivePane::Left => ActivePane::Right,
+                ActivePane::Right => ActivePane::Left,
+            };
+        }
+    }
+
+    fn next_item(&mut self) {
+        let max_items = self.get_max_items();
         if max_items > 0 {
             self.selected_index = (self.selected_index + 1) % max_items;
         }
     }
 
     fn prev_item(&mut self) {
-        let max_items = match self.current_tab {
-            Tab::Search => self.products.len(),
-            Tab::Inventory => self.products.len(),
-            Tab::Create => 0,
-        };
-
+        let max_items = self.get_max_items();
         if max_items > 0 {
             self.selected_index = if self.selected_index == 0 {
                 max_items - 1
@@ -153,191 +405,7 @@ impl App {
         }
     }
 
-    async fn select_item(&mut self) -> Result<()> {
-        match self.current_tab {
-            Tab::Search => {
-                if let Some(product) = self.products.get(self.selected_index) {
-                    self.status_message = format!("Selected: {} ({})", product.name, product.sku);
-                }
-            }
-            Tab::Inventory => {
-                if let Some(product) = self.products.get(self.selected_index) {
-                    self.status_message = format!("Inventory: {} - Stock: Check API", product.name);
-                }
-            }
-            Tab::Create => {
-                self.create_product().await?;
-            }
-        }
-        Ok(())
-    }
-
-    async fn delete_selected(&mut self) -> Result<()> {
-        if let Some(product) = self.products.get(self.selected_index) {
-            if let Some(_id) = product.id {
-                self.api_client.delete_product(&product.sku).await?;
-                self.status_message = format!("Deleted: {}", product.name);
-                // Refresh products
-                self.products = self.api_client.search_products("").await?;
-            }
-        }
-        Ok(())
-    }
-
-    async fn search_products(&mut self) -> Result<()> {
-        self.products = self.api_client.search_products(&self.search_query).await?;
-        self.selected_index = 0;
-        self.status_message = format!("Found {} products", self.products.len());
-        Ok(())
-    }
-
-    async fn adjust_stock(&mut self, delta: i32) -> Result<()> {
-        // Mock stock adjustment - in real app, this would call API
-        self.status_message = format!("Stock adjusted by {}", delta);
-        Ok(())
-    }
-
-    async fn update_selected_product(&mut self) -> Result<()> {
-        if self.selected_index < self.products.len() {
-            if let Some(product) = self.products.get(self.selected_index) {
-                // TODO: Re-enable API call when backend supports product updates
-                // self.api_client.update_product(&product.sku, product).await?;
-                self.status_message = format!("Updated product: {} (simulated)", product.name);
-            }
-        } else {
-            self.status_message = "Error: Invalid product selection".to_string();
-        }
-        Ok(())
-    }
-
-    async fn create_product(&mut self) -> Result<()> {
-        if self.create_form.name.is_empty() {
-            self.status_message = "Error: Product name is required".to_string();
-            return Ok(());
-        }
-
-        let product = Product {
-            id: None,
-            sku: format!("{}-001", self.create_form.name.to_uppercase().replace(" ", "-")),
-            name: self.create_form.name.clone(),
-            description: Some(self.create_form.description.clone()),
-            production: self.create_form.production,
-            tags: self.create_form.tags.clone(),
-        };
-
-        self.api_client.create_product(&product).await?;
-        self.status_message = format!("Created product: {}", product.name);
-
-        // Reset form
-        self.create_form = CreateForm::default();
-
-        // Refresh products
-        self.products = self.api_client.search_products("").await?;
-
-        Ok(())
-    }
-
-    fn handle_mouse_event(&mut self, mouse_event: crossterm::event::MouseEvent) {
-        use crossterm::event::{MouseButton, MouseEventKind};
-
-        if let MouseEventKind::Down(MouseButton::Left) = mouse_event.kind {
-            let x = mouse_event.column as usize;
-            let y = mouse_event.row as usize;
-
-            // Header area (y = 0-2)
-            if y < 3 {
-                // Tab area (y = 1-2, x varies)
-                if y >= 1 && y <= 2 {
-                    let tab_width = 12; // Approximate width per tab
-                    let tab_index = x / tab_width;
-                    match tab_index {
-                        0 => self.current_tab = Tab::Create,
-                        1 => self.current_tab = Tab::Search,
-                        2 => self.current_tab = Tab::Inventory,
-                        _ => {}
-                    }
-                    self.selected_index = 0;
-                    self.input_mode = InputMode::Normal;
-                }
-            }
-            // Content area (y = 3+)
-            else if y >= 3 {
-                match self.current_tab {
-                    Tab::Search => self.handle_search_mouse_click(x, y),
-                    Tab::Create => self.handle_create_mouse_click(x, y),
-                    Tab::Inventory => self.handle_inventory_mouse_click(x, y),
-                }
-            }
-        }
-    }
-
-    fn handle_search_mouse_click(&mut self, x: usize, y: usize) {
-        // Left pane (search results) - x < 50% of width
-        // Right pane (product details/edit) - x >= 50% of width
-
-        let content_y = y - 3; // Adjust for header/tabs
-
-        if x < 40 { // Left pane - search results
-            // Each result takes about 1 line, starting from y=1 in the pane
-            if content_y >= 1 {
-                let result_index = content_y - 1;
-                if result_index < self.products.len() {
-                    self.selected_index = result_index;
-                    self.status_message = format!("Selected product {}", result_index + 1);
-                }
-            }
-        } else { // Right pane - product details/edit
-            // Check if clicking on editable fields
-            let field_y = content_y;
-            match field_y {
-                1 => { // Name field
-                    if matches!(self.input_mode, InputMode::Normal) {
-                        self.input_mode = InputMode::EditName;
-                    }
-                }
-                2 => { // Description field
-                    if matches!(self.input_mode, InputMode::Normal) {
-                        self.input_mode = InputMode::EditDescription;
-                    }
-                }
-                3 => { // Production field
-                    if matches!(self.input_mode, InputMode::Normal) {
-                        self.input_mode = InputMode::EditProduction;
-                    }
-                }
-                _ => {}
-            }
-        }
-    }
-
-    fn handle_create_mouse_click(&mut self, _x: usize, y: usize) {
-        let content_y = y - 3; // Adjust for header/tabs
-
-        // Click on form fields to select them
-        match content_y {
-            1 => { // Name field
-                self.input_mode = InputMode::CreateName;
-            }
-            3 => { // Description field
-                self.input_mode = InputMode::CreateDescription;
-            }
-            _ => {}
-        }
-    }
-
-    fn handle_inventory_mouse_click(&mut self, x: usize, y: usize) {
-        let content_y = y - 3; // Adjust for header/tabs
-
-        if x < 40 { // Left pane - product list
-            // Header is at content_y = 0, products start at content_y = 1
-            if content_y >= 1 {
-                let product_index = content_y - 1;
-                if product_index < self.products.len() {
-                    self.selected_index = product_index;
-                    self.status_message = format!("Selected inventory item {}", product_index + 1);
-                }
-            }
-        }
-        // Right pane - stock adjustment (no specific clickable areas yet)
+    fn handle_mouse_event(&mut self, _mouse_event: crossterm::event::MouseEvent) {
+        // Mouse handling not yet implemented
     }
 }

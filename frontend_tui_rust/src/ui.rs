@@ -1,15 +1,15 @@
 use ratatui::{
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style, Stylize},
+    layout::{Constraint, Direction, Layout, Rect},
+    style::{Color, Style, Stylize},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Tabs, Wrap},
     Frame,
 };
 
-use crate::app::{App, Tab, InputMode};
+use crate::app::{App, Tab, InputMode, ActivePane};
 
 pub fn draw(f: &mut Frame, app: &mut App) {
-    let size = f.size();
+    let size = f.area();
 
     // Clear the frame
     f.render_widget(Clear, size);
@@ -89,7 +89,7 @@ fn draw_tabs(f: &mut Frame, area: Rect, app: &App) {
 }
 
 fn draw_create_tab(f: &mut Frame, area: Rect, app: &App) {
-    let mut content = vec![
+    let content = vec![
         Line::from(vec![
             Span::styled("Name: ", Style::default().fg(Color::Cyan)),
             Span::raw(&app.create_form.name),
@@ -140,10 +140,11 @@ fn draw_searchable_pane<F>(
     app: &App,
     title: &str,
     search_query: &str,
-    input_mode: InputMode,
+    _input_mode: InputMode,
     display_callback: F,
+    border_style: Style,
 ) where
-    F: Fn(&mut Frame, Rect, &App, &[&crate::api::Product]) -> (),
+    F: Fn(&mut Frame, Rect, &App, &[&crate::api::Product]),
 {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -151,13 +152,13 @@ fn draw_searchable_pane<F>(
         .split(area);
 
     // Search input
-    let search_text = if matches!(app.input_mode, input_mode) {
+    let search_text = if matches!(app.input_mode, _input_mode) {
         format!("Search: {}_", search_query)
     } else {
         format!("Search: {} (press '/' to search)", search_query)
     };
     let search_paragraph = Paragraph::new(search_text)
-        .block(Block::default().borders(Borders::ALL).title(title));
+        .block(Block::default().borders(Borders::ALL).title(title).border_style(border_style));
     f.render_widget(search_paragraph, chunks[0]);
 
     // Filter products based on search query
@@ -242,6 +243,12 @@ fn display_as_table(f: &mut Frame, area: Rect, app: &App, products: &[&crate::ap
 }
 
 fn draw_search_left_pane(f: &mut Frame, area: Rect, app: &App) {
+    let border_style = if matches!(app.active_pane, ActivePane::Left) {
+        Style::default().fg(Color::Yellow).bold()
+    } else {
+        Style::default().fg(Color::White)
+    };
+
     draw_searchable_pane(
         f,
         area,
@@ -250,10 +257,17 @@ fn draw_search_left_pane(f: &mut Frame, area: Rect, app: &App) {
         &app.search_query,
         InputMode::Search,
         display_as_list,
+        border_style,
     );
 }
 
 fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
+    let border_style = if matches!(app.active_pane, ActivePane::Right) {
+        Style::default().fg(Color::Yellow).bold()
+    } else {
+        Style::default().fg(Color::White)
+    };
+
     if let Some(product) = app.products.get(app.selected_index) {
         let name_style = if matches!(app.input_mode, InputMode::EditName) {
             Style::default().fg(Color::Yellow).bold()
@@ -303,7 +317,7 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
                         if product.production { "x" } else { " " },
                         if !product.production { "x" } else { " " })
                 } else {
-                    if product.production { "Yes" } else { "No" }
+                    (if product.production { "Yes" } else { "No" }).to_string()
                 }),
             ]),
             Line::from(vec![
@@ -323,13 +337,13 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
         }
 
         let paragraph = Paragraph::new(content)
-            .block(Block::default().borders(Borders::ALL).title("Product Details"))
+            .block(Block::default().borders(Borders::ALL).title("Product Details").border_style(border_style))
             .wrap(Wrap { trim: true });
 
         f.render_widget(paragraph, area);
     } else {
         let paragraph = Paragraph::new("No product selected")
-            .block(Block::default().borders(Borders::ALL).title("Product Details"));
+            .block(Block::default().borders(Borders::ALL).title("Product Details").border_style(border_style));
         f.render_widget(paragraph, area);
     }
 }
@@ -351,6 +365,12 @@ fn draw_inventory_tab(f: &mut Frame, content_area: Rect, totals_area: Rect, app:
 }
 
 fn draw_inventory_left_pane(f: &mut Frame, area: Rect, app: &App) {
+    let border_style = if matches!(app.active_pane, ActivePane::Left) {
+        Style::default().fg(Color::Yellow).bold()
+    } else {
+        Style::default().fg(Color::White)
+    };
+
     draw_searchable_pane(
         f,
         area,
@@ -359,12 +379,19 @@ fn draw_inventory_left_pane(f: &mut Frame, area: Rect, app: &App) {
         &app.inventory_search_query,
         InputMode::InventorySearch,
         display_as_table,
+        border_style,
     );
 }
 
 fn draw_inventory_right_pane(f: &mut Frame, area: Rect, app: &App) {
+    let border_style = if matches!(app.active_pane, ActivePane::Right) {
+        Style::default().fg(Color::Yellow).bold()
+    } else {
+        Style::default().fg(Color::White)
+    };
+
     if let Some(product) = app.products.get(app.selected_index) {
-    let mut content = vec![
+    let content = vec![
             Line::from(vec![
                 Span::styled("Product: ", Style::default().fg(Color::Cyan)),
                 Span::raw(&product.name),
@@ -393,13 +420,13 @@ fn draw_inventory_right_pane(f: &mut Frame, area: Rect, app: &App) {
         ];
 
         let paragraph = Paragraph::new(content)
-            .block(Block::default().borders(Borders::ALL).title("Stock Adjustment"))
+            .block(Block::default().borders(Borders::ALL).title("Stock Adjustment").border_style(border_style))
             .wrap(Wrap { trim: true });
 
         f.render_widget(paragraph, area);
     } else {
         let paragraph = Paragraph::new("No product selected")
-            .block(Block::default().borders(Borders::ALL).title("Stock Adjustment"));
+            .block(Block::default().borders(Borders::ALL).title("Stock Adjustment").border_style(border_style));
         f.render_widget(paragraph, area);
     }
 }
@@ -421,24 +448,44 @@ fn draw_inventory_totals(f: &mut Frame, area: Rect, app: &App) {
 }
 
 fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
-    // Get instructions based on current tab and mode
+    // Get instructions based on current tab, pane, and mode
     let instructions = match app.current_tab {
         Tab::Create => match app.input_mode {
-            InputMode::Normal => "n: create, Tab: switch tabs",
-            InputMode::CreateName => "Enter name, Enter: next, Esc: cancel",
-            InputMode::CreateDescription => "Enter desc, Enter: save, Esc: cancel",
-            _ => "Tab: switch tabs",
+            InputMode::Normal => "Ctrl+Tab: switch tabs, c: create product",
+            InputMode::CreateName => "Enter name, Enter: next field, Esc: cancel",
+            InputMode::CreateDescription => "Enter description, Enter: save, Esc: cancel",
+            _ => "Ctrl+Tab: switch tabs",
         },
         Tab::Search => match app.input_mode {
-            InputMode::Normal => "Tab: edit, j/k: select, d: delete",
-            InputMode::EditName => "→: desc, ←: back, ↑: cancel, Enter: desc",
-            InputMode::EditDescription => "→: prod, ←: name, ↑: cancel, Enter: save",
-            InputMode::EditProduction => "←: desc, ↑: cancel, Space/x: toggle, Enter: save",
-            _ => "Tab: edit, j/k: select",
+            InputMode::Normal => {
+                if app.has_multiple_panes() {
+                    match app.active_pane {
+                        ActivePane::Left => "Tab: right pane, j/k: select product, Enter: edit",
+                        ActivePane::Right => "Tab: left pane, arrow keys: navigate fields",
+                    }
+                } else {
+                    "j/k: select product, Enter: edit"
+                }
+            }
+            InputMode::Search => "Type to search, Enter: confirm, Esc: cancel",
+            InputMode::EditName => "Edit name, →: next field, ←: prev field, Enter: save, Esc: cancel",
+            InputMode::EditDescription => "Edit description, →: next field, ←: prev field, Enter: save, Esc: cancel",
+            InputMode::EditProduction => "Space: toggle production, Enter: save, Esc: cancel",
+            _ => "Tab: switch panes, j/k: navigate",
         },
         Tab::Inventory => match app.input_mode {
-            InputMode::InventorySearch => "Type to search inventory, Enter: search, Esc: exit search",
-            _ => "j/k: navigate, /: search inventory, +/-/Enter: adjust stock",
+            InputMode::Normal => {
+                if app.has_multiple_panes() {
+                    match app.active_pane {
+                        ActivePane::Left => "Tab: right pane, j/k: select product",
+                        ActivePane::Right => "Tab: left pane, +/-: adjust stock, Enter: confirm",
+                    }
+                } else {
+                    "j/k: select product, /: search"
+                }
+            }
+            InputMode::InventorySearch => "Type to search inventory, Enter: confirm, Esc: cancel",
+            _ => "Tab: switch panes, j/k: navigate",
         },
     };
 
@@ -450,7 +497,7 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
         app.status_message.clone()
     };
 
-    let footer_text = format!("{} | {} | q:quit v0.4.0", truncated_status, instructions);
+    let footer_text = format!("{} | {} | q:quit v0.5.0", truncated_status, instructions);
 
     let footer = Paragraph::new(footer_text)
         .style(Style::default().fg(Color::Cyan))
