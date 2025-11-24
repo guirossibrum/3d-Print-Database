@@ -333,7 +333,7 @@ fn draw_create_right_pane(f: &mut Frame, area: Rect, app: &App) {
 }
 
 fn draw_popup(f: &mut Frame, area: Rect, app: &App) {
-    let popup_area = centered_rect(60, 20, area);
+    let popup_area = centered_rect(80, 30, area);
 
     f.render_widget(Clear, popup_area);
 
