@@ -214,10 +214,6 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
                 },
             ]),
             Line::from(vec![
-                Span::styled("Production: ", Style::default().fg(Color::Cyan)),
-                Span::raw(if product.production { "Yes" } else { "No" }),
-            ]),
-            Line::from(vec![
                 Span::styled("Tags: ", Style::default().fg(Color::Cyan)),
                 Span::raw(product.tags.join(", ")),
             ]),
