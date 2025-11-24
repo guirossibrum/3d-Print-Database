@@ -7,15 +7,77 @@ import json
 import threading
 import time
 
-from modules.constants import *
-from modules.api_client import *
-from modules import search
-from modules.tags import (
-    update_tag_display as update_tag_display_mod,
-    add_tag_from_listbox,
-    remove_popup_tag,
-    add_popup_tag,
-)
+
+# Tag display functions (copied from modules for compatibility)
+def update_tag_display(tags_list, display_frame, layout="pack"):
+    """Update the display of tags with configurable layout"""
+    # Clear existing
+    for widget in display_frame.winfo_children():
+        widget.destroy()
+
+    if not tags_list:
+        label = tk.Label(display_frame, text="(no tags)", fg="gray")
+        if layout == "pack":
+            label.pack(anchor="w")
+        else:
+            label.grid(row=0, column=0, sticky="w")
+        return
+
+    bg_color = "lightblue" if layout == "pack" else "lightgreen"
+
+    for i, tag in enumerate(tags_list):
+        tag_frame = tk.Frame(display_frame)
+
+        if layout == "pack":
+            tag_frame.pack(anchor="w", pady=1)
+        else:
+            tag_frame.grid(row=i // 4, column=(i % 4) * 2, padx=2, pady=2, sticky="w")
+
+        tk.Label(tag_frame, text=tag, bg=bg_color, padx=5, pady=2).pack(side=tk.LEFT)
+
+        remove_btn = tk.Button(
+            tag_frame,
+            text="×",
+            font=("Arial", 8),
+            command=lambda t=tag: remove_popup_tag(t, tags_list, display_frame)
+            if layout == "grid"
+            else remove_tag(t),
+        )
+        remove_btn.pack(side=tk.LEFT)
+
+
+def add_popup_tag(widget, tags_list, display_frame, listbox=None):
+    """Add a tag to the popup dialog"""
+    tag_text = widget.get().strip()
+    if tag_text and tag_text not in tags_list:
+        tags_list.append(tag_text)
+        update_tag_display(tags_list, display_frame, "grid")
+        if hasattr(widget, "set"):
+            widget.set("")
+        else:
+            widget.delete(0, tk.END)
+
+        # Add to available tags if new
+        # Note: This assumes all_available_tags is accessible, may need to pass as param
+        # For now, skip or handle differently
+
+
+def remove_popup_tag(tag_to_remove, tags_list, display_frame):
+    """Remove a tag from the popup dialog"""
+    if tag_to_remove in tags_list:
+        tags_list.remove(tag_to_remove)
+        update_tag_display(tags_list, display_frame, "grid")
+
+
+def add_tag_from_listbox(listbox, current_tags, update_func):
+    """Generic helper to add tag from listbox"""
+    selection = listbox.curselection()
+    if selection:
+        tag = listbox.get(selection[0])
+        if tag not in current_tags:
+            current_tags.append(tag)
+            update_func(current_tags)
+
 
 # Global variables
 current_tags = []
@@ -284,7 +346,7 @@ def clear_form():
     entry_description.delete(0, tk.END)
     var_production.set(True)
     current_tags.clear()
-    update_tag_display_mod(current_tags, tags_frame, "pack")
+    update_tag_display(current_tags, tags_frame, "pack")
     tag_entry.delete(0, tk.END)
 
 
@@ -297,7 +359,7 @@ def add_tag():
     tag_text = tag_entry.get().strip()
     if tag_text and tag_text not in current_tags:
         current_tags.append(tag_text)
-        update_tag_display_mod(current_tags, tags_frame, "pack")
+        update_tag_display(current_tags, tags_frame, "pack")
         tag_entry.delete(0, tk.END)  # Clear the input
         tag_entry.focus()
         # Add to available tags immediately
@@ -314,7 +376,7 @@ def remove_tag(tag_to_remove):
     """Remove a tag from the current tags list"""
     if tag_to_remove in current_tags:
         current_tags.remove(tag_to_remove)
-        update_tag_display_mod(current_tags, tags_frame, "pack")
+        update_tag_display(current_tags, tags_frame, "pack")
 
 
 # Removed autocomplete functions - using list-based tag selection now
@@ -360,7 +422,7 @@ def add_tag_from_list(event=None):
     add_tag_from_listbox(
         tag_listbox,
         current_tags,
-        lambda tags: update_tag_display_mod(tags, tags_frame, "pack"),
+        lambda tags: update_tag_display(tags, tags_frame, "pack"),
     )
     tag_entry.delete(0, tk.END)  # Clear input
     tag_entry.focus()
@@ -810,7 +872,7 @@ def add_popup_tag(widget, tags_list, display_frame, listbox=None):
     tag_text = widget.get().strip()
     if tag_text and tag_text not in tags_list:
         tags_list.append(tag_text)
-        update_tag_display_mod(tags_list, display_frame, "grid")
+        update_tag_display(tags_list, display_frame, "grid")
         if hasattr(widget, "set"):
             widget.set("")
         else:
@@ -831,7 +893,7 @@ def remove_popup_tag(tag_to_remove, tags_list, display_frame):
     """Remove a tag from the popup dialog"""
     if tag_to_remove in tags_list:
         tags_list.remove(tag_to_remove)
-        update_tag_display_mod(tags_list, display_frame, "grid")
+        update_tag_display(tags_list, display_frame, "grid")
 
 
 def add_tag_from_listbox(listbox, current_tags, update_func):
@@ -1058,7 +1120,7 @@ def show_edit_product_dialog(product):
     edit_tags_frame.grid(row=6, column=0, columnspan=4, pady=5, padx=5, sticky="w")
 
     # Initialize tag display
-    update_tag_display_mod(edit_current_tags, edit_tags_frame, "grid")
+    update_tag_display(edit_current_tags, edit_tags_frame, "grid")
 
     # Available tags list
     tk.Label(main_frame, text="Available Tags:").grid(
@@ -1087,7 +1149,7 @@ def show_edit_product_dialog(product):
         lambda e: add_tag_from_listbox(
             edit_tag_listbox,
             edit_current_tags,
-            lambda tags: update_tag_display_mod(tags, edit_tags_frame, "grid"),
+            lambda tags: update_tag_display(tags, edit_tags_frame, "grid"),
         ),
     )
 
