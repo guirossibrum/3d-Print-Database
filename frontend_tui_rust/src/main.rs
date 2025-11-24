@@ -15,6 +15,10 @@ use app::App;
 // Get version from Cargo.toml
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+fn print_version() {
+    println!("3D Print Database TUI (Rust) v{}", VERSION);
+}
+
 
 
 #[derive(Debug)]
@@ -71,6 +75,9 @@ fn print_usage_instructions() {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Print version
+    print_version();
+
     // Initialize app without println to avoid text persistence
     let mut app = match App::new() {
         Ok(app) => app,
