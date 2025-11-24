@@ -35,6 +35,7 @@ pub struct ApiClient {
     base_url: String,
 }
 
+#[allow(dead_code)]
 impl ApiClient {
     pub fn new(base_url: String) -> Self {
         Self {

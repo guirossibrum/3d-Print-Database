@@ -102,7 +102,6 @@ pub struct CreateForm {
     pub category_selected_index: usize,
     pub production: bool,
     pub tags: Vec<String>,
-    pub new_tag_input: String,
     pub tag_selected_index: usize,
 }
 
@@ -226,14 +225,11 @@ impl App {
                         self.input_mode = InputMode::CreateCategory;
                     }
                     InputMode::CreateCategory => {
-                        self.input_mode = InputMode::CreateProduction;
+                        self.input_mode = InputMode::CreateCategorySelect;
+                        self.active_pane = ActivePane::Right;
                     }
                     InputMode::CreateProduction => {
                         self.input_mode = InputMode::CreateTags;
-                    }
-                    InputMode::CreateCategory => {
-                        self.input_mode = InputMode::CreateCategorySelect;
-                        self.active_pane = ActivePane::Right;
                     }
                     InputMode::CreateTags => {
                         self.input_mode = InputMode::CreateTagSelect;
