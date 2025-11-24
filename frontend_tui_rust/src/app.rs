@@ -1081,7 +1081,7 @@ impl App {
                 self.input_mode = InputMode::EditDescription;
             }
             KeyCode::Down => {
-                // Already at last field, do nothing
+                self.input_mode = InputMode::EditTags;
             }
             KeyCode::Left => {
                 if let Some(product) = self.products.get_mut(self.selected_index) {
