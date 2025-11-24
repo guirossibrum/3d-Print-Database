@@ -1,5 +1,5 @@
 use std::time::Duration;
-use crossterm::event::{Event, KeyCode, KeyModifiers};
+use crossterm::event::{Event, KeyCode};
 use ratatui::Terminal;
 use anyhow::Result;
 
@@ -151,30 +151,37 @@ impl App {
             KeyCode::Char('q') | KeyCode::Esc => {
                 self.running = false;
             }
-            // Global navigation - Ctrl+Tab switches tabs
-            KeyCode::Tab if key.modifiers.intersects(KeyModifiers::CONTROL) => {
-                self.current_tab = self.current_tab.next();
-                self.active_pane = ActivePane::Left;  // Reset to left pane
-                self.selected_index = 0;
-            }
-            KeyCode::BackTab if key.modifiers.intersects(KeyModifiers::SHIFT) => {
-                self.current_tab = self.current_tab.prev();
-                self.active_pane = ActivePane::Left;  // Reset to left pane
-                self.selected_index = 0;
-            }
-            // Pane navigation - Tab switches panes (if multiple panes exist)
-            KeyCode::Tab if self.has_multiple_panes() => {
-                self.next_pane();
+
+            // Enhanced TAB workflow: View → Edit → View
+            KeyCode::Tab => {
+                match self.input_mode {
+                    InputMode::Normal => {
+                        if self.has_multiple_panes() && matches!(self.active_pane, ActivePane::Left) && !self.products.is_empty() {
+                            // Switch to right pane and enter edit mode
+                            self.active_pane = ActivePane::Right;
+                            self.input_mode = InputMode::EditName;
+                        } else if self.has_multiple_panes() {
+                            // Regular pane switching
+                            self.next_pane();
+                        }
+                    }
+                    input_mode if matches!(input_mode, InputMode::EditName | InputMode::EditDescription | InputMode::EditProduction) => {
+                        // Exit edit mode and return to left pane (discard changes)
+                        self.input_mode = InputMode::Normal;
+                        self.active_pane = ActivePane::Left;
+                    }
+                    _ => {
+                        // Default pane switching for other modes
+                        if self.has_multiple_panes() {
+                            self.next_pane();
+                        }
+                    }
+                }
             }
             KeyCode::BackTab if self.has_multiple_panes() => {
                 self.prev_pane();
             }
-            // Regular Tab (no modifier) - fallback for single-pane tabs
-            KeyCode::Tab => {
-                self.current_tab = self.current_tab.next();
-                self.active_pane = ActivePane::Left;
-                self.selected_index = 0;
-            }
+
             KeyCode::BackTab => {
                 self.current_tab = self.current_tab.prev();
                 self.active_pane = ActivePane::Left;
@@ -185,6 +192,16 @@ impl App {
             }
             KeyCode::Up | KeyCode::Char('k') => {
                 self.prev_item();
+            }
+            KeyCode::Left => {
+                self.current_tab = self.current_tab.prev();
+                self.active_pane = ActivePane::Left;
+                self.selected_index = 0;
+            }
+            KeyCode::Right => {
+                self.current_tab = self.current_tab.next();
+                self.active_pane = ActivePane::Left;
+                self.selected_index = 0;
             }
             KeyCode::Char('/') => {
                 if matches!(self.current_tab, Tab::Search) {
@@ -199,8 +216,20 @@ impl App {
                 }
             }
             KeyCode::Enter => {
-                if matches!(self.current_tab, Tab::Search) && !self.products.is_empty() {
-                    self.input_mode = InputMode::EditName;
+                match self.input_mode {
+                    InputMode::Normal => {
+                        if matches!(self.current_tab, Tab::Search) && !self.products.is_empty() {
+                            // Direct edit from normal mode (legacy behavior)
+                            self.input_mode = InputMode::EditName;
+                        }
+                    }
+                    input_mode if matches!(input_mode, InputMode::EditName | InputMode::EditDescription | InputMode::EditProduction) => {
+                        // Save changes and return to normal mode
+                        self.input_mode = InputMode::Normal;
+                        self.active_pane = ActivePane::Left;
+                        // TODO: Persist changes to backend
+                    }
+                    _ => {}
                 }
             }
             _ => {}
@@ -219,9 +248,7 @@ impl App {
             }
             KeyCode::Tab => {
                 self.input_mode = InputMode::Normal;
-                if self.has_multiple_panes() {
-                    self.next_pane();
-                }
+                // Don't switch panes when exiting search mode
             }
             KeyCode::Backspace => {
                 self.search_query.pop();
@@ -245,9 +272,7 @@ impl App {
             }
             KeyCode::Tab => {
                 self.input_mode = InputMode::Normal;
-                if self.has_multiple_panes() {
-                    self.next_pane();
-                }
+                // Don't switch panes when exiting search mode
             }
             KeyCode::Backspace => {
                 self.inventory_search_query.pop();
@@ -302,10 +327,18 @@ impl App {
 
     fn handle_edit_name_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
         match key.code {
-            KeyCode::Esc => {
+            KeyCode::Esc | KeyCode::Tab => {
+                // Cancel changes and return to normal mode
                 self.input_mode = InputMode::Normal;
+                self.active_pane = ActivePane::Left;
             }
-            KeyCode::Enter | KeyCode::Down => {
+            KeyCode::Enter => {
+                // Save changes and return to normal mode
+                self.input_mode = InputMode::Normal;
+                self.active_pane = ActivePane::Left;
+                // TODO: Persist changes to backend
+            }
+            KeyCode::Down => {
                 self.input_mode = InputMode::EditDescription;
             }
             KeyCode::Up => {
@@ -328,10 +361,18 @@ impl App {
 
     fn handle_edit_description_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
         match key.code {
-            KeyCode::Esc => {
-                self.input_mode = InputMode::EditName;
+            KeyCode::Esc | KeyCode::Tab => {
+                // Cancel changes and return to normal mode
+                self.input_mode = InputMode::Normal;
+                self.active_pane = ActivePane::Left;
             }
-            KeyCode::Enter | KeyCode::Down => {
+            KeyCode::Enter => {
+                // Save changes and return to normal mode
+                self.input_mode = InputMode::Normal;
+                self.active_pane = ActivePane::Left;
+                // TODO: Persist changes to backend
+            }
+            KeyCode::Down => {
                 self.input_mode = InputMode::EditProduction;
             }
             KeyCode::Up => {
@@ -355,12 +396,16 @@ impl App {
 
     fn handle_edit_production_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
         match key.code {
-            KeyCode::Esc => {
-                self.input_mode = InputMode::EditDescription;
+            KeyCode::Esc | KeyCode::Tab => {
+                // Cancel changes and return to normal mode
+                self.input_mode = InputMode::Normal;
+                self.active_pane = ActivePane::Left;
             }
             KeyCode::Enter => {
-                // TODO: Save changes
+                // Save changes and return to normal mode
                 self.input_mode = InputMode::Normal;
+                self.active_pane = ActivePane::Left;
+                // TODO: Persist changes to backend
             }
             KeyCode::Up => {
                 self.input_mode = InputMode::EditDescription;
@@ -370,12 +415,12 @@ impl App {
             }
             KeyCode::Left => {
                 if let Some(product) = self.products.get_mut(self.selected_index) {
-                    product.production = false;
+                    product.production = true;
                 }
             }
             KeyCode::Right => {
                 if let Some(product) = self.products.get_mut(self.selected_index) {
-                    product.production = true;
+                    product.production = false;
                 }
             }
             KeyCode::Char('y') | KeyCode::Char('Y') => {

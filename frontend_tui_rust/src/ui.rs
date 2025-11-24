@@ -2,7 +2,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style, Stylize},
     text::{Line, Span},
-    widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Tabs, Wrap},
+    widgets::{Block, Borders, Clear, Paragraph, Tabs, Wrap},
     Frame,
 };
 
@@ -134,17 +134,18 @@ fn draw_search_tab(f: &mut Frame, area: Rect, app: &App) {
 }
 
 /// Generic searchable pane component that can be reused across different tabs
-fn draw_searchable_pane<F>(
+fn draw_searchable_pane_with_styles<F>(
     f: &mut Frame,
     area: Rect,
     app: &App,
     title: &str,
     search_query: &str,
     _input_mode: InputMode,
+    search_border_style: Style,
+    results_border_style: Style,
     display_callback: F,
-    border_style: Style,
 ) where
-    F: Fn(&mut Frame, Rect, &App, &[&crate::api::Product]),
+    F: Fn(&mut Frame, Rect, &App, &[&crate::api::Product], Style),
 {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -153,12 +154,12 @@ fn draw_searchable_pane<F>(
 
     // Search input
     let search_text = if matches!(app.input_mode, _input_mode) {
-        format!("Search: {}_", search_query)
+        format!("{}_", search_query)
     } else {
-        format!("Search: {} (press '/' to search)", search_query)
+        "Press / to search_".to_string()
     };
     let search_paragraph = Paragraph::new(search_text)
-        .block(Block::default().borders(Borders::ALL).title(title).border_style(border_style));
+        .block(Block::default().borders(Borders::ALL).title(title).border_style(search_border_style));
     f.render_widget(search_paragraph, chunks[0]);
 
     // Filter products based on search query
@@ -173,38 +174,50 @@ fn draw_searchable_pane<F>(
             .collect()
     };
 
-    // Call the display callback with filtered products
-    display_callback(f, chunks[1], app, &filtered_products);
+    // Display results
+    display_callback(f, chunks[1], app, &filtered_products, results_border_style);
 }
 
 /// Display callback for simple list format (used by Search tab)
-fn display_as_list(f: &mut Frame, area: Rect, app: &App, products: &[&crate::api::Product]) {
-    let items: Vec<ListItem> = products
-        .iter()
-        .enumerate()
-        .map(|(i, product)| {
-            let style = if i == app.selected_index {
-                Style::default().fg(Color::Black).bg(Color::Cyan)
-            } else {
-                Style::default().fg(Color::White)
-            };
+fn display_as_list(f: &mut Frame, area: Rect, app: &App, products: &[&crate::api::Product], border_style: Style) {
+    let mut content_lines = vec![];
 
-            ListItem::new(format!("{} - {} ({})",
+    // Add search instruction if not in search mode
+    if !matches!(app.input_mode, InputMode::Search) {
+        content_lines.push(Line::from(vec![
+            Span::styled("Press ", Style::default().fg(Color::Gray)),
+            Span::styled("/", Style::default().fg(Color::Cyan).bold()),
+            Span::styled(" to search", Style::default().fg(Color::Gray)),
+        ]));
+        content_lines.push(Line::from(""));
+    }
+
+    // Add the list items
+    for (i, product) in products.iter().enumerate() {
+        let style = if i == app.selected_index {
+            Style::default().fg(Color::Black).bg(Color::Cyan)
+        } else {
+            Style::default().fg(Color::White)
+        };
+
+        content_lines.push(Line::from(Span::styled(
+            format!("{} - {} ({})",
                 product.sku,
                 product.name,
                 if product.production { "Production" } else { "Prototype" }
-            )).style(style)
-        })
-        .collect();
+            ),
+            style
+        )));
+    }
 
-    let list = List::new(items)
-        .block(Block::default().borders(Borders::ALL).title("Results"))
-        .highlight_style(Style::default().bold());
-    f.render_widget(list, area);
+    let paragraph = Paragraph::new(content_lines)
+        .block(Block::default().borders(Borders::ALL).title("Results").border_style(border_style))
+        .wrap(Wrap { trim: true });
+    f.render_widget(paragraph, area);
 }
 
 /// Display callback for table format (used by Inventory tab)
-fn display_as_table(f: &mut Frame, area: Rect, app: &App, products: &[&crate::api::Product]) {
+fn display_as_table(f: &mut Frame, area: Rect, app: &App, products: &[&crate::api::Product], border_style: Style) {
     // Header
     let header = vec![
         Line::from("SKU         Name                    Qty   Price   Status")
@@ -236,34 +249,37 @@ fn display_as_table(f: &mut Frame, area: Rect, app: &App, products: &[&crate::ap
     let content = [header, rows].concat();
 
     let paragraph = Paragraph::new(content)
-        .block(Block::default().borders(Borders::ALL).title("Inventory Results"))
+        .block(Block::default().borders(Borders::ALL).title("Inventory Results").border_style(border_style))
         .wrap(Wrap { trim: true });
 
     f.render_widget(paragraph, area);
 }
 
 fn draw_search_left_pane(f: &mut Frame, area: Rect, app: &App) {
-    let border_style = if matches!(app.active_pane, ActivePane::Left) {
+    let search_border_style = if matches!(app.input_mode, InputMode::Search) {
         Style::default().fg(Color::Yellow).bold()
     } else {
         Style::default().fg(Color::White)
     };
 
-    let title = if matches!(app.input_mode, InputMode::Search) {
-        "Search Products"
+    let results_border_style = if matches!(app.active_pane, ActivePane::Left) && !matches!(app.input_mode, InputMode::Search) {
+        Style::default().fg(Color::Yellow).bold()
     } else {
-        "Results"
+        Style::default().fg(Color::White)
     };
 
-    draw_searchable_pane(
+    let title = "Search";
+
+    draw_searchable_pane_with_styles(
         f,
         area,
         app,
         title,
         &app.search_query,
         InputMode::Search,
+        search_border_style,
+        results_border_style,
         display_as_list,
-        border_style,
     );
 }
 
@@ -371,21 +387,30 @@ fn draw_inventory_tab(f: &mut Frame, content_area: Rect, totals_area: Rect, app:
 }
 
 fn draw_inventory_left_pane(f: &mut Frame, area: Rect, app: &App) {
-    let border_style = if matches!(app.active_pane, ActivePane::Left) {
+    let search_border_style = if matches!(app.input_mode, InputMode::InventorySearch) {
         Style::default().fg(Color::Yellow).bold()
     } else {
         Style::default().fg(Color::White)
     };
 
-    draw_searchable_pane(
+    let results_border_style = if matches!(app.active_pane, ActivePane::Left) && !matches!(app.input_mode, InputMode::InventorySearch) {
+        Style::default().fg(Color::Yellow).bold()
+    } else {
+        Style::default().fg(Color::White)
+    };
+
+    let title = "Search";
+
+    draw_searchable_pane_with_styles(
         f,
         area,
         app,
-        "Inventory Search",
+        title,
         &app.inventory_search_query,
         InputMode::InventorySearch,
+        search_border_style,
+        results_border_style,
         display_as_table,
-        border_style,
     );
 }
 
@@ -457,26 +482,26 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App, version: &str) {
     // Get instructions based on current tab, pane, and mode
     let instructions = match app.current_tab {
         Tab::Create => match app.input_mode {
-            InputMode::Normal => "Ctrl+Tab: switch tabs, c: create product",
+            InputMode::Normal => "←→: switch tabs, c: create product",
             InputMode::CreateName => "Enter name, Enter: next field, Esc: cancel",
             InputMode::CreateDescription => "Enter description, Enter: save, Esc: cancel",
-            _ => "Ctrl+Tab: switch tabs",
+            _ => "←→: switch tabs",
         },
         Tab::Search => match app.input_mode {
             InputMode::Normal => {
                 if app.has_multiple_panes() {
                     match app.active_pane {
-                        ActivePane::Left => "Tab: right pane, j/k: select product, Enter: edit, /: search",
-                        ActivePane::Right => "Tab: left pane, ↑↓: navigate fields",
+                        ActivePane::Left => "Tab: edit selected, j/k: select, /: search",
+                        ActivePane::Right => "Tab: back to results, Enter: save, ↑↓: fields",
                     }
                 } else {
                     "j/k: select product, Enter: edit, /: search"
                 }
             }
             InputMode::Search => "Type to search, Enter: confirm, Esc: cancel",
-            InputMode::EditName => "Edit name, ↑↓: change field, Enter: save, Esc: cancel",
-            InputMode::EditDescription => "Edit description, ↑↓: change field, Enter: save, Esc: cancel",
-            InputMode::EditProduction => "←→: toggle production, ↑↓: change field, Enter: save, Esc: cancel",
+            InputMode::EditName => "Edit name, Tab: cancel, Enter: save, ↑↓: fields",
+            InputMode::EditDescription => "Edit desc, Tab: cancel, Enter: save, ↑↓: fields",
+            InputMode::EditProduction => "←→: toggle, Tab: cancel, Enter: save, ↑↓: fields",
             _ => "Tab: switch panes, j/k: navigate",
         },
         Tab::Inventory => match app.input_mode {
