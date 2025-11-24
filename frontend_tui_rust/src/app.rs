@@ -1023,11 +1023,35 @@ impl App {
             },
             production: self.create_form.production,
             tags: self.create_form.tags.clone(),
+            category_id: self.create_form.category_id.unwrap(),
+            material: None,
+            color: None,
+            print_time: None,
+            weight: None,
+            stock_quantity: Some(0),
+            reorder_point: Some(0),
+            unit_cost: None,
+            selling_price: None,
         };
 
-        // For now, simulate API call success
-        // TODO: Implement actual async API call
-        self.status_message = format!("Product '{}' saved successfully!", product.name);
+        // Call API
+        match self.api_client.create_product(&product) {
+            Ok(response) => {
+                self.status_message = response.message;
+                // Refresh products list
+                match self.api_client.get_products() {
+                    Ok(products) => {
+                        self.products = products;
+                    }
+                    Err(e) => {
+                        self.status_message = format!("Product created but failed to refresh list: {:?}", e);
+                    }
+                }
+            }
+            Err(e) => {
+                self.status_message = format!("Error creating product: {:?}", e);
+            }
+        }
 
         // Reset form
         self.create_form = CreateForm {

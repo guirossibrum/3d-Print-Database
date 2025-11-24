@@ -10,6 +10,15 @@ pub struct Product {
     pub description: Option<String>,
     pub production: bool,
     pub tags: Vec<String>,
+    pub category_id: i32,
+    pub material: Option<String>,
+    pub color: Option<String>,
+    pub print_time: Option<i32>,
+    pub weight: Option<f64>,
+    pub stock_quantity: Option<i32>,
+    pub reorder_point: Option<i32>,
+    pub unit_cost: Option<f64>,
+    pub selling_price: Option<f64>,
 }
 
 
@@ -26,6 +35,12 @@ pub struct Category {
     pub name: String,
     pub sku_initials: String,
     pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateProductResponse {
+    pub sku: String,
+    pub message: String,
 }
 
 
@@ -59,13 +74,13 @@ impl ApiClient {
         Ok(categories)
     }
 
-    pub fn create_product(&self, product: &Product) -> Result<Product> {
+    pub fn create_product(&self, product: &Product) -> Result<CreateProductResponse> {
         let url = format!("{}/products/", self.base_url);
         let response = self.client.post(&url)
             .json(product)
             .send()?;
-        let created_product = response.json()?;
-        Ok(created_product)
+        let create_response = response.json()?;
+        Ok(create_response)
     }
 
     pub fn get_products(&self) -> Result<Vec<Product>> {

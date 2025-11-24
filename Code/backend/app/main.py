@@ -189,6 +189,73 @@ def list_all_tags():
         db.close()
 
 
+@app.post("/tags")
+def create_tag(tag: schemas.TagCreate):
+    """
+    Create a new tag
+    """
+    db: Session = SessionLocal()
+    try:
+        # Check if tag exists
+        existing = db.query(models.Tag).filter(models.Tag.name == tag.name).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Tag already exists")
+
+        db_tag = models.Tag(name=tag.name)
+        db.add(db_tag)
+        db.commit()
+        db.refresh(db_tag)
+
+        return {
+            "name": db_tag.name,
+            "usage_count": 0,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@app.put("/tags/{tag_name}")
+def update_tag(tag_name: str, tag_update: schemas.TagUpdate):
+    """
+    Update an existing tag
+    """
+    db: Session = SessionLocal()
+    try:
+        tag = db.query(models.Tag).filter(models.Tag.name == tag_name).first()
+        if not tag:
+            raise HTTPException(status_code=404, detail="Tag not found")
+
+        if tag_update.name:
+            # Check if new name exists
+            existing = (
+                db.query(models.Tag).filter(models.Tag.name == tag_update.name).first()
+            )
+            if existing:
+                raise HTTPException(status_code=400, detail="Tag name already exists")
+
+            tag.name = tag_update.name
+
+        db.commit()
+        db.refresh(tag)
+
+        return {
+            "name": tag.name,
+            "usage_count": len(tag.products),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
 @app.delete("/tags/{tag_name}")
 def delete_tag(tag_name: str):
     """
@@ -294,7 +361,12 @@ def create_category(category: schemas.CategoryCreate):
         db.commit()
         db.refresh(db_category)
 
-        return {"id": db_category.id, "message": "Category created successfully"}
+        return {
+            "id": db_category.id,
+            "name": db_category.name,
+            "sku_initials": db_category.sku_initials,
+            "description": db_category.description,
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -369,7 +441,12 @@ def update_category(category_id: int, category_update: schemas.CategoryUpdate):
         db.commit()
         db.refresh(existing_category)
 
-        return {"id": existing_category.id, "message": "Category updated successfully"}
+        return {
+            "id": existing_category.id,
+            "name": existing_category.name,
+            "sku_initials": existing_category.sku_initials,
+            "description": existing_category.description,
+        }
 
     except HTTPException:
         raise

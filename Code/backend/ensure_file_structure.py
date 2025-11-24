@@ -2,7 +2,7 @@
 import os
 import json
 
-BASE_DIR = "/Products"
+BASE_DIR = "/home/grbrum/Work/3d_print/Products"
 
 
 def create_product_folder(
