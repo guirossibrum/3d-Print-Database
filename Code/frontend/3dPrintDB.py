@@ -1004,6 +1004,9 @@ def show_edit_product_dialog(product):
     """Show popup dialog for editing a product"""
     global edit_current_tags, current_product_data, edit_mode
 
+    # Refresh available tags from database
+    load_all_tags_for_list()
+
     # Set global state
     current_product_data = product
     edit_mode = True
@@ -1481,6 +1484,16 @@ inventory_tab = ttk.Frame(tab_control)
 tab_control.add(create_tab, text="Create Product")
 tab_control.add(update_tab, text="Update Product")
 tab_control.add(inventory_tab, text="Inventory")
+
+
+# Refresh available tags when switching tabs
+def on_tab_change(event):
+    selected = tab_control.index(tab_control.select())
+    if selected == 0:  # Create Product tab
+        load_all_tags_for_list()
+
+
+tab_control.bind("<<NotebookTabChanged>>", on_tab_change)
 tab_control.pack(expand=1, fill="both")
 
 
