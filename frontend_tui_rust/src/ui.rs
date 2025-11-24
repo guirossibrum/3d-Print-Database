@@ -271,12 +271,11 @@ fn draw_create_right_pane(f: &mut Frame, area: Rect, app: &App) {
                 let is_selected = app.tag_selection.get(i).copied().unwrap_or(false);
                 let mut style = Style::default().fg(Color::White);
                 if is_selected {
-                    style = style.bg(Color::Blue);
+                    style = style.bg(Color::Yellow);
                 }
-                if is_current {
-                    style = style.underlined();
-                }
+                let prefix = if is_current { "→ " } else { "  " };
                 content.push(Line::from(vec![
+                    Span::raw(prefix),
                     Span::styled(tag.clone(), style),
                 ]));
             }
@@ -287,7 +286,7 @@ fn draw_create_right_pane(f: &mut Frame, area: Rect, app: &App) {
             }
             content.push(Line::from(""));
             content.push(Line::from(vec![
-                Span::styled("[↑↓: Navigate] [Space: Toggle] [ENTER: Add Selected] [n: New] [e: Edit] [d: Delete] [ESC: Back]", Style::default().fg(Color::Gray)),
+                Span::styled("[↑↓: Navigate] [Space: Select] [ENTER: Add Selected] [n: New] [e: Edit] [d: Delete] [ESC: Back]", Style::default().fg(Color::Gray)),
             ]));
         }
         _ => {
