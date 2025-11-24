@@ -72,7 +72,7 @@ fn print_usage_instructions() {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize app without println to avoid text persistence
-    let mut app = match App::new().await {
+    let mut app = match App::new() {
         Ok(app) => app,
         Err(e) => {
             eprintln!("Failed to initialize app: {:?}", e);

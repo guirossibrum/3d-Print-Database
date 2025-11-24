@@ -1,4 +1,4 @@
-use reqwest::Client;
+use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use anyhow::Result;
 
@@ -35,7 +35,6 @@ pub struct ApiClient {
     base_url: String,
 }
 
-#[allow(dead_code)]
 impl ApiClient {
     pub fn new(base_url: String) -> Self {
         Self {
@@ -46,11 +45,71 @@ impl ApiClient {
 
 
 
-    pub async fn get_tags(&self) -> Result<Vec<Tag>> {
+    pub fn get_tags(&self) -> Result<Vec<Tag>> {
         let url = format!("{}/tags", self.base_url);
-        let response = self.client.get(&url).send().await?;
-        let tags = response.json().await?;
+        let response = self.client.get(&url).send()?;
+        let tags = response.json()?;
         Ok(tags)
+    }
+
+    pub fn get_categories(&self) -> Result<Vec<Category>> {
+        let url = format!("{}/categories", self.base_url);
+        let response = self.client.get(&url).send()?;
+        let categories = response.json()?;
+        Ok(categories)
+    }
+
+    pub fn create_product(&self, product: &Product) -> Result<Product> {
+        let url = format!("{}/products/", self.base_url);
+        let response = self.client.post(&url)
+            .json(product)
+            .send()?;
+        let created_product = response.json()?;
+        Ok(created_product)
+    }
+
+    pub fn get_products(&self) -> Result<Vec<Product>> {
+        let url = format!("{}/products/", self.base_url);
+        let response = self.client.get(&url).send()?;
+        let products = response.json()?;
+        Ok(products)
+    }
+
+    pub fn create_category(&self, category: &Category) -> Result<Category> {
+        let url = format!("{}/categories/", self.base_url);
+        let response = self.client.post(&url)
+            .json(category)
+            .send()?;
+        let created_category = response.json()?;
+        Ok(created_category)
+    }
+
+    pub fn update_category(&self, category: &Category) -> Result<Category> {
+        let id = category.id.unwrap();
+        let url = format!("{}/categories/{}", self.base_url, id);
+        let response = self.client.put(&url)
+            .json(category)
+            .send()?;
+        let updated_category = response.json()?;
+        Ok(updated_category)
+    }
+
+    pub fn create_tag(&self, tag: &Tag) -> Result<Tag> {
+        let url = format!("{}/tags/", self.base_url);
+        let response = self.client.post(&url)
+            .json(tag)
+            .send()?;
+        let created_tag = response.json()?;
+        Ok(created_tag)
+    }
+
+    pub fn update_tag(&self, tag: &Tag) -> Result<Tag> {
+        let url = format!("{}/tags/{}", self.base_url, tag.name);
+        let response = self.client.put(&url)
+            .json(tag)
+            .send()?;
+        let updated_tag = response.json()?;
+        Ok(updated_tag)
     }
 
     pub async fn get_categories(&self) -> Result<Vec<Category>> {

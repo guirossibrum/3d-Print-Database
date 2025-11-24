@@ -73,6 +73,9 @@ pub struct App {
     pub input_mode: InputMode,
     pub active_pane: ActivePane,
 
+    // API client
+    pub api_client: ApiClient,
+
     // Data
     pub products: Vec<Product>,
     pub tags: Vec<String>,
@@ -119,20 +122,21 @@ pub struct TagForm {
 
 impl App {
     /// Creates a new App instance, initializing data from the backend API
-    pub async fn new() -> Result<Self> {
+    pub fn new() -> Result<Self> {
         let api_client = ApiClient::new(DEFAULT_API_BASE_URL.to_string());
-        let products = api_client.get_products().await?;
-        let tags = api_client.get_tags().await?
+        let products = api_client.get_products()?;
+        let tags = api_client.get_tags()?
             .into_iter()
             .map(|tag| tag.name)
             .collect::<Vec<String>>();
-        let categories = api_client.get_categories().await?;
+        let categories = api_client.get_categories()?;
 
         Ok(Self {
             running: true,
             current_tab: Tab::Search,
             input_mode: InputMode::Normal,
             active_pane: ActivePane::Left,
+            api_client,
             products,
             tags,
             categories,
@@ -140,14 +144,14 @@ impl App {
             search_query: String::new(),
             inventory_search_query: String::new(),
             status_message: String::new(),
-             edit_backup: None,
-             create_form: CreateForm {
-                 production: true, // Default to production ready
-                 ..Default::default()
-             },
-             category_form: CategoryForm::default(),
-             tag_form: TagForm::default(),
-             popup_field: 0,
+            edit_backup: None,
+            create_form: CreateForm {
+                production: true, // Default to production ready
+                ..Default::default()
+            },
+            category_form: CategoryForm::default(),
+            tag_form: TagForm::default(),
+            popup_field: 0,
         })
     }
 
@@ -655,15 +659,22 @@ impl App {
             KeyCode::Enter => {
                 // Save new category
                 if !self.category_form.name.trim().is_empty() && self.category_form.sku.len() == 3 {
-                    let new_category = crate::api::Category {
-                        id: (self.categories.len() + 1) as i32, // fake id for local
+                    let category = crate::api::Category {
+                        id: None,
                         name: self.category_form.name.clone(),
                         sku_initials: self.category_form.sku.clone(),
                         description: if self.category_form.description.trim().is_empty() { None } else { Some(self.category_form.description.clone()) },
                     };
-                    self.categories.push(new_category);
-                    self.create_form.category_selected_index = self.categories.len() - 1;
-                    self.status_message = format!("Category '{}' created", self.category_form.name);
+                    match self.api_client.create_category(&category) {
+                        Ok(created_category) => {
+                            self.categories.push(created_category);
+                            self.create_form.category_selected_index = self.categories.len() - 1;
+                            self.status_message = format!("Category '{}' created", self.category_form.name);
+                        }
+                        Err(e) => {
+                            self.status_message = format!("Error creating category: {:?}", e);
+                        }
+                    }
                 } else {
                     self.status_message = "Error: Name required, SKU must be 3 letters".to_string();
                 }
@@ -709,11 +720,19 @@ impl App {
                 // Save edited category
                 if !self.category_form.name.trim().is_empty() && self.category_form.sku.len() == 3 {
                     if self.create_form.category_selected_index < self.categories.len() {
-                        let category = &mut self.categories[self.create_form.category_selected_index];
+                        let mut category = self.categories[self.create_form.category_selected_index].clone();
                         category.name = self.category_form.name.clone();
                         category.sku_initials = self.category_form.sku.clone();
                         category.description = if self.category_form.description.trim().is_empty() { None } else { Some(self.category_form.description.clone()) };
-                        self.status_message = format!("Category '{}' updated", self.category_form.name);
+                        match self.api_client.update_category(&category) {
+                            Ok(updated_category) => {
+                                self.categories[self.create_form.category_selected_index] = updated_category;
+                                self.status_message = format!("Category '{}' updated", self.category_form.name);
+                            }
+                            Err(e) => {
+                                self.status_message = format!("Error updating category: {:?}", e);
+                            }
+                        }
                     }
                 } else {
                     self.status_message = "Error: Name required, SKU must be 3 letters".to_string();
@@ -758,13 +777,20 @@ impl App {
             KeyCode::Enter => {
                 // Save new tag
                 if !self.tag_form.name.trim().is_empty() {
-                    let new_tag = crate::api::Tag {
+                    let tag = crate::api::Tag {
                         name: self.tag_form.name.clone(),
                         usage_count: 0,
                     };
-                    self.tags.push(new_tag.name.clone());
-                    self.create_form.tag_selected_index = self.tags.len() - 1;
-                    self.status_message = format!("Tag '{}' created", self.tag_form.name);
+                    match self.api_client.create_tag(&tag) {
+                        Ok(created_tag) => {
+                            self.tags.push(created_tag.name.clone());
+                            self.create_form.tag_selected_index = self.tags.len() - 1;
+                            self.status_message = format!("Tag '{}' created", self.tag_form.name);
+                        }
+                        Err(e) => {
+                            self.status_message = format!("Error creating tag: {:?}", e);
+                        }
+                    }
                 } else {
                     self.status_message = "Error: Tag name required".to_string();
                 }
@@ -792,8 +818,22 @@ impl App {
                 // Save edited tag
                 if !self.tag_form.name.trim().is_empty() {
                     if self.create_form.tag_selected_index < self.tags.len() {
-                        self.tags[self.create_form.tag_selected_index] = self.tag_form.name.clone();
-                        self.status_message = format!("Tag '{}' updated", self.tag_form.name);
+                        let old_name = self.tags[self.create_form.tag_selected_index].clone();
+                        let tag = crate::api::Tag {
+                            name: old_name.clone(),
+                            usage_count: 0, // Not used for update
+                        };
+                        let mut updated_tag = tag.clone();
+                        updated_tag.name = self.tag_form.name.clone();
+                        match self.api_client.update_tag(&updated_tag) {
+                            Ok(_) => {
+                                self.tags[self.create_form.tag_selected_index] = self.tag_form.name.clone();
+                                self.status_message = format!("Tag '{}' updated", self.tag_form.name);
+                            }
+                            Err(e) => {
+                                self.status_message = format!("Error updating tag: {:?}", e);
+                            }
+                        }
                     }
                 } else {
                     self.status_message = "Error: Tag name required".to_string();
