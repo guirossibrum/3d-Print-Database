@@ -331,11 +331,10 @@ impl App {
 
     fn handle_edit_name_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
         match key.code {
-            KeyCode::Esc | KeyCode::Tab => {
+            KeyCode::Esc => {
                 // Cancel changes (discard) and return to normal mode
                 self.input_mode = InputMode::Normal;
                 self.active_pane = ActivePane::Left;
-                // Note: No save logic here - TAB cancels, ENTER saves
             }
             KeyCode::Enter => {
                 // Save changes and return to normal mode
@@ -366,11 +365,10 @@ impl App {
 
     fn handle_edit_description_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
         match key.code {
-            KeyCode::Esc | KeyCode::Tab => {
+            KeyCode::Esc => {
                 // Cancel changes (discard) and return to normal mode
                 self.input_mode = InputMode::Normal;
                 self.active_pane = ActivePane::Left;
-                // Note: No save logic here - TAB cancels, ENTER saves
             }
             KeyCode::Enter => {
                 // Save changes and return to normal mode
@@ -402,11 +400,10 @@ impl App {
 
     fn handle_edit_production_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
         match key.code {
-            KeyCode::Esc | KeyCode::Tab => {
+            KeyCode::Esc => {
                 // Cancel changes (discard) and return to normal mode
                 self.input_mode = InputMode::Normal;
                 self.active_pane = ActivePane::Left;
-                // Note: No save logic here - TAB cancels, ENTER saves
             }
             KeyCode::Enter => {
                 // Save changes and return to normal mode
