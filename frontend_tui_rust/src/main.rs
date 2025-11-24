@@ -54,7 +54,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let mut stdout = io::stdout();
-    execute!(stdout, Clear(ClearType::All), EnterAlternateScreen)?;
+    execute!(stdout, EnterAlternateScreen)?;
+    execute!(stdout, Clear(ClearType::All))?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = match Terminal::new(backend) {
         Ok(t) => t,

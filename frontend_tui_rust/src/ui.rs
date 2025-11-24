@@ -58,8 +58,8 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         }
     }
 
-    // Draw footer
-    draw_footer(f, chunks[4], app);
+    // Draw footer (temporarily at top for debugging)
+    draw_footer(f, chunks[0], app);
 }
 
 fn draw_header(f: &mut Frame, area: Rect) {
@@ -383,7 +383,8 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
     let footer_text = format!("{} | {} | q:quit v0.3.0", truncated_status, instructions);
 
     let footer = Paragraph::new(footer_text)
-        .style(Style::default().fg(Color::Cyan))
+        .style(Style::default().fg(Color::White).bg(Color::Blue).bold())
+        .block(Block::default().borders(Borders::ALL))
         .wrap(Wrap { trim: false });
 
     f.render_widget(footer, area);
