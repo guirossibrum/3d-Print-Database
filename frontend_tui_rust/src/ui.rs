@@ -187,7 +187,7 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
             Style::default().fg(Color::Cyan)
         };
 
-    let content = vec![
+    let mut content = vec![
             Line::from(vec![
                 Span::styled("SKU: ", Style::default().fg(Color::Cyan)),
                 Span::raw(&product.sku),
@@ -298,7 +298,7 @@ fn draw_inventory_left_pane(f: &mut Frame, area: Rect, app: &App) {
 
 fn draw_inventory_right_pane(f: &mut Frame, area: Rect, app: &App) {
     if let Some(product) = app.products.get(app.selected_index) {
-        let content = vec![
+    let mut content = vec![
             Line::from(vec![
                 Span::styled("Product: ", Style::default().fg(Color::Cyan)),
                 Span::raw(&product.name),
@@ -380,7 +380,7 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
         app.status_message.clone()
     };
 
-    let footer_text = format!("{} | {} | q:quit v0.2.0", truncated_status, instructions);
+    let footer_text = format!("{} | {} | q:quit v0.3.0", truncated_status, instructions);
 
     let footer = Paragraph::new(footer_text)
         .style(Style::default().fg(Color::Cyan))
