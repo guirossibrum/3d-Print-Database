@@ -13,6 +13,8 @@ from modules import search
 from modules.tags import (
     update_tag_display as update_tag_display_mod,
     add_tag_from_listbox,
+    remove_popup_tag,
+    add_popup_tag,
 )
 
 # Global variables
@@ -358,7 +360,7 @@ def add_tag_from_list(event=None):
     add_tag_from_listbox(
         tag_listbox,
         current_tags,
-        lambda: update_tag_display_mod(current_tags, tags_frame, "pack"),
+        lambda tags: update_tag_display_mod(tags, tags_frame, "pack"),
     )
     tag_entry.delete(0, tk.END)  # Clear input
     tag_entry.focus()
@@ -1056,7 +1058,7 @@ def show_edit_product_dialog(product):
     edit_tags_frame.grid(row=6, column=0, columnspan=4, pady=5, padx=5, sticky="w")
 
     # Initialize tag display
-    update_popup_tag_display(edit_current_tags, edit_tags_frame)
+    update_tag_display_mod(edit_current_tags, edit_tags_frame, "grid")
 
     # Available tags list
     tk.Label(main_frame, text="Available Tags:").grid(
@@ -1085,7 +1087,7 @@ def show_edit_product_dialog(product):
         lambda e: add_tag_from_listbox(
             edit_tag_listbox,
             edit_current_tags,
-            lambda tags: update_popup_tag_display(tags, edit_tags_frame),
+            lambda tags: update_tag_display_mod(tags, edit_tags_frame, "grid"),
         ),
     )
 
