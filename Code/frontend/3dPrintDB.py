@@ -86,6 +86,24 @@ def add_tag_from_listbox(listbox, current_tags, update_func):
             update_func(current_tags)
 
 
+def update_available_tags(new_tags_list):
+    """Update available tags list and refresh listboxes"""
+    global all_available_tags
+    for tag in new_tags_list:
+        if tag not in all_available_tags:
+            all_available_tags.append(tag)
+    all_available_tags.sort()
+    # Update main listbox
+    tag_listbox.delete(0, tk.END)
+    for tag in all_available_tags:
+        tag_listbox.insert(tk.END, tag)
+    # Update edit listbox if exists
+    if "edit_tag_listbox" in globals():
+        edit_tag_listbox.delete(0, tk.END)
+        for tag in all_available_tags:
+            edit_tag_listbox.insert(tk.END, tag)
+
+
 # Global variables
 current_tags = []
 tag_suggestions = []
@@ -490,15 +508,7 @@ def create_item():
             messagebox.showinfo(
                 "Success", f"Product created: {response.json().get('sku')}"
             )
-            # Add new tags to available tags
-            global all_available_tags
-            for tag in current_tags:
-                if tag not in all_available_tags:
-                    all_available_tags.append(tag)
-            all_available_tags.sort()
-            tag_listbox.delete(0, tk.END)
-            for tag in all_available_tags:
-                tag_listbox.insert(tk.END, tag)
+            update_available_tags(current_tags)
             clear_form()
         else:
             messagebox.showerror("Error", f"Failed to create product\n{response.text}")
@@ -1194,21 +1204,9 @@ def show_edit_product_dialog(product):
             # Update product
             save_product_changes(product["sku"], payload)
             # Add new tags to available tags
-            global all_available_tags
             original_tags = product.get("tags", [])
             new_tags = [t for t in edit_current_tags if t not in original_tags]
-            for tag in new_tags:
-                if tag not in all_available_tags:
-                    all_available_tags.append(tag)
-            all_available_tags.sort()
-            # Update both main and edit listboxes
-            tag_listbox.delete(0, tk.END)
-            for tag in all_available_tags:
-                tag_listbox.insert(tk.END, tag)
-            if "edit_tag_listbox" in globals():
-                edit_tag_listbox.delete(0, tk.END)
-                for tag in all_available_tags:
-                    edit_tag_listbox.insert(tk.END, tag)
+            update_available_tags(new_tags)
             global dialog_open
             dialog_open = False
             dialog.destroy()
