@@ -182,15 +182,7 @@ fn draw_searchable_pane_with_styles<F>(
 fn display_as_list(f: &mut Frame, area: Rect, app: &App, products: &[&crate::api::Product], border_style: Style) {
     let mut content_lines = vec![];
 
-    // Add search instruction if not in search mode
-    if !matches!(app.input_mode, InputMode::Search) {
-        content_lines.push(Line::from(vec![
-            Span::styled("Press ", Style::default().fg(Color::Gray)),
-            Span::styled("/", Style::default().fg(Color::Cyan).bold()),
-            Span::styled(" to search", Style::default().fg(Color::Gray)),
-        ]));
-        content_lines.push(Line::from(""));
-    }
+    // Search instruction removed - now only in footer
 
     // Add the list items
     for (i, product) in products.iter().enumerate() {
