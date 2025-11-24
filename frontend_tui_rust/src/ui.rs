@@ -1,12 +1,12 @@
 use ratatui::{
+    Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style, Stylize},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, Paragraph, Tabs, Wrap},
-    Frame,
 };
 
-use crate::app::{App, Tab, InputMode, ActivePane};
+use crate::app::{ActivePane, App, InputMode, Tab};
 
 pub fn draw(f: &mut Frame, app: &mut App, version: &str) {
     let size = f.area();
@@ -16,7 +16,10 @@ pub fn draw(f: &mut Frame, app: &mut App, version: &str) {
 
     // Ensure minimum terminal size
     if size.height < 20 || size.width < 80 {
-        let error_msg = format!("Terminal too small: {}x{}\nMinimum: 80x20", size.width, size.height);
+        let error_msg = format!(
+            "Terminal too small: {}x{}\nMinimum: 80x20",
+            size.width, size.height
+        );
         let error = Paragraph::new(error_msg)
             .style(Style::default().fg(Color::Red))
             .block(Block::default().borders(Borders::ALL).title("Error"));
@@ -89,7 +92,16 @@ fn draw_tabs(f: &mut Frame, area: Rect, app: &App) {
 }
 
 fn draw_create_tab(f: &mut Frame, area: Rect, app: &App) {
-    let is_creating = matches!(app.input_mode, InputMode::CreateName | InputMode::CreateDescription | InputMode::CreateCategory | InputMode::CreateProduction | InputMode::CreateTags | InputMode::CreateCategorySelect | InputMode::CreateTagSelect);
+    let is_creating = matches!(
+        app.input_mode,
+        InputMode::CreateName
+            | InputMode::CreateDescription
+            | InputMode::CreateCategory
+            | InputMode::CreateProduction
+            | InputMode::CreateTags
+            | InputMode::CreateCategorySelect
+            | InputMode::CreateTagSelect
+    );
     let border_style = if is_creating {
         Style::default().fg(Color::Yellow).bold()
     } else {
@@ -105,17 +117,23 @@ fn draw_create_tab(f: &mut Frame, area: Rect, app: &App) {
         draw_create_left_pane(f, chunks[0], app, border_style);
         draw_create_right_pane(f, chunks[1], app);
     } else {
-        let content = vec![
-            Line::from("Press ENTER to create a new product"),
-        ];
+        let content = vec![Line::from("Press ENTER to create a new product")];
         let paragraph = Paragraph::new(content)
-            .block(Block::default().borders(Borders::ALL).title("Create Product").border_style(border_style))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Create Product")
+                    .border_style(border_style),
+            )
             .wrap(Wrap { trim: true });
         f.render_widget(paragraph, area);
     }
 
     // Draw popup if in popup mode
-    if matches!(app.input_mode, InputMode::NewCategory | InputMode::EditCategory | InputMode::NewTag | InputMode::EditTag) {
+    if matches!(
+        app.input_mode,
+        InputMode::NewCategory | InputMode::EditCategory | InputMode::NewTag | InputMode::EditTag
+    ) {
         draw_popup(f, area, app);
     }
 }
@@ -156,7 +174,10 @@ fn draw_create_left_pane(f: &mut Frame, area: Rect, app: &App, border_style: Sty
     ]));
 
     // Category field
-    let category_style = if matches!(app.input_mode, InputMode::CreateCategory | InputMode::CreateCategorySelect) {
+    let category_style = if matches!(
+        app.input_mode,
+        InputMode::CreateCategory | InputMode::CreateCategorySelect
+    ) {
         Style::default().fg(Color::Yellow).bold()
     } else {
         Style::default().fg(Color::Cyan)
@@ -184,16 +205,32 @@ fn draw_create_left_pane(f: &mut Frame, area: Rect, app: &App, border_style: Sty
     content.push(Line::from(vec![
         Span::styled("Production: ", prod_style),
         Span::raw(if matches!(app.input_mode, InputMode::CreateProduction) {
-            format!("[{}] Yes    [{}] No",
+            format!(
+                "[{}] Yes    [{}] No",
                 if app.create_form.production { "x" } else { " " },
-                if !app.create_form.production { "x" } else { " " })
+                if !app.create_form.production {
+                    "x"
+                } else {
+                    " "
+                }
+            )
         } else {
-            format!("{}", if app.create_form.production { "Yes" } else { "No" })
+            format!(
+                "{}",
+                if app.create_form.production {
+                    "Yes"
+                } else {
+                    "No"
+                }
+            )
         }),
     ]));
 
     // Tags field
-    let tags_style = if matches!(app.input_mode, InputMode::CreateTags | InputMode::CreateTagSelect) {
+    let tags_style = if matches!(
+        app.input_mode,
+        InputMode::CreateTags | InputMode::CreateTagSelect
+    ) {
         Style::default().fg(Color::Yellow).bold()
     } else {
         Style::default().fg(Color::Cyan)
@@ -216,12 +253,18 @@ fn draw_create_left_pane(f: &mut Frame, area: Rect, app: &App, border_style: Sty
         InputMode::CreateTags => "[TAB: Select Tags] [ENTER: Save] [↑: Prev] [ESC: Cancel]",
         _ => "[ENTER: Create] [ESC: Cancel]",
     };
-    content.push(Line::from(vec![
-        Span::styled(help_text, Style::default().fg(Color::Gray)),
-    ]));
+    content.push(Line::from(vec![Span::styled(
+        help_text,
+        Style::default().fg(Color::Gray),
+    )]));
 
     let paragraph = Paragraph::new(content)
-        .block(Block::default().borders(Borders::ALL).title("Create Product").border_style(border_style))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Create Product")
+                .border_style(border_style),
+        )
         .wrap(Wrap { trim: true });
 
     f.render_widget(paragraph, area);
@@ -238,9 +281,10 @@ fn draw_create_right_pane(f: &mut Frame, area: Rect, app: &App) {
 
     match app.input_mode {
         InputMode::CreateCategorySelect => {
-            content.push(Line::from(vec![
-                Span::styled("Categories:", Style::default().fg(Color::Green).bold()),
-            ]));
+            content.push(Line::from(vec![Span::styled(
+                "Categories:",
+                Style::default().fg(Color::Green).bold(),
+            )]));
             for (i, category) in app.categories.iter().enumerate() {
                 let is_selected = i == app.create_form.category_selected_index;
                 let style = if is_selected {
@@ -248,57 +292,41 @@ fn draw_create_right_pane(f: &mut Frame, area: Rect, app: &App) {
                 } else {
                     Style::default().fg(Color::White)
                 };
-                content.push(Line::from(vec![
-                    Span::styled(format!("{} ({})", category.name, category.sku_initials), style),
-                ]));
+                content.push(Line::from(vec![Span::styled(
+                    format!("{} ({})", category.name, category.sku_initials),
+                    style,
+                )]));
             }
             if app.categories.is_empty() {
-                content.push(Line::from(vec![
-                    Span::styled("No categories available", Style::default().fg(Color::Gray)),
-                ]));
+                content.push(Line::from(vec![Span::styled(
+                    "No categories available",
+                    Style::default().fg(Color::Gray),
+                )]));
             }
             content.push(Line::from(""));
-            content.push(Line::from(vec![
-                Span::styled("[↑↓: Select] [ENTER: Choose] [n: New] [e: Edit] [ESC: Back]", Style::default().fg(Color::Gray)),
-            ]));
+            content.push(Line::from(vec![Span::styled(
+                "[↑↓: Select] [ENTER: Choose] [n: New] [e: Edit] [ESC: Back]",
+                Style::default().fg(Color::Gray),
+            )]));
         }
         InputMode::CreateTagSelect => {
-            content.push(Line::from(vec![
-                Span::styled("Available Tags:", Style::default().fg(Color::Green).bold()),
-            ]));
-            for (i, tag) in app.tags.iter().enumerate() {
-                let is_current = i == app.create_form.tag_selected_index;
-                let is_selected = app.tag_selection.get(i).copied().unwrap_or(false);
-                let mut style = Style::default().fg(Color::White);
-                if is_selected {
-                    style = style.bg(Color::Yellow);
-                }
-                let line = if is_current {
-                    format!("→ {}", tag)
-                } else {
-                    format!("  {}", tag)
-                };
-                content.push(Line::from(Span::styled(line, style)));
-            }
-            if app.tags.is_empty() {
-                content.push(Line::from(vec![
-                    Span::styled("No tags available", Style::default().fg(Color::Gray)),
-                ]));
-            }
-            content.push(Line::from(""));
-            content.push(Line::from(vec![
-                Span::styled("[↑↓: Navigate] [Space: Select] [ENTER: Add Selected] [n: New] [e: Edit] [d: Delete] [ESC: Back]", Style::default().fg(Color::Gray)),
-            ]));
+            content.extend(build_tag_selection_content(app, "Available Tags:", "[↑↓: Navigate] [Space: Select] [ENTER: Add Selected] [n: New] [e: Edit] [d: Delete] [ESC: Back]"));
         }
         _ => {
-            content.push(Line::from(vec![
-                Span::styled("Select a field to see options", Style::default().fg(Color::Gray)),
-            ]));
+            content.push(Line::from(vec![Span::styled(
+                "Select a field to see options",
+                Style::default().fg(Color::Gray),
+            )]));
         }
     }
 
     let paragraph = Paragraph::new(content)
-        .block(Block::default().borders(Borders::ALL).title("Options").border_style(border_style))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Options")
+                .border_style(border_style),
+        )
         .wrap(Wrap { trim: true });
 
     f.render_widget(paragraph, area);
@@ -313,23 +341,47 @@ fn draw_popup(f: &mut Frame, area: Rect, app: &App) {
 
     match app.input_mode {
         InputMode::NewCategory | InputMode::EditCategory => {
-            let name_style = if app.popup_field == 0 { Style::default().fg(Color::Yellow).bold() } else { Style::default().fg(Color::Cyan) };
+            let name_style = if app.popup_field == 0 {
+                Style::default().fg(Color::Yellow).bold()
+            } else {
+                Style::default().fg(Color::Cyan)
+            };
             content.push(Line::from(vec![
                 Span::styled("Category Name: ", name_style),
                 Span::raw(&app.category_form.name),
-                if app.popup_field == 0 { Span::styled("_", Style::default().fg(Color::White)) } else { Span::raw("") },
+                if app.popup_field == 0 {
+                    Span::styled("_", Style::default().fg(Color::White))
+                } else {
+                    Span::raw("")
+                },
             ]));
-            let sku_style = if app.popup_field == 1 { Style::default().fg(Color::Yellow).bold() } else { Style::default().fg(Color::Cyan) };
+            let sku_style = if app.popup_field == 1 {
+                Style::default().fg(Color::Yellow).bold()
+            } else {
+                Style::default().fg(Color::Cyan)
+            };
             content.push(Line::from(vec![
                 Span::styled("SKU (3 letters): ", sku_style),
                 Span::raw(&app.category_form.sku),
-                if app.popup_field == 1 { Span::styled("_", Style::default().fg(Color::White)) } else { Span::raw("") },
+                if app.popup_field == 1 {
+                    Span::styled("_", Style::default().fg(Color::White))
+                } else {
+                    Span::raw("")
+                },
             ]));
-            let desc_style = if app.popup_field == 2 { Style::default().fg(Color::Yellow).bold() } else { Style::default().fg(Color::Cyan) };
+            let desc_style = if app.popup_field == 2 {
+                Style::default().fg(Color::Yellow).bold()
+            } else {
+                Style::default().fg(Color::Cyan)
+            };
             content.push(Line::from(vec![
                 Span::styled("Description: ", desc_style),
                 Span::raw(&app.category_form.description),
-                if app.popup_field == 2 { Span::styled("_", Style::default().fg(Color::White)) } else { Span::raw("") },
+                if app.popup_field == 2 {
+                    Span::styled("_", Style::default().fg(Color::White))
+                } else {
+                    Span::raw("")
+                },
             ]));
         }
         InputMode::NewTag | InputMode::EditTag => {
@@ -343,9 +395,10 @@ fn draw_popup(f: &mut Frame, area: Rect, app: &App) {
     }
 
     content.push(Line::from(""));
-    content.push(Line::from(vec![
-        Span::styled("[ENTER: Save] [ESC: Cancel]", Style::default().fg(Color::Gray)),
-    ]));
+    content.push(Line::from(vec![Span::styled(
+        "[ENTER: Save] [ESC: Cancel]",
+        Style::default().fg(Color::Gray),
+    )]));
 
     let title = match app.input_mode {
         InputMode::NewCategory => "New Category",
@@ -360,6 +413,40 @@ fn draw_popup(f: &mut Frame, area: Rect, app: &App) {
         .wrap(Wrap { trim: true });
 
     f.render_widget(paragraph, popup_area);
+}
+
+fn build_tag_selection_content<'a>(app: &'a App, header: &'a str, help: &'a str) -> Vec<Line<'a>> {
+    let mut content = vec![];
+    content.push(Line::from(vec![Span::styled(
+        header,
+        Style::default().fg(Color::Green).bold(),
+    )]));
+    for (i, tag) in app.tags.iter().enumerate() {
+        let is_current = i == app.create_form.tag_selected_index;
+        let is_selected = app.tag_selection.get(i).copied().unwrap_or(false);
+        let mut style = Style::default().fg(Color::White);
+        if is_selected {
+            style = style.bg(Color::Yellow);
+        }
+        let line = if is_current {
+            format!("→ {}", tag)
+        } else {
+            format!("  {}", tag)
+        };
+        content.push(Line::from(Span::styled(line, style)));
+    }
+    if app.tags.is_empty() {
+        content.push(Line::from(vec![Span::styled(
+            "No tags available",
+            Style::default().fg(Color::Gray),
+        )]));
+    }
+    content.push(Line::from(""));
+    content.push(Line::from(vec![Span::styled(
+        help,
+        Style::default().fg(Color::Gray),
+    )]));
+    content
 }
 
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
@@ -381,10 +468,6 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
         ])
         .split(popup_layout[1])[1]
 }
-
-
-
-
 
 fn draw_search_tab(f: &mut Frame, area: Rect, app: &App) {
     let chunks = Layout::default()
@@ -424,19 +507,30 @@ fn draw_searchable_pane_with_styles<F>(
     } else {
         "_".to_string()
     };
-    let search_paragraph = Paragraph::new(search_text)
-        .block(Block::default().borders(Borders::ALL).title(title).border_style(search_border_style));
+    let search_paragraph = Paragraph::new(search_text).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(title)
+            .border_style(search_border_style),
+    );
     f.render_widget(search_paragraph, chunks[0]);
 
     // Filter products based on search query
     let filtered_products: Vec<&crate::api::Product> = if search_query.is_empty() {
         app.products.iter().collect()
     } else {
-        app.products.iter()
-            .filter(|product|
-                product.name.to_lowercase().contains(&search_query.to_lowercase()) ||
-                product.sku.to_lowercase().contains(&search_query.to_lowercase())
-            )
+        app.products
+            .iter()
+            .filter(|product| {
+                product
+                    .name
+                    .to_lowercase()
+                    .contains(&search_query.to_lowercase())
+                    || product
+                        .sku
+                        .to_lowercase()
+                        .contains(&search_query.to_lowercase())
+            })
             .collect()
     };
 
@@ -445,7 +539,13 @@ fn draw_searchable_pane_with_styles<F>(
 }
 
 /// Display callback for simple list format (used by Search tab)
-fn display_as_list(f: &mut Frame, area: Rect, app: &App, products: &[&crate::api::Product], border_style: Style) {
+fn display_as_list(
+    f: &mut Frame,
+    area: Rect,
+    app: &App,
+    products: &[&crate::api::Product],
+    border_style: Style,
+) {
     let mut content_lines = vec![];
 
     // Search instruction removed - now only in footer
@@ -459,27 +559,43 @@ fn display_as_list(f: &mut Frame, area: Rect, app: &App, products: &[&crate::api
         };
 
         content_lines.push(Line::from(Span::styled(
-            format!("{} - {} ({})",
+            format!(
+                "{} - {} ({})",
                 product.sku,
                 product.name,
-                if product.production { "Production" } else { "Prototype" }
+                if product.production {
+                    "Production"
+                } else {
+                    "Prototype"
+                }
             ),
-            style
+            style,
         )));
     }
 
     let paragraph = Paragraph::new(content_lines)
-        .block(Block::default().borders(Borders::ALL).title("Results").border_style(border_style))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Results")
+                .border_style(border_style),
+        )
         .wrap(Wrap { trim: true });
     f.render_widget(paragraph, area);
 }
 
 /// Display callback for table format (used by Inventory tab)
-fn display_as_table(f: &mut Frame, area: Rect, app: &App, products: &[&crate::api::Product], border_style: Style) {
+fn display_as_table(
+    f: &mut Frame,
+    area: Rect,
+    app: &App,
+    products: &[&crate::api::Product],
+    border_style: Style,
+) {
     // Header
-    let header = vec![
-        Line::from("SKU         Name                    Qty   Price   Status")
-    ];
+    let header = vec![Line::from(
+        "SKU         Name                    Qty   Price   Status",
+    )];
 
     // Product rows
     let mut rows = vec![];
@@ -493,21 +609,36 @@ fn display_as_table(f: &mut Frame, area: Rect, app: &App, products: &[&crate::ap
         // Mock inventory data for now (in real app, this would come from API)
         let qty = 10 - (i as i32 * 2); // Mock data
         let price = 25.50 + (i as f64 * 5.0); // Mock data
-        let status = if qty > 5 { "In Stock" } else if qty > 0 { "Low Stock" } else { "Out of Stock" };
+        let status = if qty > 5 {
+            "In Stock"
+        } else if qty > 0 {
+            "Low Stock"
+        } else {
+            "Out of Stock"
+        };
 
-        rows.push(Line::from(format!("{:<10} {:<20} {:>5} ${:>6.2} {:<10}",
-            product.sku,
-            &product.name[..product.name.len().min(20)],
-            qty,
-            price,
-            status
-        )).style(style));
+        rows.push(
+            Line::from(format!(
+                "{:<10} {:<20} {:>5} ${:>6.2} {:<10}",
+                product.sku,
+                &product.name[..product.name.len().min(20)],
+                qty,
+                price,
+                status
+            ))
+            .style(style),
+        );
     }
 
     let content = [header, rows].concat();
 
     let paragraph = Paragraph::new(content)
-        .block(Block::default().borders(Borders::ALL).title("Inventory Results").border_style(border_style))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Inventory Results")
+                .border_style(border_style),
+        )
         .wrap(Wrap { trim: true });
 
     f.render_widget(paragraph, area);
@@ -520,7 +651,9 @@ fn draw_search_left_pane(f: &mut Frame, area: Rect, app: &App) {
         Style::default().fg(Color::White)
     };
 
-    let results_border_style = if matches!(app.active_pane, ActivePane::Left) && !matches!(app.input_mode, InputMode::Search) {
+    let results_border_style = if matches!(app.active_pane, ActivePane::Left)
+        && !matches!(app.input_mode, InputMode::Search)
+    {
         Style::default().fg(Color::Yellow).bold()
     } else {
         Style::default().fg(Color::White)
@@ -550,20 +683,18 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
 
     if matches!(app.input_mode, InputMode::EditTagSelect) {
         // Draw tag selection
-        let mut content = vec![];
-        content.push(Line::from("Select tags (Space to toggle, Enter to confirm):"));
-        for (i, tag) in app.tags.iter().enumerate() {
-            let selected = app.tag_selection.get(i).copied().unwrap_or(false);
-            let marker = if selected { "[x]" } else { "[ ]" };
-            let style = if i == app.create_form.tag_selected_index {
-                Style::default().fg(Color::Black).bg(Color::Cyan)
-            } else {
-                Style::default().fg(Color::White)
-            };
-            content.push(Line::from(Span::styled(format!("{} {}", marker, tag), style)));
-        }
+        let content = build_tag_selection_content(
+            app,
+            "Available Tags:",
+            "[↑↓: Navigate] [Space: Select] [ENTER: Add Selected] [n: New] [e: Edit] [d: Delete] [ESC: Back]",
+        );
         let paragraph = Paragraph::new(content)
-            .block(Block::default().borders(Borders::ALL).title("Tag Selection").border_style(border_style))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Tag Selection")
+                    .border_style(border_style),
+            )
             .wrap(Wrap { trim: true });
         f.render_widget(paragraph, area);
     } else if let Some(product) = app.products.get(app.selected_index) {
@@ -623,9 +754,11 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
             Line::from(vec![
                 Span::styled("Production: ", prod_style),
                 Span::raw(if matches!(app.input_mode, InputMode::EditProduction) {
-                    format!("[{}] Yes    [{}] No",
+                    format!(
+                        "[{}] Yes    [{}] No",
                         if product.production { "x" } else { " " },
-                        if !product.production { "x" } else { " " })
+                        if !product.production { "x" } else { " " }
+                    )
                 } else {
                     (if product.production { "Yes" } else { "No" }).to_string()
                 }),
@@ -652,13 +785,22 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
         }
 
         let paragraph = Paragraph::new(content)
-            .block(Block::default().borders(Borders::ALL).title("Product Details").border_style(border_style))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Product Details")
+                    .border_style(border_style),
+            )
             .wrap(Wrap { trim: true });
 
         f.render_widget(paragraph, area);
     } else {
-        let paragraph = Paragraph::new("No product selected")
-            .block(Block::default().borders(Borders::ALL).title("Product Details").border_style(border_style));
+        let paragraph = Paragraph::new("No product selected").block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Product Details")
+                .border_style(border_style),
+        );
         f.render_widget(paragraph, area);
     }
 }
@@ -686,7 +828,9 @@ fn draw_inventory_left_pane(f: &mut Frame, area: Rect, app: &App) {
         Style::default().fg(Color::White)
     };
 
-    let results_border_style = if matches!(app.active_pane, ActivePane::Left) && !matches!(app.input_mode, InputMode::InventorySearch) {
+    let results_border_style = if matches!(app.active_pane, ActivePane::Left)
+        && !matches!(app.input_mode, InputMode::InventorySearch)
+    {
         Style::default().fg(Color::Yellow).bold()
     } else {
         Style::default().fg(Color::White)
@@ -715,7 +859,7 @@ fn draw_inventory_right_pane(f: &mut Frame, area: Rect, app: &App) {
     };
 
     if let Some(product) = app.products.get(app.selected_index) {
-    let content = vec![
+        let content = vec![
             Line::from(vec![
                 Span::styled("Product: ", Style::default().fg(Color::Cyan)),
                 Span::raw(&product.name),
@@ -744,13 +888,22 @@ fn draw_inventory_right_pane(f: &mut Frame, area: Rect, app: &App) {
         ];
 
         let paragraph = Paragraph::new(content)
-            .block(Block::default().borders(Borders::ALL).title("Stock Adjustment").border_style(border_style))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Stock Adjustment")
+                    .border_style(border_style),
+            )
             .wrap(Wrap { trim: true });
 
         f.render_widget(paragraph, area);
     } else {
-        let paragraph = Paragraph::new("No product selected")
-            .block(Block::default().borders(Borders::ALL).title("Stock Adjustment").border_style(border_style));
+        let paragraph = Paragraph::new("No product selected").block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Stock Adjustment")
+                .border_style(border_style),
+        );
         f.render_widget(paragraph, area);
     }
 }
@@ -761,11 +914,17 @@ fn draw_inventory_totals(f: &mut Frame, area: Rect, app: &App) {
     let total_value = 1250.75; // Mock data
     let low_stock_items = 3; // Mock data
 
-    let content = format!("Total Products: {} | Total Value: ${:.2} | Low Stock Items: {}",
-        total_products, total_value, low_stock_items);
+    let content = format!(
+        "Total Products: {} | Total Value: ${:.2} | Low Stock Items: {}",
+        total_products, total_value, low_stock_items
+    );
 
     let paragraph = Paragraph::new(content)
-        .block(Block::default().borders(Borders::ALL).title("Inventory Summary"))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Inventory Summary"),
+        )
         .style(Style::default().fg(Color::Green));
 
     f.render_widget(paragraph, area);
@@ -779,11 +938,15 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App, version: &str) {
             InputMode::CreateName => "Enter name, Tab/↓: next, ↑: prev, Esc: cancel",
             InputMode::CreateDescription => "Enter desc, Tab/↓: next, ↑: prev, Esc: cancel",
             InputMode::CreateCategory => "Tab: Select, Esc: cancel",
-            InputMode::CreateCategorySelect => "↑↓: select, Enter: choose, n: new, e: edit, Esc: back",
+            InputMode::CreateCategorySelect => {
+                "↑↓: select, Enter: choose, n: new, e: edit, Esc: back"
+            }
             InputMode::CreateProduction => "←→/y/n: toggle, Tab/↓: next, ↑: prev, Esc: cancel",
             InputMode::CreateTags => "Tab: Select Tags, Enter: save, ↑: prev, Esc: cancel",
             InputMode::CreateTagSelect => "↑↓: select, Enter: choose, n: new, e: edit, Esc: back",
-            InputMode::NewCategory | InputMode::EditCategory => "Enter name, Enter: save, Esc: cancel",
+            InputMode::NewCategory | InputMode::EditCategory => {
+                "Enter name, Enter: save, Esc: cancel"
+            }
             InputMode::NewTag | InputMode::EditTag => "Enter name, Enter: save, Esc: cancel",
             _ => "←→: switch tabs",
         },
@@ -823,12 +986,18 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App, version: &str) {
     // Truncate status message if too long
     let max_status_len = 30;
     let truncated_status = if app.status_message.len() > max_status_len {
-        format!("{}...", &app.status_message[..max_status_len.saturating_sub(3)])
+        format!(
+            "{}...",
+            &app.status_message[..max_status_len.saturating_sub(3)]
+        )
     } else {
         app.status_message.clone()
     };
 
-    let footer_text = format!("{} | {} | q:quit v{}", truncated_status, instructions, version);
+    let footer_text = format!(
+        "{} | {} | q:quit v{}",
+        truncated_status, instructions, version
+    );
 
     let footer = Paragraph::new(footer_text)
         .style(Style::default().fg(Color::Cyan))

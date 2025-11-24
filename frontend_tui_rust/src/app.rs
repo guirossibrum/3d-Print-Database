@@ -1,10 +1,10 @@
-use std::time::Duration;
+use anyhow::Result;
 use crossterm::event::{Event, KeyCode};
 use ratatui::Terminal;
-use anyhow::Result;
+use std::time::Duration;
 
+use crate::api::{ApiClient, Category, Product};
 use crate::ui;
-use crate::api::{ApiClient, Product, Category};
 
 // Constants
 const EVENT_POLL_TIMEOUT_MS: u64 = 100;
@@ -65,8 +65,6 @@ pub enum InputMode {
     NewTag,
     EditTag,
 }
-
-
 
 /// Main application state for the 3D Print Database TUI
 pub struct App {
@@ -129,7 +127,8 @@ impl App {
     pub fn new() -> Result<Self> {
         let api_client = ApiClient::new(DEFAULT_API_BASE_URL.to_string());
         let products = api_client.get_products()?;
-        let tags = api_client.get_tags()?
+        let tags = api_client
+            .get_tags()?
             .into_iter()
             .map(|tag| tag.name)
             .collect::<Vec<String>>();
@@ -186,8 +185,6 @@ impl App {
     }
 
     fn handle_key(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
-
-
         match self.input_mode {
             InputMode::Normal => self.handle_normal_mode(key),
             InputMode::Search => self.handle_search_mode(key),
@@ -221,7 +218,10 @@ impl App {
             KeyCode::Tab => {
                 match self.input_mode {
                     InputMode::Normal => {
-                        if self.has_multiple_panes() && matches!(self.active_pane, ActivePane::Left) && !self.products.is_empty() {
+                        if self.has_multiple_panes()
+                            && matches!(self.active_pane, ActivePane::Left)
+                            && !self.products.is_empty()
+                        {
                             // Switch to right pane and enter edit mode
                             self.active_pane = ActivePane::Right;
                             self.input_mode = InputMode::EditName;
@@ -279,7 +279,10 @@ impl App {
                     }
                     _ => {
                         // TAB in other modes (like search) exits to normal mode
-                        if matches!(self.input_mode, InputMode::Search | InputMode::InventorySearch) {
+                        if matches!(
+                            self.input_mode,
+                            InputMode::Search | InputMode::InventorySearch
+                        ) {
                             self.input_mode = InputMode::Normal;
                         }
                     }
@@ -324,12 +327,22 @@ impl App {
                     InputMode::Normal => {
                         if matches!(self.current_tab, Tab::Create) {
                             self.input_mode = InputMode::CreateName;
-                        } else if matches!(self.current_tab, Tab::Search) && !self.products.is_empty() {
+                        } else if matches!(self.current_tab, Tab::Search)
+                            && !self.products.is_empty()
+                        {
                             // Direct edit from normal mode (legacy behavior)
                             self.input_mode = InputMode::EditName;
                         }
                     }
-                    input_mode if matches!(input_mode, InputMode::EditName | InputMode::EditDescription | InputMode::EditProduction | InputMode::EditTags) => {
+                    input_mode
+                        if matches!(
+                            input_mode,
+                            InputMode::EditName
+                                | InputMode::EditDescription
+                                | InputMode::EditProduction
+                                | InputMode::EditTags
+                        ) =>
+                    {
                         // Save changes and return to normal mode
                         self.input_mode = InputMode::Normal;
                         self.active_pane = ActivePane::Left;
@@ -456,7 +469,10 @@ impl App {
         Ok(())
     }
 
-    fn handle_create_category_select_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+    fn handle_create_category_select_mode(
+        &mut self,
+        key: crossterm::event::KeyEvent,
+    ) -> Result<()> {
         match key.code {
             KeyCode::Esc => {
                 self.input_mode = InputMode::CreateCategory;
@@ -464,7 +480,10 @@ impl App {
             }
             KeyCode::Enter => {
                 // Select the current category
-                if let Some(category) = self.categories.get(self.create_form.category_selected_index) {
+                if let Some(category) = self
+                    .categories
+                    .get(self.create_form.category_selected_index)
+                {
                     self.create_form.category_id = category.id;
                 }
                 self.input_mode = InputMode::CreateCategory;
@@ -490,10 +509,14 @@ impl App {
                 self.input_mode = InputMode::NewCategory;
             }
             KeyCode::Char('e') => {
-                if let Some(category) = self.categories.get(self.create_form.category_selected_index) {
+                if let Some(category) = self
+                    .categories
+                    .get(self.create_form.category_selected_index)
+                {
                     self.category_form.name = category.name.clone();
                     self.category_form.sku = category.sku_initials.clone();
-                    self.category_form.description = category.description.clone().unwrap_or_default();
+                    self.category_form.description =
+                        category.description.clone().unwrap_or_default();
                     self.input_mode = InputMode::EditCategory;
                 }
             }
@@ -600,7 +623,8 @@ impl App {
             KeyCode::Char(' ') => {
                 // Toggle selection
                 if self.create_form.tag_selected_index < self.tag_selection.len() {
-                    self.tag_selection[self.create_form.tag_selected_index] = !self.tag_selection[self.create_form.tag_selected_index];
+                    self.tag_selection[self.create_form.tag_selected_index] =
+                        !self.tag_selection[self.create_form.tag_selected_index];
                 }
             }
             KeyCode::Char('n') => {
@@ -619,8 +643,11 @@ impl App {
                     match self.api_client.delete_tag(&tag_name) {
                         Ok(_) => {
                             self.tags.remove(self.create_form.tag_selected_index);
-                            self.tag_selection.remove(self.create_form.tag_selected_index);
-                            if self.create_form.tag_selected_index >= self.tags.len() && self.create_form.tag_selected_index > 0 {
+                            self.tag_selection
+                                .remove(self.create_form.tag_selected_index);
+                            if self.create_form.tag_selected_index >= self.tags.len()
+                                && self.create_form.tag_selected_index > 0
+                            {
                                 self.create_form.tag_selected_index -= 1;
                             }
                             self.status_message = format!("Tag '{}' deleted", tag_name);
@@ -705,7 +732,8 @@ impl App {
             }
             KeyCode::Backspace => {
                 if let Some(product) = self.products.get_mut(self.selected_index)
-                    && let Some(ref mut desc) = product.description {
+                    && let Some(ref mut desc) = product.description
+                {
                     desc.pop();
                 }
             }
@@ -733,14 +761,23 @@ impl App {
                         id: None,
                         name: self.category_form.name.clone(),
                         sku_initials: self.category_form.sku.clone(),
-                        description: if self.category_form.description.trim().is_empty() { None } else { Some(self.category_form.description.clone()) },
+                        description: if self.category_form.description.trim().is_empty() {
+                            None
+                        } else {
+                            Some(self.category_form.description.clone())
+                        },
                     };
                     match self.api_client.create_category(&category) {
                         Ok(created_category) => {
                             self.categories.push(created_category);
                             self.categories.sort_by(|a, b| a.name.cmp(&b.name));
-                            self.create_form.category_selected_index = self.categories.iter().position(|c| c.name == self.category_form.name).unwrap_or(0);
-                            self.status_message = format!("Category '{}' created", self.category_form.name);
+                            self.create_form.category_selected_index = self
+                                .categories
+                                .iter()
+                                .position(|c| c.name == self.category_form.name)
+                                .unwrap_or(0);
+                            self.status_message =
+                                format!("Category '{}' created", self.category_form.name);
                         }
                         Err(e) => {
                             self.status_message = format!("Error creating category: {:?}", e);
@@ -757,24 +794,38 @@ impl App {
                 self.popup_field = (self.popup_field + 1) % 3;
             }
             KeyCode::BackTab => {
-                self.popup_field = if self.popup_field == 0 { 2 } else { self.popup_field - 1 };
+                self.popup_field = if self.popup_field == 0 {
+                    2
+                } else {
+                    self.popup_field - 1
+                };
             }
-            KeyCode::Backspace => {
-                match self.popup_field {
-                    0 => { self.category_form.name.pop(); }
-                    1 => { self.category_form.sku.pop(); }
-                    2 => { self.category_form.description.pop(); }
-                    _ => {}
+            KeyCode::Backspace => match self.popup_field {
+                0 => {
+                    self.category_form.name.pop();
                 }
-            }
-            KeyCode::Char(c) => {
-                match self.popup_field {
-                    0 => { self.category_form.name.push(c); }
-                    1 => { if self.category_form.sku.len() < 3 { self.category_form.sku.push(c); } }
-                    2 => { self.category_form.description.push(c); }
-                    _ => {}
+                1 => {
+                    self.category_form.sku.pop();
                 }
-            }
+                2 => {
+                    self.category_form.description.pop();
+                }
+                _ => {}
+            },
+            KeyCode::Char(c) => match self.popup_field {
+                0 => {
+                    self.category_form.name.push(c);
+                }
+                1 => {
+                    if self.category_form.sku.len() < 3 {
+                        self.category_form.sku.push(c);
+                    }
+                }
+                2 => {
+                    self.category_form.description.push(c);
+                }
+                _ => {}
+            },
             _ => {}
         }
         Ok(())
@@ -791,16 +842,27 @@ impl App {
                 // Save edited category
                 if !self.category_form.name.trim().is_empty() && self.category_form.sku.len() == 3 {
                     if self.create_form.category_selected_index < self.categories.len() {
-                        let mut category = self.categories[self.create_form.category_selected_index].clone();
+                        let mut category =
+                            self.categories[self.create_form.category_selected_index].clone();
                         category.name = self.category_form.name.clone();
                         category.sku_initials = self.category_form.sku.clone();
-                        category.description = if self.category_form.description.trim().is_empty() { None } else { Some(self.category_form.description.clone()) };
+                        category.description = if self.category_form.description.trim().is_empty() {
+                            None
+                        } else {
+                            Some(self.category_form.description.clone())
+                        };
                         match self.api_client.update_category(&category) {
                             Ok(updated_category) => {
-                                self.categories[self.create_form.category_selected_index] = updated_category;
+                                self.categories[self.create_form.category_selected_index] =
+                                    updated_category;
                                 self.categories.sort_by(|a, b| a.name.cmp(&b.name));
-                                self.create_form.category_selected_index = self.categories.iter().position(|c| c.name == self.category_form.name).unwrap_or(self.create_form.category_selected_index);
-                                self.status_message = format!("Category '{}' updated", self.category_form.name);
+                                self.create_form.category_selected_index = self
+                                    .categories
+                                    .iter()
+                                    .position(|c| c.name == self.category_form.name)
+                                    .unwrap_or(self.create_form.category_selected_index);
+                                self.status_message =
+                                    format!("Category '{}' updated", self.category_form.name);
                             }
                             Err(e) => {
                                 self.status_message = format!("Error updating category: {:?}", e);
@@ -818,24 +880,38 @@ impl App {
                 self.popup_field = (self.popup_field + 1) % 3;
             }
             KeyCode::BackTab => {
-                self.popup_field = if self.popup_field == 0 { 2 } else { self.popup_field - 1 };
+                self.popup_field = if self.popup_field == 0 {
+                    2
+                } else {
+                    self.popup_field - 1
+                };
             }
-            KeyCode::Backspace => {
-                match self.popup_field {
-                    0 => { self.category_form.name.pop(); }
-                    1 => { self.category_form.sku.pop(); }
-                    2 => { self.category_form.description.pop(); }
-                    _ => {}
+            KeyCode::Backspace => match self.popup_field {
+                0 => {
+                    self.category_form.name.pop();
                 }
-            }
-            KeyCode::Char(c) => {
-                match self.popup_field {
-                    0 => { self.category_form.name.push(c); }
-                    1 => { if self.category_form.sku.len() < 3 { self.category_form.sku.push(c); } }
-                    2 => { self.category_form.description.push(c); }
-                    _ => {}
+                1 => {
+                    self.category_form.sku.pop();
                 }
-            }
+                2 => {
+                    self.category_form.description.pop();
+                }
+                _ => {}
+            },
+            KeyCode::Char(c) => match self.popup_field {
+                0 => {
+                    self.category_form.name.push(c);
+                }
+                1 => {
+                    if self.category_form.sku.len() < 3 {
+                        self.category_form.sku.push(c);
+                    }
+                }
+                2 => {
+                    self.category_form.description.push(c);
+                }
+                _ => {}
+            },
             _ => {}
         }
         Ok(())
@@ -858,7 +934,11 @@ impl App {
                         Ok(created_tag) => {
                             self.tags.push(created_tag.name.clone());
                             self.tags.sort();
-                            self.create_form.tag_selected_index = self.tags.iter().position(|t| t == &self.tag_form.name).unwrap_or(0);
+                            self.create_form.tag_selected_index = self
+                                .tags
+                                .iter()
+                                .position(|t| t == &self.tag_form.name)
+                                .unwrap_or(0);
                             self.status_message = format!("Tag '{}' created", self.tag_form.name);
                         }
                         Err(e) => {
@@ -901,10 +981,16 @@ impl App {
                         updated_tag.name = self.tag_form.name.clone();
                         match self.api_client.update_tag(&updated_tag) {
                             Ok(_) => {
-                                self.tags[self.create_form.tag_selected_index] = self.tag_form.name.clone();
+                                self.tags[self.create_form.tag_selected_index] =
+                                    self.tag_form.name.clone();
                                 self.tags.sort();
-                                self.create_form.tag_selected_index = self.tags.iter().position(|t| t == &self.tag_form.name).unwrap_or(self.create_form.tag_selected_index);
-                                self.status_message = format!("Tag '{}' updated", self.tag_form.name);
+                                self.create_form.tag_selected_index = self
+                                    .tags
+                                    .iter()
+                                    .position(|t| t == &self.tag_form.name)
+                                    .unwrap_or(self.create_form.tag_selected_index);
+                                self.status_message =
+                                    format!("Tag '{}' updated", self.tag_form.name);
                             }
                             Err(e) => {
                                 self.status_message = format!("Error updating tag: {:?}", e);
@@ -936,7 +1022,9 @@ impl App {
             KeyCode::Enter => {
                 // Parse and save changes
                 if let Some(product) = self.products.get_mut(self.selected_index) {
-                    product.tags = self.edit_tags_string.split(',')
+                    product.tags = self
+                        .edit_tags_string
+                        .split(',')
                         .map(|s| s.trim().to_string())
                         .filter(|s| !s.is_empty())
                         .collect();
@@ -949,7 +1037,9 @@ impl App {
             KeyCode::Tab => {
                 // Parse current edit_tags_string to product.tags
                 if let Some(product) = self.products.get_mut(self.selected_index) {
-                    product.tags = self.edit_tags_string.split(',')
+                    product.tags = self
+                        .edit_tags_string
+                        .split(',')
                         .map(|s| s.trim().to_string())
                         .filter(|s| !s.is_empty())
                         .collect();
@@ -1021,7 +1111,8 @@ impl App {
             KeyCode::Char(' ') => {
                 // Toggle selection
                 if self.create_form.tag_selected_index < self.tag_selection.len() {
-                    self.tag_selection[self.create_form.tag_selected_index] = !self.tag_selection[self.create_form.tag_selected_index];
+                    self.tag_selection[self.create_form.tag_selected_index] =
+                        !self.tag_selection[self.create_form.tag_selected_index];
                 }
             }
             KeyCode::Char('n') => {
@@ -1040,8 +1131,11 @@ impl App {
                     match self.api_client.delete_tag(&tag_name) {
                         Ok(_) => {
                             self.tags.remove(self.create_form.tag_selected_index);
-                            self.tag_selection.remove(self.create_form.tag_selected_index);
-                            if self.create_form.tag_selected_index >= self.tags.len() && self.create_form.tag_selected_index > 0 {
+                            self.tag_selection
+                                .remove(self.create_form.tag_selected_index);
+                            if self.create_form.tag_selected_index >= self.tags.len()
+                                && self.create_form.tag_selected_index > 0
+                            {
                                 self.create_form.tag_selected_index -= 1;
                             }
                             self.status_message = format!("Tag '{}' deleted", tag_name);
@@ -1222,7 +1316,8 @@ impl App {
                         self.products = products;
                     }
                     Err(e) => {
-                        self.status_message = format!("Product created but failed to refresh list: {:?}", e);
+                        self.status_message =
+                            format!("Product created but failed to refresh list: {:?}", e);
                     }
                 }
             }

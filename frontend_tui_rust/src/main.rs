@@ -1,14 +1,17 @@
-use std::io;
-use ratatui::{backend::CrosstermBackend, Terminal};
 use crossterm::{
     cursor::{Hide, Show},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen, Clear, ClearType},
+    terminal::{
+        Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode,
+        enable_raw_mode,
+    },
 };
+use ratatui::{Terminal, backend::CrosstermBackend};
+use std::io;
 
+mod api;
 mod app;
 mod ui;
-mod api;
 
 use app::App;
 
@@ -19,15 +22,14 @@ fn print_version() {
     println!("3D Print Database TUI (Rust) v{}", VERSION);
 }
 
-
-
 #[derive(Debug)]
 enum TerminalError {
     NotInteractive,
     SetupFailed(Box<dyn std::error::Error>),
 }
 
-fn setup_terminal() -> Result<ratatui::Terminal<ratatui::backend::CrosstermBackend<std::io::Stdout>>, TerminalError> {
+fn setup_terminal()
+-> Result<ratatui::Terminal<ratatui::backend::CrosstermBackend<std::io::Stdout>>, TerminalError> {
     // Check if we're in an interactive terminal
     if let Err(e) = enable_raw_mode() {
         if e.raw_os_error() == Some(6) {
@@ -38,23 +40,18 @@ fn setup_terminal() -> Result<ratatui::Terminal<ratatui::backend::CrosstermBacke
 
     let mut stdout = io::stdout();
     // Aggressive screen clearing
-    execute!(stdout, Clear(ClearType::All))
-        .map_err(|e| TerminalError::SetupFailed(e.into()))?;
-    execute!(stdout, Hide)
-        .map_err(|e| TerminalError::SetupFailed(e.into()))?;
-    execute!(stdout, EnterAlternateScreen)
-        .map_err(|e| TerminalError::SetupFailed(e.into()))?;
+    execute!(stdout, Clear(ClearType::All)).map_err(|e| TerminalError::SetupFailed(e.into()))?;
+    execute!(stdout, Hide).map_err(|e| TerminalError::SetupFailed(e.into()))?;
+    execute!(stdout, EnterAlternateScreen).map_err(|e| TerminalError::SetupFailed(e.into()))?;
     // Clear again after entering alternate screen
-    execute!(stdout, Clear(ClearType::All))
-        .map_err(|e| TerminalError::SetupFailed(e.into()))?;
+    execute!(stdout, Clear(ClearType::All)).map_err(|e| TerminalError::SetupFailed(e.into()))?;
 
     let backend = CrosstermBackend::new(stdout);
-    let terminal = Terminal::new(backend)
-        .map_err(|e| {
-            let _ = disable_raw_mode();
-            let _ = execute!(io::stdout(), LeaveAlternateScreen);
-            TerminalError::SetupFailed(e.into())
-        })?;
+    let terminal = Terminal::new(backend).map_err(|e| {
+        let _ = disable_raw_mode();
+        let _ = execute!(io::stdout(), LeaveAlternateScreen);
+        TerminalError::SetupFailed(e.into())
+    })?;
 
     Ok(terminal)
 }
@@ -62,7 +59,9 @@ fn setup_terminal() -> Result<ratatui::Terminal<ratatui::backend::CrosstermBacke
 fn print_usage_instructions() {
     println!("✗ No interactive terminal detected!");
     println!();
-    println!("This is a Terminal User Interface (TUI) application that requires an interactive terminal.");
+    println!(
+        "This is a Terminal User Interface (TUI) application that requires an interactive terminal."
+    );
     println!();
     println!("To run the application:");
     println!("1. Open a terminal/command prompt");
@@ -70,7 +69,9 @@ fn print_usage_instructions() {
     println!("3. Run: cargo run");
     println!();
     println!("Make sure the backend is running first:");
-    println!("  cd ../backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload");
+    println!(
+        "  cd ../backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    );
 }
 
 #[tokio::main]

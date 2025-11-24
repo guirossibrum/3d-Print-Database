@@ -1,6 +1,6 @@
+use anyhow::Result;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
-use anyhow::Result;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Product {
@@ -20,8 +20,6 @@ pub struct Product {
     pub unit_cost: Option<f64>,
     pub selling_price: Option<f64>,
 }
-
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Tag {
@@ -43,8 +41,6 @@ pub struct CreateProductResponse {
     pub message: String,
 }
 
-
-
 pub struct ApiClient {
     client: Client,
     base_url: String,
@@ -57,8 +53,6 @@ impl ApiClient {
             base_url,
         }
     }
-
-
 
     pub fn get_tags(&self) -> Result<Vec<Tag>> {
         let url = format!("{}/tags", self.base_url);
@@ -76,9 +70,7 @@ impl ApiClient {
 
     pub fn create_product(&self, product: &Product) -> Result<CreateProductResponse> {
         let url = format!("{}/products/", self.base_url);
-        let response = self.client.post(&url)
-            .json(product)
-            .send()?;
+        let response = self.client.post(&url).json(product).send()?;
         let create_response = response.json()?;
         Ok(create_response)
     }
@@ -92,9 +84,7 @@ impl ApiClient {
 
     pub fn create_category(&self, category: &Category) -> Result<Category> {
         let url = format!("{}/categories/", self.base_url);
-        let response = self.client.post(&url)
-            .json(category)
-            .send()?;
+        let response = self.client.post(&url).json(category).send()?;
         let created_category = response.json()?;
         Ok(created_category)
     }
@@ -102,27 +92,21 @@ impl ApiClient {
     pub fn update_category(&self, category: &Category) -> Result<Category> {
         let id = category.id.unwrap();
         let url = format!("{}/categories/{}", self.base_url, id);
-        let response = self.client.put(&url)
-            .json(category)
-            .send()?;
+        let response = self.client.put(&url).json(category).send()?;
         let updated_category = response.json()?;
         Ok(updated_category)
     }
 
     pub fn create_tag(&self, tag: &Tag) -> Result<Tag> {
         let url = format!("{}/tags/", self.base_url);
-        let response = self.client.post(&url)
-            .json(tag)
-            .send()?;
+        let response = self.client.post(&url).json(tag).send()?;
         let created_tag = response.json()?;
         Ok(created_tag)
     }
 
     pub fn update_tag(&self, tag: &Tag) -> Result<Tag> {
         let url = format!("{}/tags/{}", self.base_url, tag.name);
-        let response = self.client.put(&url)
-            .json(tag)
-            .send()?;
+        let response = self.client.put(&url).json(tag).send()?;
         let updated_tag = response.json()?;
         Ok(updated_tag)
     }
@@ -132,8 +116,4 @@ impl ApiClient {
         self.client.delete(&url).send()?;
         Ok(())
     }
-
-
-
-
 }
