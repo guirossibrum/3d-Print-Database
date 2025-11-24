@@ -1182,13 +1182,11 @@ def show_edit_product_dialog(product):
                 messagebox.showerror("Error", "Name is required")
                 return
 
-            # Build payload - only allow existing tags for edit
-            allowed_tags = set(all_available_tags + product.get("tags", []))
-            filtered_tags = [t for t in edit_current_tags if t in allowed_tags]
+            # Build payload - submit complete form state
             payload = {
                 "name": name,
                 "description": description,
-                "tags": filtered_tags,
+                "tags": edit_current_tags,
                 "production": production,
                 "material": material or None,
                 "color": color or None,
