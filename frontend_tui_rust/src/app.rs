@@ -165,15 +165,10 @@ impl App {
                             self.next_pane();
                         }
                     }
-                    input_mode if matches!(input_mode, InputMode::EditName | InputMode::EditDescription | InputMode::EditProduction) => {
-                        // Exit edit mode and return to left pane (discard changes)
-                        self.input_mode = InputMode::Normal;
-                        self.active_pane = ActivePane::Left;
-                    }
                     _ => {
-                        // Default pane switching for other modes
-                        if self.has_multiple_panes() {
-                            self.next_pane();
+                        // TAB in other modes (like search) exits to normal mode
+                        if matches!(self.input_mode, InputMode::Search | InputMode::InventorySearch) {
+                            self.input_mode = InputMode::Normal;
                         }
                     }
                 }

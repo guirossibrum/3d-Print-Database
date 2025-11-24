@@ -156,7 +156,7 @@ fn draw_searchable_pane_with_styles<F>(
     let search_text = if matches!(app.input_mode, _input_mode) {
         format!("{}_", search_query)
     } else {
-        "Press / to search_".to_string()
+        "_".to_string()
     };
     let search_paragraph = Paragraph::new(search_text)
         .block(Block::default().borders(Borders::ALL).title(title).border_style(search_border_style));
