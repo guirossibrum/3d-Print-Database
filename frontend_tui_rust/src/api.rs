@@ -1,6 +1,7 @@
 use anyhow::Result;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
+use anyhow::anyhow;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Product {
@@ -11,6 +12,22 @@ pub struct Product {
     pub production: bool,
     pub tags: Vec<String>,
     pub category_id: Option<i32>,
+    pub material: Option<String>,
+    pub color: Option<String>,
+    pub print_time: Option<i32>,
+    pub weight: Option<f64>,
+    pub stock_quantity: Option<i32>,
+    pub reorder_point: Option<i32>,
+    pub unit_cost: Option<f64>,
+    pub selling_price: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProductUpdate {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub tags: Option<Vec<String>>,
+    pub production: Option<bool>,
     pub material: Option<String>,
     pub color: Option<String>,
     pub print_time: Option<i32>,
@@ -73,6 +90,16 @@ impl ApiClient {
         let response = self.client.post(&url).json(product).send()?;
         let create_response = response.json()?;
         Ok(create_response)
+    }
+
+    pub fn update_product(&self, sku: &str, update: &ProductUpdate) -> Result<String> {
+        let url = format!("{}/products/{}", self.base_url, sku);
+        let response = self.client.put(&url).json(update).send()?;
+        if response.status().is_success() {
+            Ok("Product updated successfully".to_string())
+        } else {
+            Err(anyhow!("Failed to update product: {}", response.status()))
+        }
     }
 
     pub fn get_products(&self) -> Result<Vec<Product>> {

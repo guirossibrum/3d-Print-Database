@@ -224,6 +224,8 @@ impl App {
                             && matches!(self.active_pane, ActivePane::Left)
                             && !self.products.is_empty()
                         {
+                            // Refresh data before editing
+                            self.refresh_data();
                             // Switch to right pane and enter edit mode
                             self.active_pane = ActivePane::Right;
                             self.input_mode = InputMode::EditName;
@@ -274,10 +276,32 @@ impl App {
                     }
                     InputMode::EditTagSelect => {
                         // Tab in EditTagSelect saves
-                        self.edit_backup = None;
-                        self.input_mode = InputMode::Normal;
-                        self.active_pane = ActivePane::Left;
-                        // TODO: Persist changes to backend
+                self.edit_backup = None;
+                if let Some(product) = self.products.get(self.selected_index) {
+                    let update = crate::api::ProductUpdate {
+                        name: None,
+                        description: None,
+                        tags: Some(product.tags.clone()),
+                        production: None,
+                        material: None,
+                        color: None,
+                        print_time: None,
+                        weight: None,
+                        stock_quantity: None,
+                        reorder_point: None,
+                        unit_cost: None,
+                        selling_price: None,
+                    };
+                    match self.api_client.update_product(&product.sku, &update) {
+                        Ok(_) => {
+                            self.status_message = "Product updated successfully".to_string();
+                            self.refresh_data();
+                        }
+                        Err(e) => self.status_message = format!("Error updating product: {:?}", e),
+                    }
+                }
+                self.input_mode = InputMode::EditProduction;
+                self.active_pane = ActivePane::Left;
                     }
                     _ => {
                         // TAB in other modes (like search) exits to normal mode
@@ -729,9 +753,31 @@ impl App {
             KeyCode::Enter => {
                 // Save changes and return to normal mode
                 self.edit_backup = None; // Clear backup since we're saving
+                if let Some(product) = self.products.get(self.selected_index) {
+                    let update = crate::api::ProductUpdate {
+                        name: Some(product.name.clone()),
+                        description: None,
+                        tags: None,
+                        production: None,
+                        material: None,
+                        color: None,
+                        print_time: None,
+                        weight: None,
+                        stock_quantity: None,
+                        reorder_point: None,
+                        unit_cost: None,
+                        selling_price: None,
+                    };
+                    match self.api_client.update_product(&product.sku, &update) {
+                        Ok(_) => {
+                            self.status_message = "Product updated successfully".to_string();
+                            self.refresh_data();
+                        }
+                        Err(e) => self.status_message = format!("Error updating product: {:?}", e),
+                    }
+                }
                 self.input_mode = InputMode::Normal;
                 self.active_pane = ActivePane::Left;
-                // TODO: Persist changes to backend
             }
             KeyCode::Down => {
                 self.input_mode = InputMode::EditDescription;
@@ -770,9 +816,31 @@ impl App {
             KeyCode::Enter => {
                 // Save changes and return to normal mode
                 self.edit_backup = None; // Clear backup since we're saving
+                if let Some(product) = self.products.get(self.selected_index) {
+                    let update = crate::api::ProductUpdate {
+                        name: None,
+                        description: product.description.clone(),
+                        tags: None,
+                        production: None,
+                        material: None,
+                        color: None,
+                        print_time: None,
+                        weight: None,
+                        stock_quantity: None,
+                        reorder_point: None,
+                        unit_cost: None,
+                        selling_price: None,
+                    };
+                    match self.api_client.update_product(&product.sku, &update) {
+                        Ok(_) => {
+                            self.status_message = "Product updated successfully".to_string();
+                            self.refresh_data();
+                        }
+                        Err(e) => self.status_message = format!("Error updating product: {:?}", e),
+                    }
+                }
                 self.input_mode = InputMode::Normal;
                 self.active_pane = ActivePane::Left;
-                // TODO: Persist changes to backend
             }
             KeyCode::Down => {
                 self.input_mode = InputMode::EditProduction;
@@ -828,6 +896,7 @@ impl App {
                                 .unwrap_or(0);
                             self.status_message =
                                 format!("Category '{}' created", self.category_form.name);
+                            self.refresh_data();
                         }
                         Err(e) => {
                             self.status_message = format!("Error creating category: {:?}", e);
@@ -913,6 +982,7 @@ impl App {
                                     .unwrap_or(self.create_form.category_selected_index);
                                 self.status_message =
                                     format!("Category '{}' updated", self.category_form.name);
+                                self.refresh_data();
                             }
                             Err(e) => {
                                 self.status_message = format!("Error updating category: {:?}", e);
@@ -989,8 +1059,9 @@ impl App {
                                 .iter()
                                 .position(|t| t == &self.tag_form.name)
                                 .unwrap_or(0);
-                            self.status_message = format!("Tag '{}' created", self.tag_form.name);
-                        }
+                             self.status_message = format!("Tag '{}' created", self.tag_form.name);
+                             self.refresh_data();
+                         }
                          Err(e) => {
                              self.status_message = format!("Error creating tag: {:?}", e);
                          }
@@ -1039,8 +1110,9 @@ impl App {
                                     .iter()
                                     .position(|t| t == &self.tag_form.name)
                                     .unwrap_or(self.create_form.tag_selected_index);
-                                self.status_message =
-                                    format!("Tag '{}' updated", self.tag_form.name);
+                                 self.status_message =
+                                     format!("Tag '{}' updated", self.tag_form.name);
+                                 self.refresh_data();
                             }
                             Err(e) => {
                                 self.status_message = format!("Error updating tag: {:?}", e);
@@ -1080,9 +1152,31 @@ impl App {
                         .collect();
                 }
                 self.edit_backup = None;
+                if let Some(product) = self.products.get(self.selected_index) {
+                    let update = crate::api::ProductUpdate {
+                        name: Some(product.name.clone()),
+                        description: product.description.clone(),
+                        tags: Some(product.tags.clone()),
+                        production: Some(product.production),
+                        material: None,
+                        color: None,
+                        print_time: None,
+                        weight: None,
+                        stock_quantity: None,
+                        reorder_point: None,
+                        unit_cost: None,
+                        selling_price: None,
+                    };
+                    match self.api_client.update_product(&product.sku, &update) {
+                        Ok(_) => {
+                            self.status_message = "Product updated successfully".to_string();
+                            self.refresh_data();
+                        }
+                        Err(e) => self.status_message = format!("Error updating product: {:?}", e),
+                    }
+                }
                 self.input_mode = InputMode::Normal;
                 self.active_pane = ActivePane::Left;
-                // TODO: Persist changes to backend
             }
             KeyCode::Tab => {
                 // Parse current edit_tags_string to product.tags
@@ -1135,7 +1229,6 @@ impl App {
                 }
                 self.tag_selection.clear();
                 self.input_mode = InputMode::EditTags;
-                self.active_pane = ActivePane::Left;
             }
             KeyCode::Down => {
                 if !self.tags.is_empty() {
@@ -1214,9 +1307,31 @@ impl App {
             KeyCode::Enter => {
                 // Save changes and return to normal mode
                 self.edit_backup = None; // Clear backup since we're saving
+                if let Some(product) = self.products.get(self.selected_index) {
+                    let update = crate::api::ProductUpdate {
+                        name: None,
+                        description: None,
+                        tags: None,
+                        production: Some(product.production),
+                        material: None,
+                        color: None,
+                        print_time: None,
+                        weight: None,
+                        stock_quantity: None,
+                        reorder_point: None,
+                        unit_cost: None,
+                        selling_price: None,
+                    };
+                    match self.api_client.update_product(&product.sku, &update) {
+                        Ok(_) => {
+                            self.status_message = "Product updated successfully".to_string();
+                            self.refresh_data();
+                        }
+                        Err(e) => self.status_message = format!("Error updating product: {:?}", e),
+                    }
+                }
                 self.input_mode = InputMode::Normal;
                 self.active_pane = ActivePane::Left;
-                // TODO: Persist changes to backend
             }
             KeyCode::Up => {
                 self.input_mode = InputMode::EditDescription;
@@ -1357,16 +1472,7 @@ impl App {
         match self.api_client.create_product(&product) {
             Ok(response) => {
                 self.status_message = response.message;
-                // Refresh products list
-                match self.api_client.get_products() {
-                    Ok(products) => {
-                        self.products = products;
-                    }
-                    Err(e) => {
-                        self.status_message =
-                            format!("Product created but failed to refresh list: {:?}", e);
-                    }
-                }
+                self.refresh_data();
             }
             Err(e) => {
                 self.status_message = format!("Error creating product: {:?}", e);

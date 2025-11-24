@@ -429,11 +429,7 @@ fn build_tag_selection_content<'a>(app: &'a App, header: &'a str, help: &'a str)
         } else {
             format!("  {} {}", marker, tag)
         };
-        let style = if is_current {
-            Style::default().fg(Color::Black).bg(Color::Cyan)
-        } else {
-            Style::default().fg(Color::White)
-        };
+        let style = Style::default().fg(Color::White);
         content.push(Line::from(Span::styled(line, style)));
     }
     if app.tags.is_empty() {
