@@ -133,15 +133,18 @@ fn draw_search_tab(f: &mut Frame, area: Rect, app: &App) {
     draw_search_right_pane(f, chunks[1], app);
 }
 
-fn draw_searchable_list_pane(
+/// Generic searchable pane component that can be reused across different tabs
+fn draw_searchable_pane<F>(
     f: &mut Frame,
     area: Rect,
     app: &App,
     title: &str,
     search_query: &str,
     input_mode: InputMode,
-    display_format: fn(&crate::api::Product) -> String,
-) {
+    display_callback: F,
+) where
+    F: Fn(&mut Frame, Rect, &App, &[&crate::api::Product]) -> (),
+{
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(3), Constraint::Min(5)])
@@ -169,8 +172,13 @@ fn draw_searchable_list_pane(
             .collect()
     };
 
-    // Results list
-    let items: Vec<ListItem> = filtered_products
+    // Call the display callback with filtered products
+    display_callback(f, chunks[1], app, &filtered_products);
+}
+
+/// Display callback for simple list format (used by Search tab)
+fn display_as_list(f: &mut Frame, area: Rect, app: &App, products: &[&crate::api::Product]) {
+    let items: Vec<ListItem> = products
         .iter()
         .enumerate()
         .map(|(i, product)| {
@@ -180,29 +188,68 @@ fn draw_searchable_list_pane(
                 Style::default().fg(Color::White)
             };
 
-            ListItem::new(display_format(product)).style(style)
+            ListItem::new(format!("{} - {} ({})",
+                product.sku,
+                product.name,
+                if product.production { "Production" } else { "Prototype" }
+            )).style(style)
         })
         .collect();
 
     let list = List::new(items)
         .block(Block::default().borders(Borders::ALL).title("Results"))
         .highlight_style(Style::default().bold());
-    f.render_widget(list, chunks[1]);
+    f.render_widget(list, area);
+}
+
+/// Display callback for table format (used by Inventory tab)
+fn display_as_table(f: &mut Frame, area: Rect, app: &App, products: &[&crate::api::Product]) {
+    // Header
+    let header = vec![
+        Line::from("SKU         Name                    Qty   Price   Status")
+    ];
+
+    // Product rows
+    let mut rows = vec![];
+    for (i, product) in products.iter().enumerate() {
+        let style = if i == app.selected_index {
+            Style::default().fg(Color::Black).bg(Color::Cyan)
+        } else {
+            Style::default().fg(Color::White)
+        };
+
+        // Mock inventory data for now (in real app, this would come from API)
+        let qty = 10 - (i as i32 * 2); // Mock data
+        let price = 25.50 + (i as f64 * 5.0); // Mock data
+        let status = if qty > 5 { "In Stock" } else if qty > 0 { "Low Stock" } else { "Out of Stock" };
+
+        rows.push(Line::from(format!("{:<10} {:<20} {:>5} ${:>6.2} {:<10}",
+            product.sku,
+            &product.name[..product.name.len().min(20)],
+            qty,
+            price,
+            status
+        )).style(style));
+    }
+
+    let content = [header, rows].concat();
+
+    let paragraph = Paragraph::new(content)
+        .block(Block::default().borders(Borders::ALL).title("Inventory Results"))
+        .wrap(Wrap { trim: true });
+
+    f.render_widget(paragraph, area);
 }
 
 fn draw_search_left_pane(f: &mut Frame, area: Rect, app: &App) {
-    draw_searchable_list_pane(
+    draw_searchable_pane(
         f,
         area,
         app,
         "Search Products",
         &app.search_query,
         InputMode::Search,
-        |product| format!("{} - {} ({})",
-            product.sku,
-            product.name,
-            if product.production { "Production" } else { "Prototype" }
-        ),
+        display_as_list,
     );
 }
 
@@ -304,68 +351,15 @@ fn draw_inventory_tab(f: &mut Frame, content_area: Rect, totals_area: Rect, app:
 }
 
 fn draw_inventory_left_pane(f: &mut Frame, area: Rect, app: &App) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(3), Constraint::Min(5)])
-        .split(area);
-
-    // Search input
-    let search_text = if matches!(app.input_mode, InputMode::InventorySearch) {
-        format!("Search inventory: {}_", app.inventory_search_query)
-    } else {
-        format!("Search inventory: {} (press '/' to search)", app.inventory_search_query)
-    };
-    let search_paragraph = Paragraph::new(search_text)
-        .block(Block::default().borders(Borders::ALL).title("Inventory Search"));
-    f.render_widget(search_paragraph, chunks[0]);
-
-    // Header
-    let header = vec![
-        Line::from("SKU         Name                    Qty   Price   Status")
-    ];
-
-    // Filter products based on search query
-    let filtered_products: Vec<&crate::api::Product> = if app.inventory_search_query.is_empty() {
-        app.products.iter().collect()
-    } else {
-        app.products.iter()
-            .filter(|product|
-                product.name.to_lowercase().contains(&app.inventory_search_query.to_lowercase()) ||
-                product.sku.to_lowercase().contains(&app.inventory_search_query.to_lowercase())
-            )
-            .collect()
-    };
-
-    // Product rows
-    let mut rows = vec![];
-    for (i, product) in filtered_products.iter().enumerate() {
-        let style = if i == app.selected_index {
-            Style::default().fg(Color::Black).bg(Color::Cyan)
-        } else {
-            Style::default().fg(Color::White)
-        };
-
-        // Mock inventory data for now (in real app, this would come from API)
-        let qty = 10 - (i as i32 * 2); // Mock data
-        let price = 25.50 + (i as f64 * 5.0); // Mock data
-        let status = if qty > 5 { "In Stock" } else if qty > 0 { "Low Stock" } else { "Out of Stock" };
-
-        rows.push(Line::from(format!("{:<10} {:<20} {:>5} ${:>6.2} {:<10}",
-            product.sku,
-            &product.name[..product.name.len().min(20)],
-            qty,
-            price,
-            status
-        )).style(style));
-    }
-
-    let content = [header, rows].concat();
-
-    let paragraph = Paragraph::new(content)
-        .block(Block::default().borders(Borders::ALL).title("Inventory Results"))
-        .wrap(Wrap { trim: true });
-
-    f.render_widget(paragraph, chunks[1]);
+    draw_searchable_pane(
+        f,
+        area,
+        app,
+        "Inventory Search",
+        &app.inventory_search_query,
+        InputMode::InventorySearch,
+        display_as_table,
+    );
 }
 
 fn draw_inventory_right_pane(f: &mut Frame, area: Rect, app: &App) {
