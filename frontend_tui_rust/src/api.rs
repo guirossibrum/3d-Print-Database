@@ -20,6 +20,14 @@ pub struct Tag {
     pub usage_count: i32,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Category {
+    pub id: i32,
+    pub name: String,
+    pub sku_initials: String,
+    pub description: Option<String>,
+}
+
 
 
 pub struct ApiClient {
@@ -42,6 +50,64 @@ impl ApiClient {
         let response = self.client.get(&url).send().await?;
         let tags = response.json().await?;
         Ok(tags)
+    }
+
+    pub async fn get_categories(&self) -> Result<Vec<Category>> {
+        let url = format!("{}/categories", self.base_url);
+        let response = self.client.get(&url).send().await?;
+        let categories = response.json().await?;
+        Ok(categories)
+    }
+
+    pub async fn create_product(&self, product: &Product) -> Result<Product> {
+        let url = format!("{}/products/", self.base_url);
+        let response = self.client.post(&url)
+            .json(product)
+            .send()
+            .await?;
+        let created_product = response.json().await?;
+        Ok(created_product)
+    }
+
+    pub async fn create_category(&self, category: &Category) -> Result<Category> {
+        let url = format!("{}/categories/", self.base_url);
+        let response = self.client.post(&url)
+            .json(category)
+            .send()
+            .await?;
+        let created_category = response.json().await?;
+        Ok(created_category)
+    }
+
+    pub async fn update_category(&self, category: &Category) -> Result<Category> {
+        let id = category.id;
+        let url = format!("{}/categories/{}", self.base_url, id);
+        let response = self.client.put(&url)
+            .json(category)
+            .send()
+            .await?;
+        let updated_category = response.json().await?;
+        Ok(updated_category)
+    }
+
+    pub async fn create_tag(&self, tag: &Tag) -> Result<Tag> {
+        let url = format!("{}/tags/", self.base_url);
+        let response = self.client.post(&url)
+            .json(tag)
+            .send()
+            .await?;
+        let created_tag = response.json().await?;
+        Ok(created_tag)
+    }
+
+    pub async fn update_tag(&self, tag: &Tag) -> Result<Tag> {
+        let url = format!("{}/tags/{}", self.base_url, tag.name);
+        let response = self.client.put(&url)
+            .json(tag)
+            .send()
+            .await?;
+        let updated_tag = response.json().await?;
+        Ok(updated_tag)
     }
 
     pub async fn get_products(&self) -> Result<Vec<Product>> {
