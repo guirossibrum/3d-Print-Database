@@ -1203,10 +1203,6 @@ def show_edit_product_dialog(product):
 
             # Update product
             save_product_changes(product["sku"], payload)
-            # Add new tags to available tags
-            original_tags = product.get("tags", [])
-            new_tags = [t for t in edit_current_tags if t not in original_tags]
-            update_available_tags(new_tags)
             global dialog_open
             dialog_open = False
             dialog.destroy()
