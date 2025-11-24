@@ -50,3 +50,4 @@
 - **Build testing**: Run builds before/after changes: `cd frontend_tui_rust && cargo check`
 - **Cross-platform**: Test on target platforms, ensure launcher scripts work correctly
 - **Documentation**: Update AGENTS.md when adding new tools, patterns, or guidelines
+- **Known issues**: Rust TUI has compilation errors (unclosed delimiters in app.rs) - fix before release
