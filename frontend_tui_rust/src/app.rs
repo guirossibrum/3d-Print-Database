@@ -58,6 +58,8 @@ pub enum InputMode {
     EditName,
     EditDescription,
     EditProduction,
+    EditTags,
+    EditTagSelect,
     NewCategory,
     EditCategory,
     NewTag,
@@ -198,6 +200,8 @@ impl App {
             InputMode::EditName => self.handle_edit_name_mode(key),
             InputMode::EditDescription => self.handle_edit_description_mode(key),
             InputMode::EditProduction => self.handle_edit_production_mode(key),
+            InputMode::EditTags => self.handle_edit_tags_mode(key),
+            InputMode::EditTagSelect => self.handle_edit_tag_select_mode(key),
             InputMode::NewCategory => self.handle_new_category_mode(key),
             InputMode::EditCategory => self.handle_edit_category_mode(key),
             InputMode::NewTag => self.handle_new_tag_mode(key),
@@ -247,6 +251,26 @@ impl App {
                     }
                     InputMode::CreateTagSelect => {
                         // Tab in CreateTagSelect does nothing or save?
+                    }
+                    InputMode::EditName => {
+                        self.input_mode = InputMode::EditDescription;
+                    }
+                    InputMode::EditDescription => {
+                        self.input_mode = InputMode::EditProduction;
+                    }
+                    InputMode::EditProduction => {
+                        self.input_mode = InputMode::EditTags;
+                    }
+                    InputMode::EditTags => {
+                        self.input_mode = InputMode::EditTagSelect;
+                        self.active_pane = ActivePane::Right;
+                    }
+                    InputMode::EditTagSelect => {
+                        // Tab in EditTagSelect saves
+                        self.edit_backup = None;
+                        self.input_mode = InputMode::Normal;
+                        self.active_pane = ActivePane::Left;
+                        // TODO: Persist changes to backend
                     }
                     _ => {
                         // TAB in other modes (like search) exits to normal mode
@@ -300,7 +324,7 @@ impl App {
                             self.input_mode = InputMode::EditName;
                         }
                     }
-                    input_mode if matches!(input_mode, InputMode::EditName | InputMode::EditDescription | InputMode::EditProduction) => {
+                    input_mode if matches!(input_mode, InputMode::EditName | InputMode::EditDescription | InputMode::EditProduction | InputMode::EditTags) => {
                         // Save changes and return to normal mode
                         self.input_mode = InputMode::Normal;
                         self.active_pane = ActivePane::Left;
@@ -893,6 +917,116 @@ impl App {
             }
             KeyCode::Char(c) => {
                 self.tag_form.name.push(c);
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn handle_edit_tags_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+        match key.code {
+            KeyCode::Esc => {
+                self.input_mode = InputMode::EditProduction;
+            }
+            KeyCode::Enter => {
+                // Save changes and return to normal mode
+                self.edit_backup = None;
+                self.input_mode = InputMode::Normal;
+                self.active_pane = ActivePane::Left;
+                // TODO: Persist changes to backend
+            }
+            KeyCode::Tab => {
+                self.tag_selection = vec![false; self.tags.len()];
+                // Pre-select tags that are already in the current product
+                if let Some(product) = self.products.get(self.selected_index) {
+                    for (i, tag) in self.tags.iter().enumerate() {
+                        if product.tags.contains(tag) {
+                            self.tag_selection[i] = true;
+                        }
+                    }
+                }
+                self.input_mode = InputMode::EditTagSelect;
+                self.active_pane = ActivePane::Right;
+            }
+            KeyCode::Up => {
+                self.input_mode = InputMode::EditProduction;
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    fn handle_edit_tag_select_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+        match key.code {
+            KeyCode::Esc => {
+                self.input_mode = InputMode::EditTags;
+                self.active_pane = ActivePane::Left;
+            }
+            KeyCode::Enter => {
+                // Apply selected tags to the current product
+                if let Some(product) = self.products.get_mut(self.selected_index) {
+                    product.tags.clear();
+                    for (i, &selected) in self.tag_selection.iter().enumerate() {
+                        if selected {
+                            if let Some(tag) = self.tags.get(i) {
+                                product.tags.push(tag.clone());
+                            }
+                        }
+                    }
+                }
+                self.tag_selection.clear();
+                self.input_mode = InputMode::EditTags;
+                self.active_pane = ActivePane::Left;
+            }
+            KeyCode::Down => {
+                if !self.tags.is_empty() {
+                    self.create_form.tag_selected_index =
+                        (self.create_form.tag_selected_index + 1) % self.tags.len();
+                }
+            }
+            KeyCode::Up => {
+                if !self.tags.is_empty() {
+                    self.create_form.tag_selected_index =
+                        if self.create_form.tag_selected_index == 0 {
+                            self.tags.len() - 1
+                        } else {
+                            self.create_form.tag_selected_index - 1
+                        };
+                }
+            }
+            KeyCode::Char(' ') => {
+                // Toggle selection
+                if self.create_form.tag_selected_index < self.tag_selection.len() {
+                    self.tag_selection[self.create_form.tag_selected_index] = !self.tag_selection[self.create_form.tag_selected_index];
+                }
+            }
+            KeyCode::Char('n') => {
+                self.input_mode = InputMode::NewTag;
+            }
+            KeyCode::Char('e') => {
+                if let Some(tag) = self.tags.get(self.create_form.tag_selected_index) {
+                    self.tag_form.name = tag.clone();
+                    self.input_mode = InputMode::EditTag;
+                }
+            }
+            KeyCode::Char('d') => {
+                // Delete tag
+                if self.create_form.tag_selected_index < self.tags.len() {
+                    let tag_name = self.tags[self.create_form.tag_selected_index].clone();
+                    match self.api_client.delete_tag(&tag_name) {
+                        Ok(_) => {
+                            self.tags.remove(self.create_form.tag_selected_index);
+                            self.tag_selection.remove(self.create_form.tag_selected_index);
+                            if self.create_form.tag_selected_index >= self.tags.len() && self.create_form.tag_selected_index > 0 {
+                                self.create_form.tag_selected_index -= 1;
+                            }
+                            self.status_message = format!("Tag '{}' deleted", tag_name);
+                        }
+                        Err(e) => {
+                            self.status_message = format!("Error deleting tag: {:?}", e);
+                        }
+                    }
+                }
             }
             _ => {}
         }

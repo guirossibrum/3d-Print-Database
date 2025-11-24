@@ -548,7 +548,25 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
         Style::default().fg(Color::White)
     };
 
-    if let Some(product) = app.products.get(app.selected_index) {
+    if matches!(app.input_mode, InputMode::EditTagSelect) {
+        // Draw tag selection
+        let mut content = vec![];
+        content.push(Line::from("Select tags (Space to toggle, Enter to confirm):"));
+        for (i, tag) in app.tags.iter().enumerate() {
+            let selected = app.tag_selection.get(i).copied().unwrap_or(false);
+            let marker = if selected { "[x]" } else { "[ ]" };
+            let style = if i == app.create_form.tag_selected_index {
+                Style::default().fg(Color::Black).bg(Color::Cyan)
+            } else {
+                Style::default().fg(Color::White)
+            };
+            content.push(Line::from(Span::styled(format!("{} {}", marker, tag), style)));
+        }
+        let paragraph = Paragraph::new(content)
+            .block(Block::default().borders(Borders::ALL).title("Tag Selection").border_style(border_style))
+            .wrap(Wrap { trim: true });
+        f.render_widget(paragraph, area);
+    } else if let Some(product) = app.products.get(app.selected_index) {
         let name_style = if matches!(app.input_mode, InputMode::EditName) {
             Style::default().fg(Color::Yellow).bold()
         } else {
@@ -567,7 +585,13 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
             Style::default().fg(Color::Cyan)
         };
 
-    let mut content = vec![
+        let tags_style = if matches!(app.input_mode, InputMode::EditTags) {
+            Style::default().fg(Color::Yellow).bold()
+        } else {
+            Style::default().fg(Color::Cyan)
+        };
+
+        let mut content = vec![
             Line::from(vec![
                 Span::styled("SKU: ", Style::default().fg(Color::Cyan)),
                 Span::raw(&product.sku),
@@ -601,8 +625,13 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
                 }),
             ]),
             Line::from(vec![
-                Span::styled("Tags: ", Style::default().fg(Color::Cyan)),
+                Span::styled("Tags: ", tags_style),
                 Span::raw(product.tags.join(", ")),
+                if matches!(app.input_mode, InputMode::EditTags) {
+                    Span::styled("_", Style::default().fg(Color::White))
+                } else {
+                    Span::raw("")
+                },
             ]),
             Line::from(""),
         ];
