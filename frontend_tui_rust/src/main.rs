@@ -1,6 +1,7 @@
 use std::io;
 use ratatui::{backend::CrosstermBackend, Terminal};
 use crossterm::{
+    cursor::{Hide, Show},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen, Clear, ClearType},
 };
@@ -54,8 +55,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let mut stdout = io::stdout();
-    // Clear screen before entering alternate screen
-    execute!(stdout, Clear(ClearType::All))?;
+    // Clear screen and hide cursor before entering alternate screen
+    execute!(stdout, Clear(ClearType::All), Hide)?;
     execute!(stdout, EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = match Terminal::new(backend) {
@@ -77,7 +78,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Restore terminal
     let _ = disable_raw_mode();
     let _ = execute!(terminal.backend_mut(), LeaveAlternateScreen);
-    let _ = terminal.show_cursor();
+    let _ = execute!(io::stdout(), Show);
 
     match res {
         Ok(()) => println!("✓ TUI exited normally."),
