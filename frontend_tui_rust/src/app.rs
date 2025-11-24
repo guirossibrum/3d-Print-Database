@@ -134,14 +134,7 @@ impl App {
     }
 
     fn handle_key(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
-        // Handle TAB specially for edit modes to ensure it cancels
-        if matches!(key.code, KeyCode::Tab) &&
-           matches!(self.input_mode, InputMode::EditName | InputMode::EditDescription | InputMode::EditProduction) {
-            // Cancel editing and return to results
-            self.input_mode = InputMode::Normal;
-            self.active_pane = ActivePane::Left;
-            return Ok(());
-        }
+
 
         match self.input_mode {
             InputMode::Normal => self.handle_normal_mode(key),
@@ -331,7 +324,7 @@ impl App {
 
     fn handle_edit_name_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
         match key.code {
-            KeyCode::Esc => {
+            KeyCode::Esc | KeyCode::Tab => {
                 // Cancel changes (discard) and return to normal mode
                 self.input_mode = InputMode::Normal;
                 self.active_pane = ActivePane::Left;
@@ -365,7 +358,7 @@ impl App {
 
     fn handle_edit_description_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
         match key.code {
-            KeyCode::Esc => {
+            KeyCode::Esc | KeyCode::Tab => {
                 // Cancel changes (discard) and return to normal mode
                 self.input_mode = InputMode::Normal;
                 self.active_pane = ActivePane::Left;
@@ -400,7 +393,7 @@ impl App {
 
     fn handle_edit_production_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
         match key.code {
-            KeyCode::Esc => {
+            KeyCode::Esc | KeyCode::Tab => {
                 // Cancel changes (discard) and return to normal mode
                 self.input_mode = InputMode::Normal;
                 self.active_pane = ActivePane::Left;
