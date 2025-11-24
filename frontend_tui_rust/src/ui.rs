@@ -11,7 +11,16 @@ use crate::app::{App, Tab, InputMode};
 pub fn draw(f: &mut Frame, app: &mut App) {
     let size = f.size();
 
-    // Create main layout
+    // Ensure minimum terminal size
+    if size.height < 20 || size.width < 80 {
+        let error_msg = format!("Terminal too small: {}x{}\nMinimum: 80x20", size.width, size.height);
+        let error = Paragraph::new(error_msg)
+            .style(Style::default().fg(Color::Red))
+            .block(Block::default().borders(Borders::ALL).title("Error"));
+        f.render_widget(error, size);
+        return;
+    }
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -371,15 +380,6 @@ fn draw_inventory_totals(f: &mut Frame, area: Rect, app: &App) {
 }
 
 fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
-    let mode_indicator = match app.input_mode {
-        InputMode::Normal => "",
-        InputMode::Search => "[SEARCH]",
-        InputMode::CreateName => "[CREATE NAME]",
-        InputMode::CreateDescription => "[CREATE DESC]",
-        InputMode::EditName => "[EDIT NAME]",
-        InputMode::EditDescription => "[EDIT DESC]",
-    };
-
     // Truncate status message if too long
     let max_status_len = 40;
     let truncated_status = if app.status_message.len() > max_status_len {
@@ -388,8 +388,8 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
         app.status_message.clone()
     };
 
-    let footer_text = format!("{} {} | q: quit, Tab: switch tabs, j/k: navigate | v0.2.0",
-        truncated_status, mode_indicator);
+    let footer_text = format!("{} | q:quit Tab:tabs j/k:nav | v0.2.0",
+        truncated_status);
 
     let footer = Paragraph::new(footer_text)
         .style(Style::default().fg(Color::Cyan))
