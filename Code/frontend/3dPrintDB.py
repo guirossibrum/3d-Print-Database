@@ -1550,7 +1550,7 @@ tk.Checkbutton(create_tab, text="Production Ready", variable=var_production).gri
 
 # Tags section
 tk.Label(create_tab, text="Tags:", font=("Arial", 10, "bold")).grid(
-    row=4, column=0, sticky="ne", pady=10, padx=5
+    row=5, column=0, sticky="e", pady=5, padx=5
 )
 
 # Tag input frame (left side)
