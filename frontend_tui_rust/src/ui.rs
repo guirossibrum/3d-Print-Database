@@ -8,7 +8,7 @@ use ratatui::{
 
 use crate::app::{App, Tab, InputMode, ActivePane};
 
-pub fn draw(f: &mut Frame, app: &mut App) {
+pub fn draw(f: &mut Frame, app: &mut App, version: &str) {
     let size = f.area();
 
     // Clear the frame
@@ -62,7 +62,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     }
 
     // Draw footer
-    draw_footer(f, chunks[4], app);
+    draw_footer(f, chunks[4], app, version);
 }
 
 fn draw_header(f: &mut Frame, area: Rect) {
@@ -447,7 +447,7 @@ fn draw_inventory_totals(f: &mut Frame, area: Rect, app: &App) {
     f.render_widget(paragraph, area);
 }
 
-fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
+fn draw_footer(f: &mut Frame, area: Rect, app: &App, version: &str) {
     // Get instructions based on current tab, pane, and mode
     let instructions = match app.current_tab {
         Tab::Create => match app.input_mode {
@@ -497,7 +497,7 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
         app.status_message.clone()
     };
 
-    let footer_text = format!("{} | {} | q:quit v1.1.0", truncated_status, instructions);
+    let footer_text = format!("{} | {} | q:quit v{}", truncated_status, instructions, version);
 
     let footer = Paragraph::new(footer_text)
         .style(Style::default().fg(Color::Cyan))

@@ -12,6 +12,11 @@ mod api;
 
 use app::App;
 
+// Get version from Cargo.toml
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+
+
 #[derive(Debug)]
 enum TerminalError {
     NotInteractive,
@@ -91,7 +96,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Press 'q' to quit, use mouse or keyboard to navigate.");
 
     // Create app and run it
-    let res = app.run(&mut terminal);
+    let res = app.run(&mut terminal, VERSION);
 
     // Restore terminal
     let _ = disable_raw_mode();

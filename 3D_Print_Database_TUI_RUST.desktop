@@ -2,7 +2,7 @@
 Version=1.0
 Type=Application
 Name=3D Print Database TUI (Rust)
-Comment=Terminal interface for managing 3D printing products (Rust/ratatui) - Advanced navigation with pane highlighting
+Comment=Terminal interface for managing 3D printing products (Rust/ratatui) - Advanced navigation with pane highlighting, vim-like controls
 Exec=/home/grbrum/Work/3d_print/3dPrintDB_TUI_RUST.sh
 Icon=/home/grbrum/Work/3d_print/Code/frontend/icon.svg
 Terminal=true

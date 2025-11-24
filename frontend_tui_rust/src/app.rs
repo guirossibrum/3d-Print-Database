@@ -113,11 +113,12 @@ impl App {
     pub fn run(
         &mut self,
         terminal: &mut Terminal<ratatui::backend::CrosstermBackend<std::io::Stdout>>,
+        version: &str,
     ) -> Result<()> {
         while self.running {
             // Draw the UI
             terminal.draw(|f| {
-                ui::draw(f, self);
+                ui::draw(f, self, version);
             })?;
 
             // Poll for events with timeout
