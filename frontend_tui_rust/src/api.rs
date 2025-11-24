@@ -10,7 +10,7 @@ pub struct Product {
     pub description: Option<String>,
     pub production: bool,
     pub tags: Vec<String>,
-    pub category_id: i32,
+    pub category_id: Option<i32>,
     pub material: Option<String>,
     pub color: Option<String>,
     pub print_time: Option<i32>,

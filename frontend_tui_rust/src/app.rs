@@ -1043,7 +1043,7 @@ impl App {
             },
             production: self.create_form.production,
             tags: self.create_form.tags.clone(),
-            category_id: self.create_form.category_id.unwrap(),
+            category_id: Some(self.create_form.category_id.unwrap()),
             material: None,
             color: None,
             print_time: None,

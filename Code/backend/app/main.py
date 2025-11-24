@@ -118,11 +118,13 @@ def list_products():
         for p in products:
             result.append(
                 {
+                    "id": p.id,
                     "sku": p.sku,
                     "name": p.name,
                     "description": p.description,
                     "production": p.production,
                     "tags": [t.name for t in p.tags],
+                    "category_id": p.category_id,
                     "material": p.material,
                     "color": p.color,
                     "print_time": p.print_time,
