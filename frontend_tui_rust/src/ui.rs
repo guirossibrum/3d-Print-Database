@@ -162,7 +162,7 @@ fn draw_create_left_pane(f: &mut Frame, area: Rect, app: &App, border_style: Sty
         Style::default().fg(Color::Cyan)
     };
     let category_display = if let Some(cat_id) = app.create_form.category_id {
-        if let Some(category) = app.categories.iter().find(|c| c.id == cat_id) {
+        if let Some(category) = app.categories.iter().find(|c| c.id == Some(cat_id)) {
             format!("{} ({})", category.name, category.sku_initials)
         } else {
             format!("Category ID: {}", cat_id)
@@ -267,12 +267,15 @@ fn draw_create_right_pane(f: &mut Frame, area: Rect, app: &App) {
                 Span::styled("Available Tags:", Style::default().fg(Color::Green).bold()),
             ]));
             for (i, tag) in app.tags.iter().enumerate() {
-                let is_selected = i == app.create_form.tag_selected_index;
-                let style = if is_selected {
-                    Style::default().fg(Color::Black).bg(Color::Yellow)
-                } else {
-                    Style::default().fg(Color::White)
-                };
+                let is_current = i == app.create_form.tag_selected_index;
+                let is_selected = app.tag_selection.get(i).copied().unwrap_or(false);
+                let mut style = Style::default().fg(Color::White);
+                if is_selected {
+                    style = style.bg(Color::Blue);
+                }
+                if is_current {
+                    style = style.underlined();
+                }
                 content.push(Line::from(vec![
                     Span::styled(tag.clone(), style),
                 ]));
@@ -284,7 +287,7 @@ fn draw_create_right_pane(f: &mut Frame, area: Rect, app: &App) {
             }
             content.push(Line::from(""));
             content.push(Line::from(vec![
-                Span::styled("[↑↓: Select] [ENTER: Choose] [n: New] [e: Edit] [ESC: Back]", Style::default().fg(Color::Gray)),
+                Span::styled("[↑↓: Navigate] [Space: Toggle] [ENTER: Add Selected] [n: New] [e: Edit] [d: Delete] [ESC: Back]", Style::default().fg(Color::Gray)),
             ]));
         }
         _ => {

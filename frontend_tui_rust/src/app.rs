@@ -95,6 +95,7 @@ pub struct App {
     pub category_form: CategoryForm,
     pub tag_form: TagForm,
     pub popup_field: usize,
+    pub tag_selection: Vec<bool>,
 }
 
 #[derive(Debug, Default)]
@@ -152,6 +153,7 @@ impl App {
             category_form: CategoryForm::default(),
             tag_form: TagForm::default(),
             popup_field: 0,
+            tag_selection: Vec::new(),
         })
     }
 
@@ -432,7 +434,7 @@ impl App {
             KeyCode::Enter => {
                 // Select the current category
                 if let Some(category) = self.categories.get(self.create_form.category_selected_index) {
-                    self.create_form.category_id = Some(category.id);
+                    self.create_form.category_id = category.id;
                 }
                 self.input_mode = InputMode::CreateCategory;
                 self.active_pane = ActivePane::Left;
@@ -509,6 +511,13 @@ impl App {
                 self.active_pane = ActivePane::Left;
             }
             KeyCode::Tab => {
+                self.tag_selection = vec![false; self.tags.len()];
+                // Pre-select tags that are already in create_form.tags
+                for (i, tag) in self.tags.iter().enumerate() {
+                    if self.create_form.tags.contains(tag) {
+                        self.tag_selection[i] = true;
+                    }
+                }
                 self.input_mode = InputMode::CreateTagSelect;
                 self.active_pane = ActivePane::Right;
             }
@@ -527,12 +536,17 @@ impl App {
                 self.active_pane = ActivePane::Left;
             }
             KeyCode::Enter => {
-                // Select tag from available tags
-                if let Some(tag) = self.tags.get(self.create_form.tag_selected_index) {
-                    if !self.create_form.tags.contains(tag) {
-                        self.create_form.tags.push(tag.clone());
+                // Add selected tags to create_form.tags
+                for (i, &selected) in self.tag_selection.iter().enumerate() {
+                    if selected {
+                        if let Some(tag) = self.tags.get(i) {
+                            if !self.create_form.tags.contains(tag) {
+                                self.create_form.tags.push(tag.clone());
+                            }
+                        }
                     }
                 }
+                self.tag_selection.clear();
                 self.input_mode = InputMode::CreateTags;
                 self.active_pane = ActivePane::Left;
             }
@@ -552,6 +566,12 @@ impl App {
                         };
                 }
             }
+            KeyCode::Char(' ') => {
+                // Toggle selection
+                if self.create_form.tag_selected_index < self.tag_selection.len() {
+                    self.tag_selection[self.create_form.tag_selected_index] = !self.tag_selection[self.create_form.tag_selected_index];
+                }
+            }
             KeyCode::Char('n') => {
                 self.input_mode = InputMode::NewTag;
             }
@@ -559,6 +579,25 @@ impl App {
                 if let Some(tag) = self.tags.get(self.create_form.tag_selected_index) {
                     self.tag_form.name = tag.clone();
                     self.input_mode = InputMode::EditTag;
+                }
+            }
+            KeyCode::Char('d') => {
+                // Delete tag
+                if self.create_form.tag_selected_index < self.tags.len() {
+                    let tag_name = self.tags[self.create_form.tag_selected_index].clone();
+                    match self.api_client.delete_tag(&tag_name) {
+                        Ok(_) => {
+                            self.tags.remove(self.create_form.tag_selected_index);
+                            self.tag_selection.remove(self.create_form.tag_selected_index);
+                            if self.create_form.tag_selected_index >= self.tags.len() && self.create_form.tag_selected_index > 0 {
+                                self.create_form.tag_selected_index -= 1;
+                            }
+                            self.status_message = format!("Tag '{}' deleted", tag_name);
+                        }
+                        Err(e) => {
+                            self.status_message = format!("Error deleting tag: {:?}", e);
+                        }
+                    }
                 }
             }
             _ => {}
