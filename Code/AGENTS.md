@@ -30,6 +30,9 @@
 ## Release & Deployment Checklist
 - **Version bump**: Update version in `frontend_tui_rust/src/ui.rs` footer
 - **Desktop files**: Update version in `.desktop` file names and comments, commit changes
+- **System installation**: Copy versioned `.desktop` file to `~/.local/share/applications/`
+- **Permissions**: Ensure desktop file has execute permissions (`chmod +x`)
+- **Cache clearing**: Clear Walker cache with `rm -rf ~/.cache/walker/*`
 - **Launcher scripts**: Update paths and version references, test execution
 - **Binary deployment**: Ensure release binary is built and launcher points to correct path
 - **Version verification**: Check that UI shows correct version number after deployment
