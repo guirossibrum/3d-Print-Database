@@ -7,6 +7,17 @@ import json
 import threading
 import time
 
+# FastAPI endpoints
+API_URL = "http://localhost:8000/products/"
+TAGS_URL = "http://localhost:8000/tags"
+TAGS_SUGGEST_URL = "http://localhost:8000/tags/suggest"
+SEARCH_URL = "http://localhost:8000/products/search"
+CATEGORIES_URL = "http://localhost:8000/categories"
+INVENTORY_URL = "http://localhost:8000/inventory/status"
+
+from modules.api_client import *
+from modules import search
+
 
 # Tag display functions (copied from modules for compatibility)
 def update_tag_display(tags_list, display_frame, layout="pack"):
