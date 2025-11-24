@@ -89,32 +89,187 @@ fn draw_tabs(f: &mut Frame, area: Rect, app: &App) {
 }
 
 fn draw_create_tab(f: &mut Frame, area: Rect, app: &App) {
-    let content = vec![
-        Line::from(vec![
-            Span::styled("Name: ", Style::default().fg(Color::Cyan)),
-            Span::raw(&app.create_form.name),
-            if matches!(app.input_mode, InputMode::CreateName) {
-                Span::styled(" _", Style::default().fg(Color::White))
-            } else {
-                Span::raw("")
-            },
-        ]),
-        Line::from(vec![
-            Span::styled("Description: ", Style::default().fg(Color::Cyan)),
-            Span::raw(&app.create_form.description),
-            if matches!(app.input_mode, InputMode::CreateDescription) {
-                Span::styled(" _", Style::default().fg(Color::White))
-            } else {
-                Span::raw("")
-            },
-        ]),
-        Line::from(""),
-    ];
+    let mut content = vec![];
 
-    // Instructions moved to footer
+    // Name field
+    let name_style = if matches!(app.input_mode, InputMode::CreateName) {
+        Style::default().fg(Color::Yellow).bold()
+    } else {
+        Style::default().fg(Color::Cyan)
+    };
+    content.push(Line::from(vec![
+        Span::styled("Name: ", name_style),
+        Span::raw(&app.create_form.name),
+        if matches!(app.input_mode, InputMode::CreateName) {
+            Span::styled("_", Style::default().fg(Color::White))
+        } else {
+            Span::raw("")
+        },
+    ]));
+
+    // Description field
+    let desc_style = if matches!(app.input_mode, InputMode::CreateDescription) {
+        Style::default().fg(Color::Yellow).bold()
+    } else {
+        Style::default().fg(Color::Cyan)
+    };
+    content.push(Line::from(vec![
+        Span::styled("Description: ", desc_style),
+        Span::raw(&app.create_form.description),
+        if matches!(app.input_mode, InputMode::CreateDescription) {
+            Span::styled("_", Style::default().fg(Color::White))
+        } else {
+            Span::raw("")
+        },
+    ]));
+
+    // Category field
+    let category_style = if matches!(app.input_mode, InputMode::CreateCategory) {
+        Style::default().fg(Color::Yellow).bold()
+    } else {
+        Style::default().fg(Color::Cyan)
+    };
+
+    if matches!(app.input_mode, InputMode::CreateCategory) {
+        // Show category selection interface
+        content.push(Line::from(vec![
+            Span::styled("Category: ", category_style),
+        ]));
+
+        // Show available categories
+        for (i, category) in app.categories.iter().enumerate() {
+            let is_selected = i == app.create_form.category_selected_index;
+            let marker = if is_selected { "→ " } else { "  " };
+            let style = if is_selected {
+                Style::default().fg(Color::Black).bg(Color::Cyan)
+            } else {
+                Style::default().fg(Color::White)
+            };
+            content.push(Line::from(vec![
+                Span::raw(marker),
+                Span::styled(format!("{} ({})", category.name, category.sku_initials), style),
+            ]));
+        }
+
+        if app.categories.is_empty() {
+            content.push(Line::from(vec![
+                Span::styled("  No categories available", Style::default().fg(Color::Gray)),
+            ]));
+        }
+    } else {
+        // Show selected category
+        let category_display = if let Some(cat_id) = app.create_form.category_id {
+            if let Some(category) = app.categories.iter().find(|c| c.id == cat_id) {
+                format!("{} ({})", category.name, category.sku_initials)
+            } else {
+                format!("Category ID: {}", cat_id)
+            }
+        } else {
+            "No category selected".to_string()
+        };
+        content.push(Line::from(vec![
+            Span::styled("Category: ", category_style),
+            Span::raw(category_display),
+        ]));
+    }
+
+    // Production field
+    let prod_style = if matches!(app.input_mode, InputMode::CreateProduction) {
+        Style::default().fg(Color::Yellow).bold()
+    } else {
+        Style::default().fg(Color::Cyan)
+    };
+    content.push(Line::from(vec![
+        Span::styled("Production: ", prod_style),
+        Span::raw(if matches!(app.input_mode, InputMode::CreateProduction) {
+            format!("[{}] Yes    [{}] No",
+                if app.create_form.production { "x" } else { " " },
+                if !app.create_form.production { "x" } else { " " })
+        } else {
+            format!("{}", if app.create_form.production { "Yes" } else { "No" })
+        }),
+    ]));
+
+    // Tags field
+    let tags_style = if matches!(app.input_mode, InputMode::CreateTags) {
+        Style::default().fg(Color::Yellow).bold()
+    } else {
+        Style::default().fg(Color::Cyan)
+    };
+
+    if matches!(app.input_mode, InputMode::CreateTags) {
+        // Show tag management interface
+        content.push(Line::from(vec![
+            Span::styled("Tags: ", tags_style),
+            Span::raw(if app.create_form.tags.is_empty() {
+                "None".to_string()
+            } else {
+                app.create_form.tags.join(", ")
+            }),
+        ]));
+
+        // Show new tag input
+        content.push(Line::from(vec![
+            Span::styled("New Tag: ", Style::default().fg(Color::Green)),
+            Span::raw(&app.create_form.new_tag_input),
+            Span::styled("_", Style::default().fg(Color::White)),
+        ]));
+
+        // Show available tags for selection
+        if !app.tags.is_empty() {
+            content.push(Line::from(""));
+            content.push(Line::from(vec![
+                Span::styled("Available Tags:", Style::default().fg(Color::Green).bold()),
+            ]));
+
+            for (i, tag) in app.tags.iter().enumerate() {
+                let is_selected = i == app.create_form.tag_selected_index;
+                let marker = if is_selected { "→ " } else { "  " };
+                let style = if is_selected {
+                    Style::default().fg(Color::Black).bg(Color::Cyan)
+                } else {
+                    Style::default().fg(Color::White)
+                };
+                content.push(Line::from(vec![
+                    Span::raw(marker),
+                    Span::styled(tag.clone(), style),
+                ]));
+            }
+        }
+    } else {
+        // Show current tags
+        content.push(Line::from(vec![
+            Span::styled("Tags: ", tags_style),
+            Span::raw(if app.create_form.tags.is_empty() {
+                "None".to_string()
+            } else {
+                app.create_form.tags.join(", ")
+            }),
+        ]));
+    }
+
+    content.push(Line::from(""));
+    let help_text = match app.input_mode {
+        InputMode::CreateName => "[TAB/↓: Next] [↑: Prev] [ESC: Cancel]",
+        InputMode::CreateDescription => "[TAB/↓: Next] [↑: Prev] [ESC: Cancel]",
+        InputMode::CreateCategory => "[↑↓: Select] [TAB: Next] [ESC: Cancel]",
+        InputMode::CreateProduction => "[←→/y/n: Toggle] [TAB/↓: Next] [↑: Prev] [ESC: Cancel]",
+        InputMode::CreateTags => "[TAB: Add/Select Tag] [ENTER: Save] [↑: Prev] [↓: Select Tag] [ESC: Cancel]",
+        _ => "[ENTER: Create] [ESC: Cancel]",
+    };
+    content.push(Line::from(vec![
+        Span::styled(help_text, Style::default().fg(Color::Gray)),
+    ]));
+
+    let is_creating = matches!(app.input_mode, InputMode::CreateName | InputMode::CreateDescription | InputMode::CreateCategory | InputMode::CreateProduction | InputMode::CreateTags);
+    let border_style = if is_creating {
+        Style::default().fg(Color::Yellow).bold()
+    } else {
+        Style::default().fg(Color::White)
+    };
 
     let paragraph = Paragraph::new(content)
-        .block(Block::default().borders(Borders::ALL).title("Create Product"))
+        .block(Block::default().borders(Borders::ALL).title("Create Product").border_style(border_style))
         .wrap(Wrap { trim: true });
 
     f.render_widget(paragraph, area);
@@ -474,9 +629,12 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App, version: &str) {
     // Get instructions based on current tab, pane, and mode
     let instructions = match app.current_tab {
         Tab::Create => match app.input_mode {
-            InputMode::Normal => "←→: switch tabs, c: create product",
-            InputMode::CreateName => "Enter name, Enter: next field, Esc: cancel",
-            InputMode::CreateDescription => "Enter description, Enter: save, Esc: cancel",
+            InputMode::Normal => "←→: switch tabs, Enter: create product",
+            InputMode::CreateName => "Enter name, Tab/↓: next, ↑: prev, Esc: cancel",
+            InputMode::CreateDescription => "Enter desc, Tab/↓: next, ↑: prev, Esc: cancel",
+            InputMode::CreateCategory => "↑↓: select category, Tab: next, Esc: cancel",
+            InputMode::CreateProduction => "←→/y/n: toggle, Tab/↓: next, ↑: prev, Esc: cancel",
+            InputMode::CreateTags => "Tab: add/select tag, Enter: save, ↑: prev, ↓: select tag, Esc: cancel",
             _ => "←→: switch tabs",
         },
         Tab::Search => match app.input_mode {
