@@ -484,7 +484,6 @@ fn draw_searchable_pane_with_styles<F>(
     app: &App,
     title: &str,
     search_query: &str,
-    _input_mode: InputMode,
     search_border_style: Style,
     results_border_style: Style,
     display_callback: F,
@@ -496,11 +495,11 @@ fn draw_searchable_pane_with_styles<F>(
         .constraints([Constraint::Length(3), Constraint::Min(5)])
         .split(area);
 
-    // Search input
-    let search_text = if matches!(app.input_mode, _input_mode) {
-        format!("{}_", search_query)
+    // Search input - always show current query (no mode switching needed)
+    let search_text = if search_query.is_empty() {
+        "".to_string()
     } else {
-        "_".to_string()
+        search_query.to_string()
     };
     let search_paragraph = Paragraph::new(search_text).block(
         Block::default()
@@ -661,7 +660,6 @@ fn draw_search_left_pane(f: &mut Frame, area: Rect, app: &App) {
         app,
         title,
         &app.search_query,
-        InputMode::Search,
         search_border_style,
         results_border_style,
         display_as_list,
@@ -818,7 +816,6 @@ fn draw_inventory_left_pane(f: &mut Frame, area: Rect, app: &App) {
         app,
         title,
         &app.inventory_search_query,
-        InputMode::InventorySearch,
         search_border_style,
         results_border_style,
         display_as_table,
@@ -832,7 +829,7 @@ fn draw_inventory_right_pane(f: &mut Frame, area: Rect, app: &App) {
         INACTIVE_BORDER_STYLE
     };
 
-    if let Some(product) = app.products.get(app.selected_index) {
+if let Some(product) = app.products.get(app.filtered_selection_index) {
         let content = vec![
             Line::from(vec![
                 Span::styled("Product: ", Style::default().fg(Color::Cyan)),
@@ -928,14 +925,13 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App, version: &str) {
             InputMode::Normal => {
                 if app.has_multiple_panes() {
                     match app.active_pane {
-                        ActivePane::Left => "Tab: edit selected, j/k: select, /: search",
+                        ActivePane::Left => "Tab: edit selected, j/k: select, type: search",
                         ActivePane::Right => "Tab: back to results, Enter: save, ↑↓: fields",
                     }
                 } else {
-                    "j/k: select product, Enter: edit, /: search"
+                    "j/k: select product, Enter: edit, type: search"
                 }
             }
-            InputMode::Search => "Type to search, Enter: confirm, Esc: cancel",
             InputMode::EditName => "Edit name, Tab: cancel, Enter: save, ↑↓: fields",
             InputMode::EditDescription => "Edit desc, Tab: cancel, Enter: save, ↑↓: fields",
             InputMode::EditProduction => "←→: toggle, Tab: cancel, Enter: save, ↑↓: fields",
@@ -945,14 +941,13 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App, version: &str) {
             InputMode::Normal => {
                 if app.has_multiple_panes() {
                     match app.active_pane {
-                        ActivePane::Left => "Tab: right pane, j/k: select product, /: search",
+                        ActivePane::Left => "Tab: right pane, j/k: select product, type: search",
                         ActivePane::Right => "Tab: left pane, +/-: adjust stock, Enter: confirm",
                     }
                 } else {
-                    "j/k: select product, /: search"
+                    "j/k: select product, type: search"
                 }
             }
-            InputMode::InventorySearch => "Type to search inventory, Enter: confirm, Esc: cancel",
             _ => "Tab: switch panes, j/k: navigate",
         },
     };

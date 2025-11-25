@@ -50,8 +50,6 @@ pub enum ActivePane {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum InputMode {
     Normal,
-    Search,
-    InventorySearch,
     CreateName,
     CreateDescription,
     CreateCategory,

@@ -206,20 +206,6 @@ impl App {
         }
     }
 
-    pub fn reset_filtered_selection(&mut self) {
-        self.filtered_selection_index = 0;
-        // If there are filtered results, select the first one
-        let filtered_products: Vec<crate::api::Product> = self.get_filtered_products()
-            .into_iter()
-            .cloned()
-            .collect();
-        if let Some(product) = filtered_products.first() {
-            if let Some(index) = self.products.iter().position(|p| p.sku == product.sku) {
-                self.selected_index = index;
-            }
-        }
-    }
-
     pub fn handle_mouse_event(&mut self, _mouse_event: crossterm::event::MouseEvent) {
         // Mouse handling not yet implemented
     }

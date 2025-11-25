@@ -7,8 +7,6 @@ use crate::models::*;
 pub fn handle_key_dispatch(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
     match app.input_mode {
         InputMode::Normal => handle_normal_mode(app, key),
-        InputMode::Search => handle_search_mode(app, key),
-        InputMode::InventorySearch => handle_inventory_search_mode(app, key),
         InputMode::CreateName => handle_create_name_mode(app, key),
         InputMode::CreateDescription => handle_create_description_mode(app, key),
         InputMode::CreateCategory => handle_create_category_mode(app, key),
@@ -39,11 +37,11 @@ fn handle_normal_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> 
                 // Refresh data before editing
                 app.refresh_data();
                 // Backup current product for potential cancellation
-                if let Some(product) = app.products.get(app.selected_index) {
+                if let Some(product) = app.products.get(app.filtered_selection_index) {
                     app.edit_backup = Some(product.clone());
                 }
                 // Initialize edit_tags_string with current product tags
-                if let Some(product) = app.products.get(app.selected_index) {
+                if let Some(product) = app.products.get(app.filtered_selection_index) {
                     app.edit_tags_string = product.tags.join(", ");
                 }
                 // Switch to right pane and enter edit mode
@@ -82,11 +80,24 @@ fn handle_normal_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> 
             app.filtered_selection_index = 0;
             app.refresh_data();
         }
-        KeyCode::Char('/') => {
+        KeyCode::Char(c) => {
+            // Direct typing in search box for Search and Inventory tabs
             if matches!(app.current_tab, Tab::Search) {
-                app.input_mode = InputMode::Search;
+                app.search_query.push(c);
+                app.filtered_selection_index = 0; // Reset selection when typing
             } else if matches!(app.current_tab, Tab::Inventory) {
-                app.input_mode = InputMode::InventorySearch;
+                app.inventory_search_query.push(c);
+                app.filtered_selection_index = 0; // Reset selection when typing
+            }
+        }
+        KeyCode::Backspace => {
+            // Handle backspace for search boxes
+            if matches!(app.current_tab, Tab::Search) && !app.search_query.is_empty() {
+                app.search_query.pop();
+                app.filtered_selection_index = 0; // Reset selection when typing
+            } else if matches!(app.current_tab, Tab::Inventory) && !app.inventory_search_query.is_empty() {
+                app.inventory_search_query.pop();
+                app.filtered_selection_index = 0; // Reset selection when typing
             }
         }
         KeyCode::Enter => {
@@ -118,59 +129,7 @@ fn handle_normal_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> 
     Ok(())
 }
 
-fn handle_search_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
-    match key.code {
-        KeyCode::Esc => {
-            app.input_mode = InputMode::Normal;
-            app.search_query.clear();
-            app.reset_filtered_selection();
-        }
-        KeyCode::Enter => {
-            app.input_mode = InputMode::Normal;
-        }
-        KeyCode::Tab => {
-            app.input_mode = InputMode::Normal;
-            // Don't switch panes when exiting search mode
-        }
-        KeyCode::Backspace => {
-            app.search_query.pop();
-            app.reset_filtered_selection();
-        }
-        KeyCode::Char(c) => {
-            app.search_query.push(c);
-            app.reset_filtered_selection();
-        }
-        _ => {}
-    }
-    Ok(())
-}
 
-fn handle_inventory_search_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
-    match key.code {
-        KeyCode::Esc => {
-            app.input_mode = InputMode::Normal;
-            app.inventory_search_query.clear();
-            app.reset_filtered_selection();
-        }
-        KeyCode::Enter => {
-            app.input_mode = InputMode::Normal;
-        }
-        KeyCode::Tab => {
-            app.input_mode = InputMode::Normal;
-            // Don't switch panes when exiting search mode
-        }
-        KeyCode::Backspace => {
-            app.inventory_search_query.pop();
-            app.reset_filtered_selection();
-        }
-        KeyCode::Char(c) => {
-            app.inventory_search_query.push(c);
-            app.reset_filtered_selection();
-        }
-        _ => {}
-    }
-    Ok(())
-}
 
 fn handle_create_name_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
     match key.code {
