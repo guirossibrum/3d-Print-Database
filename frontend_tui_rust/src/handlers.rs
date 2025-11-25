@@ -705,27 +705,63 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
         KeyCode::Enter => {
             match app.item_type {
                 ItemType::Tag => {
-                    // Save new tag
+                    // Save new tag(s) - support comma-separated
                     if !app.tag_form.name.trim().is_empty() {
-                        let tag = crate::api::Tag {
-                            name: app.tag_form.name.clone(),
-                            usage_count: 0,
-                        };
-                        match app.api_client.create_tag(&tag) {
-                            Ok(created_tag) => {
-                                app.tags.push(created_tag.name.clone());
-                                app.tags.sort();
-                                app.create_form.tag_selected_index = app
-                                    .tags
-                                    .iter()
-                                    .position(|t| t == &app.tag_form.name)
-                                    .unwrap_or(0);
-                                app.status_message = format!("Tag '{}' created", app.tag_form.name);
-                                app.refresh_data();
+                        let tag_names: Vec<String> = app.tag_form.name
+                            .split(',')
+                            .map(|s| s.trim().to_string())
+                            .filter(|s| !s.is_empty())
+                            .collect();
+                        
+                        let mut created_count = 0;
+                        let mut first_new_tag_index = None;
+                        
+                        for tag_name in tag_names {
+                            // Skip if tag already exists
+                            if app.tags.contains(&tag_name) {
+                                continue;
                             }
-                            Err(e) => {
-                                app.status_message = format!("Error creating tag: {:?}", e);
+                            
+                            let tag = crate::api::Tag {
+                                name: tag_name.clone(),
+                                usage_count: 0,
+                            };
+                            match app.api_client.create_tag(&tag) {
+                                Ok(created_tag) => {
+                                    app.tags.push(created_tag.name.clone());
+                                    if first_new_tag_index.is_none() {
+                                        first_new_tag_index = Some(created_tag.name.clone());
+                                    }
+                                    created_count += 1;
+                                }
+                                Err(e) => {
+                                    app.status_message = format!("Error creating tag '{}': {:?}", tag_name, e);
+                                }
                             }
+                        }
+                        
+                        if created_count > 0 {
+                            app.tags.sort();
+                            app.refresh_data();
+                            
+                            // Update tag selection array to match new tags length
+                            app.tag_selection.resize(app.tags.len(), false);
+                            
+                            // Set selection index to first new tag if available
+                            if let Some(ref new_tag_name) = first_new_tag_index {
+                                if let Some(index) = app.tags.iter().position(|t| t == new_tag_name) {
+                                    app.create_form.tag_selected_index = index;
+                                    // Pre-select the new tag
+                                    app.tag_selection[index] = true;
+                                }
+                            }
+                            
+                            let message = if created_count == 1 {
+                                format!("Tag '{}' created", first_new_tag_index.unwrap_or_default())
+                            } else {
+                                format!("{} tags created", created_count)
+                            };
+                            app.status_message = message;
                         }
                     } else {
                         app.status_message = "Error: Tag name required".to_string();

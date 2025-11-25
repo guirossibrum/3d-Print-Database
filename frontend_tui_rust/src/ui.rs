@@ -396,7 +396,7 @@ fn draw_popup(f: &mut Frame, area: Rect, app: &App) {
 
     content.push(Line::from(""));
     content.push(Line::from(vec![Span::styled(
-        "[ENTER: Save] [ESC: Cancel]",
+        "[ENTER: Save] [ESC: Cancel] (Tip: Use commas for multiple tags)",
         Style::default().fg(Color::Gray),
     )]));
 
