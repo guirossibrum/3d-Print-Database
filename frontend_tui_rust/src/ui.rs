@@ -71,6 +71,14 @@ pub fn draw(f: &mut Frame, app: &mut App, version: &str) {
         }
     }
 
+    // Draw popup if in popup mode (global, works across all tabs)
+    if matches!(
+        app.input_mode,
+        InputMode::NewCategory | InputMode::EditCategory | InputMode::NewTag | InputMode::EditTag
+    ) {
+        draw_popup(f, content_area, app);
+    }
+
     // Draw footer
     draw_footer(f, chunks[4], app, version);
 }
@@ -134,14 +142,6 @@ fn draw_create_tab(f: &mut Frame, area: Rect, app: &App) {
             )
             .wrap(Wrap { trim: true });
         f.render_widget(paragraph, area);
-    }
-
-    // Draw popup if in popup mode
-    if matches!(
-        app.input_mode,
-        InputMode::NewCategory | InputMode::EditCategory | InputMode::NewTag | InputMode::EditTag
-    ) {
-        draw_popup(f, area, app);
     }
 }
 
