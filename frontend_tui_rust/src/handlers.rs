@@ -332,7 +332,7 @@ fn handle_tag_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent)
                 TagSelectMode::Create => InputMode::CreateTags,
                 TagSelectMode::Edit => InputMode::EditTags,
             };
-            app.active_pane = ActivePane::Left;
+            app.active_pane = ActivePane::Right; // Return to Product Details pane (right)
         }
         KeyCode::Enter => {
             // Handle based on context (Create vs Edit)
@@ -352,7 +352,7 @@ fn handle_tag_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent)
                 }
                 TagSelectMode::Edit => {
                     // Update product tags with selected tags
-                    if let Some(product) = app.products.get_mut(app.selected_index) {
+                    if let Some(product) = app.products.get_mut(app.filtered_selection_index) {
                         product.tags.clear();
                         for (i, &selected) in app.tag_selection.iter().enumerate() {
                             if selected
