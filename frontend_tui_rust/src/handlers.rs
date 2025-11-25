@@ -365,7 +365,7 @@ fn handle_tag_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent)
                     }
                     app.tag_selection.clear();
                     app.input_mode = InputMode::EditTags;
-                    app.active_pane = ActivePane::Left;
+                    app.active_pane = ActivePane::Right; // Return to Product Details pane (right)
                 }
             }
         }
