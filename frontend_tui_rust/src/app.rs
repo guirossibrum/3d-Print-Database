@@ -18,6 +18,20 @@ pub enum Tab {
     Inventory,
 }
 
+/// Mode for tag selection
+#[derive(Debug, Clone, PartialEq)]
+pub enum TagSelectMode {
+    Create,
+    Edit,
+}
+
+/// Type of item being created/edited
+#[derive(Debug, Clone, PartialEq)]
+pub enum ItemType {
+    Tag,
+    Category,
+}
+
 impl Tab {
     pub fn next(&self) -> Self {
         match self {
@@ -91,6 +105,11 @@ pub struct App {
     pub edit_backup: Option<Product>,
     pub previous_input_mode: Option<InputMode>,
 
+    // Consolidated modes
+    pub tag_select_mode: TagSelectMode,
+    pub item_type: ItemType,
+    pub edit_item_type: ItemType,
+
     // Create form
     pub create_form: CreateForm,
     pub category_form: CategoryForm,
@@ -150,6 +169,9 @@ impl App {
             status_message: String::new(),
             edit_backup: None,
             previous_input_mode: None,
+            tag_select_mode: TagSelectMode::Create,
+            item_type: ItemType::Tag,
+            edit_item_type: ItemType::Tag,
             create_form: CreateForm {
                 production: true, // Default to production ready
                 ..Default::default()
@@ -197,16 +219,16 @@ impl App {
             InputMode::CreateCategorySelect => self.handle_create_category_select_mode(key),
             InputMode::CreateProduction => self.handle_create_production_mode(key),
             InputMode::CreateTags => self.handle_create_tags_mode(key),
-            InputMode::CreateTagSelect => self.handle_create_tag_select_mode(key),
+            InputMode::CreateTagSelect => self.handle_tag_select_mode(key),
             InputMode::EditName => self.handle_edit_name_mode(key),
             InputMode::EditDescription => self.handle_edit_description_mode(key),
             InputMode::EditProduction => self.handle_edit_production_mode(key),
             InputMode::EditTags => self.handle_edit_tags_mode(key),
-            InputMode::EditTagSelect => self.handle_edit_tag_select_mode(key),
-            InputMode::NewCategory => self.handle_new_category_mode(key),
-            InputMode::EditCategory => self.handle_edit_category_mode(key),
-            InputMode::NewTag => self.handle_new_tag_mode(key),
-            InputMode::EditTag => self.handle_edit_tag_mode(key),
+            InputMode::EditTagSelect => self.handle_tag_select_mode(key),
+
+
+            InputMode::NewTag | InputMode::NewCategory => self.handle_new_item_mode(key),
+            InputMode::EditTag | InputMode::EditCategory => self.handle_edit_item_mode(key),
         }
     }
 
@@ -532,6 +554,7 @@ impl App {
                 }
             }
             KeyCode::Char('n') => {
+                self.item_type = ItemType::Category;
                 self.input_mode = InputMode::NewCategory;
             }
             KeyCode::Char('e') => {
@@ -543,6 +566,7 @@ impl App {
                     self.category_form.sku = category.sku_initials.clone();
                     self.category_form.description =
                         category.description.clone().unwrap_or_default();
+                    self.edit_item_type = ItemType::Category;
                     self.input_mode = InputMode::EditCategory;
                 }
             }
@@ -609,10 +633,13 @@ impl App {
         Ok(())
     }
 
-    fn handle_create_tag_select_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+    fn handle_tag_select_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
         match key.code {
             KeyCode::Esc => {
-                self.input_mode = InputMode::CreateTags;
+                self.input_mode = match self.tag_select_mode {
+                    TagSelectMode::Create => InputMode::CreateTags,
+                    TagSelectMode::Edit => InputMode::EditTags,
+                };
                 self.active_pane = ActivePane::Left;
             }
             KeyCode::Enter => {
@@ -659,6 +686,7 @@ impl App {
             KeyCode::Char('e') => {
                 if let Some(tag) = self.tags.get(self.create_form.tag_selected_index) {
                     self.previous_input_mode = Some(self.input_mode);
+                    self.edit_item_type = ItemType::Tag;
                     self.tag_form.name = tag.clone();
                     self.input_mode = InputMode::EditTag;
                 }
@@ -865,229 +893,242 @@ impl App {
         Ok(())
     }
 
-    fn handle_new_category_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
-        match key.code {
-            KeyCode::Esc => {
-                self.category_form = CategoryForm::default();
-                self.popup_field = 0;
-                self.input_mode = InputMode::CreateCategorySelect;
-            }
-            KeyCode::Enter => {
-                // Save new category
-                if !self.category_form.name.trim().is_empty() && self.category_form.sku.len() == 3 {
-                    let category = crate::api::Category {
-                        id: None,
-                        name: self.category_form.name.clone(),
-                        sku_initials: self.category_form.sku.clone(),
-                        description: if self.category_form.description.trim().is_empty() {
-                            None
-                        } else {
-                            Some(self.category_form.description.clone())
-                        },
-                    };
-                    match self.api_client.create_category(&category) {
-                        Ok(created_category) => {
-                            self.categories.push(created_category);
-                            self.categories.sort_by(|a, b| a.name.cmp(&b.name));
-                            self.create_form.category_selected_index = self
-                                .categories
-                                .iter()
-                                .position(|c| c.name == self.category_form.name)
-                                .unwrap_or(0);
-                            self.status_message =
-                                format!("Category '{}' created", self.category_form.name);
-                            self.refresh_data();
-                        }
-                        Err(e) => {
-                            self.status_message = format!("Error creating category: {:?}", e);
-                        }
-                    }
-                } else {
-                    self.status_message = "Error: Name required, SKU must be 3 letters".to_string();
-                }
-                self.category_form = CategoryForm::default();
-                self.popup_field = 0;
-                self.input_mode = InputMode::CreateCategorySelect;
-            }
-            KeyCode::Tab => {
-                self.popup_field = (self.popup_field + 1) % 3;
-            }
-            KeyCode::BackTab => {
-                self.popup_field = if self.popup_field == 0 {
-                    2
-                } else {
-                    self.popup_field - 1
-                };
-            }
-            KeyCode::Backspace => match self.popup_field {
-                0 => {
-                    self.category_form.name.pop();
-                }
-                1 => {
-                    self.category_form.sku.pop();
-                }
-                2 => {
-                    self.category_form.description.pop();
-                }
-                _ => {}
-            },
-            KeyCode::Char(c) => match self.popup_field {
-                0 => {
-                    self.category_form.name.push(c);
-                }
-                1 => {
-                    if self.category_form.sku.len() < 3 {
-                        self.category_form.sku.push(c);
-                    }
-                }
-                2 => {
-                    self.category_form.description.push(c);
-                }
-                _ => {}
-            },
-            _ => {}
-        }
-        Ok(())
-    }
 
-    fn handle_edit_category_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+
+
+
+    fn handle_new_item_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
         match key.code {
             KeyCode::Esc => {
-                self.category_form = CategoryForm::default();
-                self.popup_field = 0;
-                self.input_mode = InputMode::CreateCategorySelect;
+                match self.item_type {
+                    ItemType::Tag => {
+                        self.tag_form = TagForm::default();
+                        self.input_mode = self.previous_input_mode.unwrap_or(InputMode::CreateTagSelect);
+                    }
+                    ItemType::Category => {
+                        self.category_form = CategoryForm::default();
+                        self.popup_field = 0;
+                        self.input_mode = InputMode::CreateCategorySelect;
+                    }
+                }
             }
             KeyCode::Enter => {
-                // Save edited category
-                if !self.category_form.name.trim().is_empty() && self.category_form.sku.len() == 3 {
-                    if self.create_form.category_selected_index < self.categories.len() {
-                        let mut category =
-                            self.categories[self.create_form.category_selected_index].clone();
-                        category.name = self.category_form.name.clone();
-                        category.sku_initials = self.category_form.sku.clone();
-                        category.description = if self.category_form.description.trim().is_empty() {
-                            None
-                        } else {
-                            Some(self.category_form.description.clone())
+                match self.item_type {
+                    ItemType::Tag => {
+                        // Save new tag
+                        if !self.tag_form.name.trim().is_empty() {
+                            let tag = crate::api::Tag {
+                                name: self.tag_form.name.clone(),
+                                usage_count: 0,
+                            };
+                            match self.api_client.create_tag(&tag) {
+                                Ok(created_tag) => {
+                                    self.tags.push(created_tag.name.clone());
+                                    self.tags.sort();
+                                    self.create_form.tag_selected_index = self
+                                        .tags
+                                        .iter()
+                                        .position(|t| t == &self.tag_form.name)
+                                        .unwrap_or(0);
+                                     self.status_message = format!("Tag '{}' created", self.tag_form.name);
+                                     self.refresh_data();
+                                 }
+                                 Err(e) => {
+                                     self.status_message = format!("Error creating tag: {:?}", e);
+                                 }
+                             }
+                         } else {
+                             self.status_message = "Error: Tag name required".to_string();
+                         }
+                        self.tag_form = TagForm::default();
+                        self.input_mode = match self.tag_select_mode {
+                            TagSelectMode::Create => InputMode::CreateTagSelect,
+                            TagSelectMode::Edit => InputMode::EditTagSelect,
                         };
-                        match self.api_client.update_category(&category) {
-                            Ok(updated_category) => {
-                                self.categories[self.create_form.category_selected_index] =
-                                    updated_category;
-                                self.categories.sort_by(|a, b| a.name.cmp(&b.name));
-                                self.create_form.category_selected_index = self
-                                    .categories
-                                    .iter()
-                                    .position(|c| c.name == self.category_form.name)
-                                    .unwrap_or(self.create_form.category_selected_index);
-                                self.status_message =
-                                    format!("Category '{}' updated", self.category_form.name);
-                                self.refresh_data();
+                    }
+                    ItemType::Category => {
+                        // Save new category
+                        if !self.category_form.name.trim().is_empty() && self.category_form.sku.len() == 3 {
+                            let category = crate::api::Category {
+                                id: None,
+                                name: self.category_form.name.clone(),
+                                sku_initials: self.category_form.sku.clone(),
+                                description: if self.category_form.description.trim().is_empty() {
+                                    None
+                                } else {
+                                    Some(self.category_form.description.clone())
+                                },
+                            };
+                            match self.api_client.create_category(&category) {
+                                Ok(created_category) => {
+                                    self.categories.push(created_category);
+                                    self.categories.sort_by(|a, b| a.name.cmp(&b.name));
+                                    self.create_form.category_selected_index = self
+                                        .categories
+                                        .iter()
+                                        .position(|c| c.name == self.category_form.name)
+                                        .unwrap_or(0);
+                                    self.status_message =
+                                        format!("Category '{}' created", self.category_form.name);
+                                    self.refresh_data();
+                                }
+                                Err(e) => {
+                                    self.status_message = format!("Error creating category: {:?}", e);
+                                }
                             }
-                            Err(e) => {
-                                self.status_message = format!("Error updating category: {:?}", e);
-                            }
+                        } else {
+                            self.status_message = "Error: Name required, SKU must be 3 letters".to_string();
                         }
-                    }
-                } else {
-                    self.status_message = "Error: Name required, SKU must be 3 letters".to_string();
-                }
-                self.category_form = CategoryForm::default();
-                self.popup_field = 0;
-                self.input_mode = InputMode::CreateCategorySelect;
-            }
-            KeyCode::Tab => {
-                self.popup_field = (self.popup_field + 1) % 3;
-            }
-            KeyCode::BackTab => {
-                self.popup_field = if self.popup_field == 0 {
-                    2
-                } else {
-                    self.popup_field - 1
-                };
-            }
-            KeyCode::Backspace => match self.popup_field {
-                0 => {
-                    self.category_form.name.pop();
-                }
-                1 => {
-                    self.category_form.sku.pop();
-                }
-                2 => {
-                    self.category_form.description.pop();
-                }
-                _ => {}
-            },
-            KeyCode::Char(c) => match self.popup_field {
-                0 => {
-                    self.category_form.name.push(c);
-                }
-                1 => {
-                    if self.category_form.sku.len() < 3 {
-                        self.category_form.sku.push(c);
+                        self.category_form = CategoryForm::default();
+                        self.popup_field = 0;
+                        self.input_mode = InputMode::CreateCategorySelect;
                     }
                 }
-                2 => {
-                    self.category_form.description.push(c);
-                }
-                _ => {}
-            },
-            _ => {}
-        }
-        Ok(())
-    }
-
-    fn handle_new_tag_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
-        match key.code {
-            KeyCode::Esc => {
-                self.tag_form = TagForm::default();
-                self.input_mode = self.previous_input_mode.unwrap_or(InputMode::CreateTagSelect);
-            }
-            KeyCode::Enter => {
-                // Save new tag
-                if !self.tag_form.name.trim().is_empty() {
-                    let tag = crate::api::Tag {
-                        name: self.tag_form.name.clone(),
-                        usage_count: 0,
-                    };
-                    match self.api_client.create_tag(&tag) {
-                        Ok(created_tag) => {
-                            self.tags.push(created_tag.name.clone());
-                            self.tags.sort();
-                            self.create_form.tag_selected_index = self
-                                .tags
-                                .iter()
-                                .position(|t| t == &self.tag_form.name)
-                                .unwrap_or(0);
-                             self.status_message = format!("Tag '{}' created", self.tag_form.name);
-                             self.refresh_data();
-                         }
-                         Err(e) => {
-                             self.status_message = format!("Error creating tag: {:?}", e);
-                         }
-                     }
-                 } else {
-                     self.status_message = "Error: Tag name required".to_string();
-                 }
-                 self.tag_form = TagForm::default();
-                 self.input_mode = self.previous_input_mode.unwrap_or(InputMode::CreateTagSelect);
             }
             KeyCode::Backspace => {
-                self.tag_form.name.pop();
+                match self.item_type {
+                    ItemType::Tag => {
+                        self.tag_form.name.pop();
+                    }
+                    ItemType::Category => match self.popup_field {
+                        0 => {
+                            self.category_form.name.pop();
+                        }
+                        1 => {
+                            self.category_form.sku.pop();
+                        }
+                        2 => {
+                            self.category_form.description.pop();
+                        }
+                        _ => {}
+                    },
+                }
             }
             KeyCode::Char(c) => {
-                self.tag_form.name.push(c);
+                match self.item_type {
+                    ItemType::Tag => {
+                        self.tag_form.name.push(c);
+                    }
+                    ItemType::Category => match self.popup_field {
+                        0 => {
+                            self.category_form.name.push(c);
+                        }
+                        1 => {
+                            if self.category_form.sku.len() < 3 {
+                                self.category_form.sku.push(c);
+                            }
+                        }
+                        2 => {
+                            self.category_form.description.push(c);
+                        }
+                        _ => {}
+                    },
+                }
             }
             _ => {}
         }
         Ok(())
     }
 
-    fn handle_edit_tag_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+    fn handle_edit_item_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
         match key.code {
             KeyCode::Esc => {
-                self.tag_form = TagForm::default();
-                self.input_mode = InputMode::CreateTagSelect;
+                match self.edit_item_type {
+                    ItemType::Tag => {
+                        self.tag_form = TagForm::default();
+                        self.input_mode = match self.tag_select_mode {
+                            TagSelectMode::Create => InputMode::CreateTagSelect,
+                            TagSelectMode::Edit => InputMode::EditTagSelect,
+                        };
+                    }
+                    ItemType::Category => {
+                        self.category_form = CategoryForm::default();
+                        self.popup_field = 0;
+                        self.input_mode = InputMode::CreateCategorySelect;
+                    }
+                }
+            }
+            KeyCode::Enter => {
+                match self.edit_item_type {
+                    ItemType::Tag => {
+                        // Save edited tag
+                        if !self.tag_form.name.trim().is_empty() {
+                            if self.create_form.tag_selected_index < self.tags.len() {
+                                let old_name = self.tags[self.create_form.tag_selected_index].clone();
+                                let tag = crate::api::Tag {
+                                    name: old_name.clone(),
+                                    usage_count: 0, // Not used for update
+                                };
+                                let mut updated_tag = tag.clone();
+                                updated_tag.name = self.tag_form.name.clone();
+                                match self.api_client.update_tag(&updated_tag) {
+                                    Ok(_) => {
+                                        self.tags[self.create_form.tag_selected_index] =
+                                            self.tag_form.name.clone();
+                                        self.tags.sort();
+                                        self.create_form.tag_selected_index = self
+                                            .tags
+                                            .iter()
+                                            .position(|t| t == &self.tag_form.name)
+                                            .unwrap_or(self.create_form.tag_selected_index);
+                                         self.status_message =
+                                             format!("Tag '{}' updated", self.tag_form.name);
+                                         self.refresh_data();
+                                    }
+                                    Err(e) => {
+                                        self.status_message = format!("Error updating tag: {:?}", e);
+                                    }
+                                }
+                            }
+                        } else {
+                            self.status_message = "Error: Tag name required".to_string();
+                        }
+                        self.tag_form = TagForm::default();
+                        self.input_mode = match self.tag_select_mode {
+                            TagSelectMode::Create => InputMode::CreateTagSelect,
+                            TagSelectMode::Edit => InputMode::EditTagSelect,
+                        };
+                    }
+                    ItemType::Category => {
+                        // Save edited category
+                        if !self.category_form.name.trim().is_empty() && self.category_form.sku.len() == 3 {
+                            if self.create_form.category_selected_index < self.categories.len() {
+                                let mut category =
+                                    self.categories[self.create_form.category_selected_index].clone();
+                                category.name = self.category_form.name.clone();
+                                category.sku_initials = self.category_form.sku.clone();
+                                category.description = if self.category_form.description.trim().is_empty() {
+                                    None
+                                } else {
+                                    Some(self.category_form.description.clone())
+                                };
+                                match self.api_client.update_category(&category) {
+                                    Ok(updated_category) => {
+                                        self.categories[self.create_form.category_selected_index] =
+                                            updated_category;
+                                        self.categories.sort_by(|a, b| a.name.cmp(&b.name));
+                                        self.create_form.category_selected_index = self
+                                            .categories
+                                            .iter()
+                                            .position(|c| c.name == self.category_form.name)
+                                            .unwrap_or(self.create_form.category_selected_index);
+                                        self.status_message =
+                                            format!("Category '{}' updated", self.category_form.name);
+                                        self.refresh_data();
+                                    }
+                                    Err(e) => {
+                                        self.status_message = format!("Error updating category: {:?}", e);
+                                    }
+                                }
+                            }
+                        } else {
+                            self.status_message = "Error: Name required, SKU must be 3 letters".to_string();
+                        }
+                        self.category_form = CategoryForm::default();
+                        self.popup_field = 0;
+                        self.input_mode = InputMode::CreateCategorySelect;
+                    }
+                }
             }
             KeyCode::Enter => {
                 // Save edited tag
@@ -1208,88 +1249,7 @@ impl App {
         Ok(())
     }
 
-    fn handle_edit_tag_select_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
-        match key.code {
-            KeyCode::Esc => {
-                self.input_mode = InputMode::EditTags;
-                self.active_pane = ActivePane::Left;
-            }
-            KeyCode::Enter => {
-                // Apply selected tags to the current product
-                if let Some(product) = self.products.get_mut(self.selected_index) {
-                    product.tags.clear();
-                    for (i, &selected) in self.tag_selection.iter().enumerate() {
-                        if selected {
-                            if let Some(tag) = self.tags.get(i) {
-                                product.tags.push(tag.clone());
-                            }
-                        }
-                    }
-                    self.edit_tags_string = product.tags.join(", ");
-                }
-                self.tag_selection.clear();
-                self.input_mode = InputMode::EditTags;
-            }
-            KeyCode::Down => {
-                if !self.tags.is_empty() {
-                    self.create_form.tag_selected_index =
-                        (self.create_form.tag_selected_index + 1) % self.tags.len();
-                }
-            }
-            KeyCode::Up => {
-                if !self.tags.is_empty() {
-                    self.create_form.tag_selected_index =
-                        if self.create_form.tag_selected_index == 0 {
-                            self.tags.len() - 1
-                        } else {
-                            self.create_form.tag_selected_index - 1
-                        };
-                }
-            }
-            KeyCode::Char(' ') => {
-                // Toggle selection
-                if self.create_form.tag_selected_index < self.tag_selection.len() {
-                    self.tag_selection[self.create_form.tag_selected_index] =
-                        !self.tag_selection[self.create_form.tag_selected_index];
-                }
-            }
-            KeyCode::Char('n') => {
-                self.previous_input_mode = Some(self.input_mode);
-                self.input_mode = InputMode::NewTag;
-            }
-            KeyCode::Char('e') => {
-                if let Some(tag) = self.tags.get(self.create_form.tag_selected_index) {
-                    self.previous_input_mode = Some(self.input_mode);
-                    self.tag_form.name = tag.clone();
-                    self.input_mode = InputMode::EditTag;
-                }
-            }
-            KeyCode::Char('d') => {
-                // Delete tag
-                if self.create_form.tag_selected_index < self.tags.len() {
-                    let tag_name = self.tags[self.create_form.tag_selected_index].clone();
-                    match self.api_client.delete_tag(&tag_name) {
-                        Ok(_) => {
-                            self.tags.remove(self.create_form.tag_selected_index);
-                            self.tag_selection
-                                .remove(self.create_form.tag_selected_index);
-                            if self.create_form.tag_selected_index >= self.tags.len()
-                                && self.create_form.tag_selected_index > 0
-                            {
-                                self.create_form.tag_selected_index -= 1;
-                            }
-                            self.status_message = format!("Tag '{}' deleted", tag_name);
-                        }
-                        Err(e) => {
-                            self.status_message = format!("Error deleting tag: {:?}", e);
-                        }
-                    }
-                }
-            }
-            _ => {}
-        }
-        Ok(())
-    }
+
 
     fn handle_edit_production_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
         match key.code {
