@@ -1,10 +1,16 @@
 use ratatui::{
-    Frame,
-    layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Style, Stylize},
+    prelude::*,
+    style::{Color, Modifier, Style, Stylize},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, Paragraph, Tabs, Wrap},
 };
+
+// Style constants to reduce repetition
+const HEADER_STYLE: Style = Style::new().fg(Color::Green).add_modifier(Modifier::BOLD);
+const HELP_STYLE: Style = Style::new().fg(Color::Gray);
+const NORMAL_STYLE: Style = Style::new().fg(Color::White);
+const ACTIVE_BORDER_STYLE: Style = Style::new().fg(Color::Yellow).add_modifier(Modifier::BOLD);
+const INACTIVE_BORDER_STYLE: Style = Style::new().fg(Color::White);
 
 use crate::app::{ActivePane, App, InputMode, Tab};
 
@@ -272,9 +278,9 @@ fn draw_create_left_pane(f: &mut Frame, area: Rect, app: &App, border_style: Sty
 
 fn draw_create_right_pane(f: &mut Frame, area: Rect, app: &App) {
     let border_style = if matches!(app.active_pane, ActivePane::Right) {
-        Style::default().fg(Color::Yellow).bold()
+        ACTIVE_BORDER_STYLE
     } else {
-        Style::default().fg(Color::White)
+        INACTIVE_BORDER_STYLE
     };
 
     let mut content = vec![];
@@ -418,7 +424,7 @@ fn draw_popup(f: &mut Frame, area: Rect, app: &App) {
 fn build_tag_selection_content<'a>(app: &'a App, header: &'a str, help: &'a str) -> Vec<Line<'a>> {
     let mut content = vec![];
     content.push(Line::from(vec![
-        Span::styled(header, Style::default().fg(Color::Green).bold()),
+        Span::styled(header, HEADER_STYLE),
     ]));
     for (i, tag) in app.tags.iter().enumerate() {
         let is_current = i == app.create_form.tag_selected_index;
@@ -429,17 +435,17 @@ fn build_tag_selection_content<'a>(app: &'a App, header: &'a str, help: &'a str)
         } else {
             format!("  {} {}", marker, tag)
         };
-        let style = Style::default().fg(Color::White);
+        let style = NORMAL_STYLE;
         content.push(Line::from(Span::styled(line, style)));
     }
     if app.tags.is_empty() {
         content.push(Line::from(vec![
-            Span::styled("No tags available", Style::default().fg(Color::Gray)),
+            Span::styled("No tags available", HELP_STYLE),
         ]));
     }
     content.push(Line::from(""));
     content.push(Line::from(vec![
-        Span::styled(help, Style::default().fg(Color::Gray)),
+        Span::styled(help, HELP_STYLE),
     ]));
     content
 }
@@ -671,9 +677,9 @@ fn draw_search_left_pane(f: &mut Frame, area: Rect, app: &App) {
 
 fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
     let border_style = if matches!(app.active_pane, ActivePane::Right) {
-        Style::default().fg(Color::Yellow).bold()
+        ACTIVE_BORDER_STYLE
     } else {
-        Style::default().fg(Color::White)
+        INACTIVE_BORDER_STYLE
     };
 
     if matches!(app.input_mode, InputMode::EditTagSelect) {
@@ -711,11 +717,7 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
             Style::default().fg(Color::Cyan)
         };
 
-        let tags_style = if matches!(app.input_mode, InputMode::EditTags) {
-            Style::default().fg(Color::Yellow).bold()
-        } else {
-            Style::default().fg(Color::Cyan)
-        };
+        let tags_style = NORMAL_STYLE;
 
         let tags_text = product.tags.join(", ");
 
@@ -839,9 +841,9 @@ fn draw_inventory_left_pane(f: &mut Frame, area: Rect, app: &App) {
 
 fn draw_inventory_right_pane(f: &mut Frame, area: Rect, app: &App) {
     let border_style = if matches!(app.active_pane, ActivePane::Right) {
-        Style::default().fg(Color::Yellow).bold()
+        ACTIVE_BORDER_STYLE
     } else {
-        Style::default().fg(Color::White)
+        INACTIVE_BORDER_STYLE
     };
 
     if let Some(product) = app.products.get(app.selected_index) {
