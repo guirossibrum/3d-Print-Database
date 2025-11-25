@@ -1053,26 +1053,33 @@ fn open_product_folder(sku: &str) -> Result<()> {
     use std::path::Path;
     use anyhow::anyhow;
     
-    let base_path = Path::new("/Products").join(sku);
+    let base_path = Path::new("/home/grbrum/Work/3d_print/Products").join(sku);
     
     if !base_path.exists() {
         return Err(anyhow!("Product folder not found: {}", base_path.display()));
     }
     
-    // Try to open with xdg-open (Linux standard)
-    match Command::new("xdg-open").arg(&base_path).spawn() {
-        Ok(_) => Ok(()),
-        Err(_) => {
-            // Fallback to other methods if xdg-open fails
-            match Command::new("nautilus").arg(&base_path).spawn() {
-                Ok(_) => Ok(()),
-                Err(_) => {
-                    match Command::new("dolphin").arg(&base_path).spawn() {
-                        Ok(_) => Ok(()),
-                        Err(e) => Err(anyhow!("Failed to open folder: {}", e))
-                    }
-                }
+    // Try different file managers for Linux (following Python frontend pattern)
+    let file_managers = ["dolphin", "nautilus", "yazi", "thunar", "pcmanfm", "nemo"];
+    let mut opened = false;
+    
+    for fm in &file_managers {
+        match Command::new(fm).arg(&base_path).spawn() {
+            Ok(_) => {
+                opened = true;
+                break;
             }
+            Err(_) => continue,
+        }
+    }
+    
+    if opened {
+        Ok(())
+    } else {
+        // Fallback to xdg-open if no specific file manager works
+        match Command::new("xdg-open").arg(&base_path).spawn() {
+            Ok(_) => Ok(()),
+            Err(e) => Err(anyhow!("Failed to open folder: {}", e))
         }
     }
 }
