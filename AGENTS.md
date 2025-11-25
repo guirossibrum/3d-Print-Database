@@ -4,15 +4,15 @@ This document provides coding guidelines and requirements for AI agents working 
 
 ## Build/Lint/Test Commands
 - **Backend dev**: `cd Code/backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
-- **Rust TUI**: `cd frontend_tui_rust && cargo run --release`
+- **Rust TUI**: `cd Code/frontend && cargo run --release`
 - **Python TUI**: `cd frontend_TUI && python main.py`
 - **Format Python**: `cd Code/backend && black .`
 - **Lint Python**: `cd Code/backend && flake8 .`
 - **Type check**: `cd Code/backend && mypy .`
 - **All tests**: `cd Code/backend && python -m pytest tests/ -v`
 - **Single test**: `cd Code/backend && python -m pytest tests/test_api.py::test_create_product_api -v`
-- **Rust format**: `cd frontend_tui_rust && cargo fmt` (if rustfmt.toml exists)
-- **Rust clippy**: `cd frontend_tui_rust && cargo clippy -- -D warnings`
+- **Rust format**: `cd Code/frontend && cargo fmt` (if rustfmt.toml exists)
+- **Rust clippy**: `cd Code/frontend && cargo clippy -- -D warnings`
 
 ## Code Style Guidelines
 - **Languages**: Python 3.11+ (FastAPI, SQLAlchemy, Pydantic, Tkinter), Rust 2024 (ratatui, tokio, reqwest)
@@ -51,7 +51,7 @@ The application uses **omarchy** (not Walker) as the launcher system. The launch
 3. **Main launcher**: `~/.local/share/omarchy/bin/omarchy-launch-3d-print-database-tui`
    - Uses: `setsid uwsm-app -- xdg-terminal-exec --app-id=org.omarchy.$APP_NAME -e /path/to/binary`
 
-4. **Binary path**: `/home/grbrum/Work/3d_print/frontend_tui_rust/target/release/frontend_tui_rust`
+4. **Binary path**: `/home/grbrum/Work/3d_print/Code/frontend/target/release/frontend_tui_rust`
 
 ### Common Launcher Issues & Fixes:
 - **Problem**: Desktop file calls binary directly instead of using omarchy
@@ -72,7 +72,7 @@ cat ~/.local/share/applications/3D_Print_Database_TUI.desktop
 ls -la ~/.local/share/omarchy/bin/omarchy-launch-*3d-print*
 
 # Test binary directly (will fail in non-terminal - this is expected)
-cd frontend_tui_rust && ./target/release/frontend_tui_rust --version
+cd Code/frontend && ./target/release/frontend_tui_rust --version
 ```
 
 ## Project Focus
