@@ -689,7 +689,7 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
             )
             .wrap(Wrap { trim: true });
         f.render_widget(paragraph, area);
-    } else if let Some(product) = app.products.get(app.selected_index) {
+    } else if let Some(product) = app.products.get(app.filtered_selection_index) {
         let name_style = if matches!(app.input_mode, InputMode::EditName) {
             Style::default().fg(Color::Yellow).bold()
         } else {

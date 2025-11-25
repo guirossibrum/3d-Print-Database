@@ -28,7 +28,6 @@ pub struct App {
     pub categories: Vec<Category>,
 
     // UI state
-    pub selected_index: usize,
     pub filtered_selection_index: usize,
     pub search_query: String,
     pub inventory_search_query: String,
@@ -73,7 +72,6 @@ impl App {
             products,
             tags,
             categories,
-            selected_index: 0,
             filtered_selection_index: 0,
             search_query: String::new(),
             inventory_search_query: String::new(),

@@ -410,7 +410,7 @@ fn handle_edit_name_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
             // Cancel changes (discard) and return to normal mode
             if let Some(original_product) = app.edit_backup.take() {
                 // Restore original product data
-                if let Some(current_product) = app.products.get_mut(app.selected_index) {
+                if let Some(current_product) = app.products.get_mut(app.filtered_selection_index) {
                     *current_product = original_product;
                 }
             }
@@ -420,7 +420,7 @@ fn handle_edit_name_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
         KeyCode::Enter => {
             // Save changes and return to normal mode
             app.edit_backup = None; // Clear backup since we're saving
-            if let Some(product) = app.products.get(app.selected_index) {
+            if let Some(product) = app.products.get(app.filtered_selection_index) {
                 let update = crate::api::ProductUpdate {
                     name: Some(product.name.clone()),
                     description: None,
@@ -453,12 +453,12 @@ fn handle_edit_name_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
             // Already at first field, do nothing
         }
         KeyCode::Backspace => {
-            if let Some(product) = app.products.get_mut(app.selected_index) {
+            if let Some(product) = app.products.get_mut(app.filtered_selection_index) {
                 product.name.pop();
             }
         }
         KeyCode::Char(c) => {
-            if let Some(product) = app.products.get_mut(app.selected_index) {
+            if let Some(product) = app.products.get_mut(app.filtered_selection_index) {
                 product.name.push(c);
             }
         }
@@ -473,7 +473,7 @@ fn handle_edit_description_mode(app: &mut super::App, key: crossterm::event::Key
             // Cancel changes (discard) and return to normal mode
             if let Some(original_product) = app.edit_backup.take() {
                 // Restore original product data
-                if let Some(current_product) = app.products.get_mut(app.selected_index) {
+                if let Some(current_product) = app.products.get_mut(app.filtered_selection_index) {
                     *current_product = original_product;
                 }
             }
@@ -483,7 +483,7 @@ fn handle_edit_description_mode(app: &mut super::App, key: crossterm::event::Key
         KeyCode::Enter => {
             // Save changes and return to normal mode
             app.edit_backup = None; // Clear backup since we're saving
-            if let Some(product) = app.products.get(app.selected_index) {
+            if let Some(product) = app.products.get(app.filtered_selection_index) {
                 let update = crate::api::ProductUpdate {
                     name: None,
                     description: product.description.clone(),
@@ -516,14 +516,14 @@ fn handle_edit_description_mode(app: &mut super::App, key: crossterm::event::Key
             app.input_mode = InputMode::EditName;
         }
         KeyCode::Backspace => {
-            if let Some(product) = app.products.get_mut(app.selected_index)
+            if let Some(product) = app.products.get_mut(app.filtered_selection_index)
                 && let Some(ref mut desc) = product.description
             {
                 desc.pop();
             }
         }
         KeyCode::Char(c) => {
-            if let Some(product) = app.products.get_mut(app.selected_index) {
+            if let Some(product) = app.products.get_mut(app.filtered_selection_index) {
                 product.description.get_or_insert_with(String::new).push(c);
             }
         }
@@ -538,7 +538,7 @@ fn handle_edit_production_mode(app: &mut super::App, key: crossterm::event::KeyE
             // Cancel changes (discard) and return to normal mode
             if let Some(original_product) = app.edit_backup.take() {
                 // Restore original product data
-                if let Some(current_product) = app.products.get_mut(app.selected_index) {
+                if let Some(current_product) = app.products.get_mut(app.filtered_selection_index) {
                     *current_product = original_product;
                 }
             }
@@ -548,7 +548,7 @@ fn handle_edit_production_mode(app: &mut super::App, key: crossterm::event::KeyE
         KeyCode::Enter => {
             // Save changes and return to normal mode
             app.edit_backup = None; // Clear backup since we're saving
-            if let Some(product) = app.products.get(app.selected_index) {
+            if let Some(product) = app.products.get(app.filtered_selection_index) {
                 let update = crate::api::ProductUpdate {
                     name: None,
                     description: None,
@@ -581,22 +581,22 @@ fn handle_edit_production_mode(app: &mut super::App, key: crossterm::event::KeyE
             app.input_mode = InputMode::EditTags;
         }
         KeyCode::Left => {
-            if let Some(product) = app.products.get_mut(app.selected_index) {
+            if let Some(product) = app.products.get_mut(app.filtered_selection_index) {
                 product.production = true;
             }
         }
         KeyCode::Right => {
-            if let Some(product) = app.products.get_mut(app.selected_index) {
+            if let Some(product) = app.products.get_mut(app.filtered_selection_index) {
                 product.production = false;
             }
         }
         KeyCode::Char('y') | KeyCode::Char('Y') => {
-            if let Some(product) = app.products.get_mut(app.selected_index) {
+            if let Some(product) = app.products.get_mut(app.filtered_selection_index) {
                 product.production = true;
             }
         }
         KeyCode::Char('n') | KeyCode::Char('N') => {
-            if let Some(product) = app.products.get_mut(app.selected_index) {
+            if let Some(product) = app.products.get_mut(app.filtered_selection_index) {
                 product.production = false;
             }
         }
@@ -612,7 +612,7 @@ fn handle_edit_tags_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
         }
         KeyCode::Enter => {
             // Parse and save changes
-            if let Some(product) = app.products.get_mut(app.selected_index) {
+            if let Some(product) = app.products.get_mut(app.filtered_selection_index) {
                 product.tags = app
                     .edit_tags_string
                     .split(',')
@@ -621,7 +621,7 @@ fn handle_edit_tags_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
                     .collect();
             }
             app.edit_backup = None;
-            if let Some(product) = app.products.get(app.selected_index) {
+            if let Some(product) = app.products.get(app.filtered_selection_index) {
                 let update = crate::api::ProductUpdate {
                     name: Some(product.name.clone()),
                     description: product.description.clone(),
@@ -649,7 +649,7 @@ fn handle_edit_tags_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
         }
         KeyCode::Tab => {
             // Parse current edit_tags_string to product.tags
-            if let Some(product) = app.products.get_mut(app.selected_index) {
+            if let Some(product) = app.products.get_mut(app.filtered_selection_index) {
                 product.tags = app
                     .edit_tags_string
                     .split(',')
@@ -659,7 +659,7 @@ fn handle_edit_tags_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
             }
             app.tag_selection = vec![false; app.tags.len()];
             // Pre-select tags that are already in the current product
-            if let Some(product) = app.products.get(app.selected_index) {
+            if let Some(product) = app.products.get(app.filtered_selection_index) {
                 for (i, tag) in app.tags.iter().enumerate() {
                     if product.tags.contains(tag) {
                         app.tag_selection[i] = true;
