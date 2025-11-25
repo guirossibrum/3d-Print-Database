@@ -286,7 +286,7 @@ dependencies = [
 
 [[package]]
 name = "frontend_tui_rust"
-version = "1.4.14"
+version = "1.4.15"
 dependencies = [
  "anyhow",
  "chrono",
