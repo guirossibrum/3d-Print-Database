@@ -1,7 +1,7 @@
 [Desktop Entry]
 Version=1.6.1
 Type=Application
-Name=3D Print Database
+Name=3D Print Database TUI
 Comment=Terminal interface for managing 3D printing products (Rust/ratatui) - Advanced navigation with pane highlighting, vim-like controls
 Exec=omarchy-launch-or-focus-3d-print-database-tui
 Icon=/home/grbrum/Work/3d_print/Code/frontend/icon.svg
