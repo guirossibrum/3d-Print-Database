@@ -35,7 +35,13 @@ fn setup_terminal()
     // Check if we're in an interactive terminal
     if let Err(e) = enable_raw_mode() {
         if e.raw_os_error() == Some(6) {
-            return Err(TerminalError::NotInteractive);
+            // Check if we're being launched through omarchy system
+            if std::env::var("XDG_TERMINAL_TTY").is_ok() || 
+               std::env::var("GHOSTTY_RESOURCES_DIR").is_ok() {
+                // Being launched through terminal emulator, continue
+            } else {
+                return Err(TerminalError::NotInteractive);
+            }
         }
         return Err(TerminalError::SetupFailed(e.into()));
     }
