@@ -645,13 +645,11 @@ impl App {
             KeyCode::Enter => {
                 // Add selected tags to create_form.tags
                 for (i, &selected) in self.tag_selection.iter().enumerate() {
-                    if selected {
-                        if let Some(tag) = self.tags.get(i) {
-                            if !self.create_form.tags.contains(tag) {
+                    if selected
+                        && let Some(tag) = self.tags.get(i)
+                            && !self.create_form.tags.contains(tag) {
                                 self.create_form.tags.push(tag.clone());
                             }
-                        }
-                    }
                 }
                 self.tag_selection.clear();
                 self.input_mode = InputMode::CreateTags;
@@ -694,13 +692,11 @@ impl App {
             KeyCode::Enter => {
                 // Add selected tags to create_form.tags
                 for (i, &selected) in self.tag_selection.iter().enumerate() {
-                    if selected {
-                        if let Some(tag) = self.tags.get(i) {
-                            if !self.create_form.tags.contains(tag) {
+                    if selected
+                        && let Some(tag) = self.tags.get(i)
+                            && !self.create_form.tags.contains(tag) {
                                 self.create_form.tags.push(tag.clone());
                             }
-                        }
-                    }
                 }
                 self.tag_selection.clear();
                 self.input_mode = InputMode::CreateTags;
