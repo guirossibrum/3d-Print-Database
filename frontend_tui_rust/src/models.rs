@@ -70,6 +70,8 @@ pub enum InputMode {
     NewTag,
     #[allow(dead_code)]
     EditTag,
+    DeleteConfirm,
+    DeleteFileConfirm,
 }
 
 #[derive(Debug, Default)]

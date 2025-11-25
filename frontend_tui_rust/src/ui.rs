@@ -74,7 +74,8 @@ pub fn draw(f: &mut Frame, app: &mut App, version: &str) {
     // Draw popup if in popup mode (global, works across all tabs)
     if matches!(
         app.input_mode,
-        InputMode::NewCategory | InputMode::EditCategory | InputMode::NewTag | InputMode::EditTag
+        InputMode::NewCategory | InputMode::EditCategory | InputMode::NewTag | InputMode::EditTag |
+        InputMode::DeleteConfirm | InputMode::DeleteFileConfirm
     ) {
         draw_popup(f, content_area, app);
     }
@@ -391,6 +392,69 @@ fn draw_popup(f: &mut Frame, area: Rect, app: &App) {
                 Span::styled("_", Style::default().fg(Color::White)),
             ]));
         }
+        InputMode::DeleteConfirm => {
+            if let Some(product) = &app.selected_product_for_delete {
+                content.push(Line::from(vec![
+                    Span::styled("Delete Product: ", Style::default().fg(Color::Red).bold()),
+                    Span::raw(&product.name),
+                ]));
+                content.push(Line::from(vec![
+                    Span::styled("SKU: ", Style::default().fg(Color::Cyan)),
+                    Span::raw(&product.sku),
+                ]));
+                content.push(Line::from(""));
+                content.push(Line::from(vec![
+                    Span::styled("Choose deletion method:", Style::default().fg(Color::Yellow)),
+                ]));
+                content.push(Line::from(""));
+                let option1_style = if app.delete_option == 0 {
+                    Style::default().fg(Color::Yellow).bold()
+                } else {
+                    Style::default().fg(Color::White)
+                };
+                let option2_style = if app.delete_option == 1 {
+                    Style::default().fg(Color::Yellow).bold()
+                } else {
+                    Style::default().fg(Color::White)
+                };
+                content.push(Line::from(vec![
+                    Span::styled(" [1] Delete record from database only", option1_style),
+                ]));
+                content.push(Line::from(vec![
+                    Span::styled(" [2] Delete record and all associated files", option2_style),
+                ]));
+            }
+        }
+        InputMode::DeleteFileConfirm => {
+            if let Some(product) = &app.selected_product_for_delete {
+                content.push(Line::from(vec![
+                    Span::styled("Delete Files for: ", Style::default().fg(Color::Red).bold()),
+                    Span::raw(&product.name),
+                ]));
+                content.push(Line::from(vec![
+                    Span::styled("SKU: ", Style::default().fg(Color::Cyan)),
+                    Span::raw(&product.sku),
+                ]));
+                content.push(Line::from(""));
+                content.push(Line::from(vec![
+                    Span::styled("Files to be deleted:", Style::default().fg(Color::Yellow)),
+                ]));
+                content.push(Line::from(""));
+                
+                // Display file tree
+                for line in &app.file_tree_content {
+                    content.push(Line::from(vec![
+                        Span::raw(line),
+                    ]));
+                }
+                
+                content.push(Line::from(""));
+                content.push(Line::from(vec![
+                    Span::styled("Confirm deletion? ", Style::default().fg(Color::Red).bold()),
+                    Span::raw("[y] Yes [n] No"),
+                ]));
+            }
+        }
         _ => {}
     }
 
@@ -405,6 +469,8 @@ fn draw_popup(f: &mut Frame, area: Rect, app: &App) {
         InputMode::EditCategory => "Edit Category",
         InputMode::NewTag => "New Tag",
         InputMode::EditTag => "Edit Tag",
+        InputMode::DeleteConfirm => "Delete Product",
+        InputMode::DeleteFileConfirm => "Confirm File Deletion",
         _ => "Popup",
     };
 

@@ -48,6 +48,11 @@ pub struct App {
     pub popup_field: usize,
     pub tag_selection: Vec<bool>,
     pub edit_tags_string: String,
+
+    // Delete state
+    pub delete_option: usize,        // 0=database only, 1=database+files
+    pub file_tree_content: Vec<String>, // File tree for display
+    pub selected_product_for_delete: Option<crate::api::Product>, // Store product being deleted
 }
 
 impl App {
@@ -89,6 +94,11 @@ impl App {
             popup_field: 0,
             tag_selection: Vec::new(),
             edit_tags_string: String::new(),
+
+            // Delete state
+            delete_option: 0,
+            file_tree_content: Vec::new(),
+            selected_product_for_delete: None,
         })
     }
 

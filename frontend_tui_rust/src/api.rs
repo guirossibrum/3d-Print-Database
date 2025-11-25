@@ -147,4 +147,14 @@ impl ApiClient {
         self.client.delete(&url).send()?;
         Ok(())
     }
+
+    pub fn delete_product(&self, sku: &str, delete_files: bool) -> Result<String> {
+        let url = format!("{}/products/{}?delete_files={}", self.base_url, sku, delete_files);
+        let response = self.client.delete(&url).send()?;
+        if response.status().is_success() {
+            Ok("Product deleted successfully".to_string())
+        } else {
+            Err(anyhow!("Failed to delete product: {}", response.status()))
+        }
+    }
 }

@@ -21,6 +21,8 @@ pub fn handle_key_dispatch(app: &mut super::App, key: crossterm::event::KeyEvent
         InputMode::EditTagSelect => handle_tag_select_mode(app, key),
         InputMode::NewTag | InputMode::NewCategory => handle_new_item_mode(app, key),
         InputMode::EditTag | InputMode::EditCategory => handle_edit_item_mode(app, key),
+        InputMode::DeleteConfirm => handle_delete_confirm_mode(app, key),
+        InputMode::DeleteFileConfirm => handle_delete_file_confirm_mode(app, key),
     }
 }
 
@@ -79,6 +81,17 @@ fn handle_normal_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> 
             app.active_pane = ActivePane::Left;
             app.clear_selection();
             app.refresh_data();
+        }
+        KeyCode::Char('d') => {
+            // Delete functionality for Search tab
+            if matches!(app.current_tab, Tab::Search) && !app.products.is_empty() {
+                if let Some(product) = app.get_selected_product() {
+                    app.selected_product_for_delete = Some(product.clone());
+                    app.delete_option = 0;
+                    app.popup_field = 0;
+                    app.input_mode = InputMode::DeleteConfirm;
+                }
+            }
         }
         KeyCode::Char(c) => {
             // Direct typing in search box for Search and Inventory tabs
@@ -867,6 +880,157 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
         _ => {}
     }
     Ok(())
+}
+
+fn handle_delete_confirm_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
+    match key.code {
+        KeyCode::Esc => {
+            app.input_mode = InputMode::Normal;
+            app.selected_product_for_delete = None;
+        }
+        KeyCode::Up | KeyCode::Down => {
+            app.delete_option = if app.delete_option == 0 { 1 } else { 0 };
+        }
+        KeyCode::Char('1') => {
+            app.delete_option = 0;
+        }
+        KeyCode::Char('2') => {
+            app.delete_option = 1;
+        }
+        KeyCode::Enter => {
+            if app.delete_option == 0 {
+                // Database only deletion
+                if let Some(product) = &app.selected_product_for_delete {
+                    match app.api_client.delete_product(&product.sku, false) {
+                        Ok(_) => {
+                            app.status_message = format!("Product {} deleted from database", product.sku);
+                            app.refresh_data();
+                            app.clear_selection();
+                        }
+                        Err(e) => {
+                            app.status_message = format!("Error deleting product: {}", e);
+                        }
+                    }
+                }
+                app.input_mode = InputMode::Normal;
+                app.selected_product_for_delete = None;
+            } else if app.delete_option == 1 {
+                // File deletion - show file tree first
+                if let Some(product) = &app.selected_product_for_delete {
+                    match build_file_tree(&product.sku) {
+                        Ok(tree) => {
+                            app.file_tree_content = tree;
+                            app.input_mode = InputMode::DeleteFileConfirm;
+                        }
+                        Err(e) => {
+                            app.status_message = format!("Error scanning files: {}", e);
+                            app.input_mode = InputMode::Normal;
+                            app.selected_product_for_delete = None;
+                        }
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn handle_delete_file_confirm_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
+    match key.code {
+        KeyCode::Esc => {
+            app.input_mode = InputMode::Normal;
+            app.selected_product_for_delete = None;
+            app.file_tree_content.clear();
+        }
+        KeyCode::Char('y') | KeyCode::Char('Y') => {
+            // Confirm file deletion
+            if let Some(product) = &app.selected_product_for_delete {
+                match app.api_client.delete_product(&product.sku, true) {
+                    Ok(_) => {
+                        app.status_message = format!("Product {} and all files deleted", product.sku);
+                        app.refresh_data();
+                        app.clear_selection();
+                    }
+                    Err(e) => {
+                        app.status_message = format!("Error deleting product: {}", e);
+                    }
+                }
+            }
+            app.input_mode = InputMode::Normal;
+            app.selected_product_for_delete = None;
+            app.file_tree_content.clear();
+        }
+        KeyCode::Char('n') | KeyCode::Char('N') => {
+            // Cancel file deletion
+            app.input_mode = InputMode::Normal;
+            app.selected_product_for_delete = None;
+            app.file_tree_content.clear();
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn build_file_tree(sku: &str) -> Result<Vec<String>> {
+    use std::path::Path;
+    
+    let mut content = Vec::new();
+    let base_path = Path::new("/Products").join(sku);
+    
+    if !base_path.exists() {
+        content.push("No files found for this product".to_string());
+        return Ok(content);
+    }
+    
+    content.push(format!("📁 {}/", sku));
+    
+    // Scan subdirectories
+    let subdirs = ["images", "models", "notes", "print_files"];
+    for subdir in &subdirs {
+        let subdir_path = base_path.join(subdir);
+        if subdir_path.exists() {
+            content.push(format!("├── 📁 {}/", subdir));
+            match scan_directory(&subdir_path, "    │   ") {
+                Ok(files) => content.extend(files),
+                Err(_) => content.push(format!("    │       └── (Error reading directory)")),
+            }
+        } else {
+            content.push(format!("├── 📁 {}/ (empty)", subdir));
+        }
+    }
+    
+    // Check for metadata.json
+    let metadata_path = base_path.join("metadata.json");
+    if metadata_path.exists() {
+        content.push("└── 📄 metadata.json".to_string());
+    }
+    
+    Ok(content)
+}
+
+fn scan_directory(dir_path: &std::path::Path, prefix: &str) -> Result<Vec<String>> {
+    let mut content = Vec::new();
+    let entries = match std::fs::read_dir(dir_path) {
+        Ok(entries) => entries,
+        Err(_) => return Ok(content),
+    };
+    
+    let mut file_entries: Vec<_> = entries
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| entry.file_type().map_or(false, |ft| ft.is_file()))
+        .collect();
+    
+    file_entries.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
+    
+    for (i, entry) in file_entries.iter().enumerate() {
+        let file_name = entry.file_name().to_string_lossy().to_string();
+        let is_last = i == file_entries.len() - 1;
+        let connector = if is_last { "└──" } else { "├──" };
+        content.push(format!("{}{} 📄 {}", prefix, connector, file_name));
+    }
+    
+    Ok(content)
 }
 
 fn handle_edit_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
