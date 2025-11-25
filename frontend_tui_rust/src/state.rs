@@ -1,5 +1,5 @@
 use anyhow::Result;
-use crossterm::event::Event;
+use crossterm::event::{Event, KeyCode};
 use ratatui::Terminal;
 use std::time::Duration;
 
@@ -192,10 +192,13 @@ impl App {
             return Ok(());
         }
 
-        if self.create_form.category_id.is_none() {
-            self.status_message = "Error: Category must be selected".to_string();
-            return Ok(());
-        }
+        let category_id = match self.create_form.category_id {
+            Some(id) => id,
+            None => {
+                self.status_message = "Error: Category must be selected".to_string();
+                return Ok(());
+            }
+        };
 
         // Create product struct for API call
         let product = Product {
@@ -209,7 +212,7 @@ impl App {
             },
             production: self.create_form.production,
             tags: self.create_form.tags.clone(),
-            category_id: Some(self.create_form.category_id.unwrap()),
+            category_id: Some(category_id),
             material: None,
             color: None,
             print_time: None,
@@ -235,5 +238,13 @@ impl App {
             Err(e) => self.status_message = format!("Error creating product: {:?}", e),
         }
         Ok(())
+    }
+
+    // Basic key handling - delegates to handlers module for complex logic
+    pub fn handle_key(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+        // Import and use the handlers module
+        use crate::handlers::*;
+        
+        handle_key_dispatch(self, key)
     }
 }

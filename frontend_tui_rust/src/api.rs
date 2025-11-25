@@ -117,7 +117,10 @@ impl ApiClient {
     }
 
     pub fn update_category(&self, category: &Category) -> Result<Category> {
-        let id = category.id.unwrap();
+        let id = match category.id {
+            Some(id) => id,
+            None => return Err(anyhow::anyhow!("Category ID is required for updates")),
+        };
         let url = format!("{}/categories/{}", self.base_url, id);
         let response = self.client.put(&url).json(category).send()?;
         let updated_category = response.json()?;
