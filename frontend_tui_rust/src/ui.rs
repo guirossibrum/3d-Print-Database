@@ -221,14 +221,7 @@ fn draw_create_left_pane(f: &mut Frame, area: Rect, app: &App, border_style: Sty
                 }
             )
         } else {
-            format!(
-                "{}",
-                if app.create_form.production {
-                    "Yes"
-                } else {
-                    "No"
-                }
-            )
+            (if app.create_form.production { "Yes" } else { "No" }).to_string()
         }),
     ]));
 
