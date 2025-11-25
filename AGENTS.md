@@ -33,10 +33,47 @@ After each change in the code:
 - increase version count
 - git commit
 - recompile
-- verify that there is only one compiled binary - Walker launcher must run latest compiled version
+- verify that there is only one compiled binary - omarchy launcher must run latest compiled version
 - current version number must be informed in final response
 - update test_routine.txt if any functionality changes (add new test cases, modify existing ones, or remove obsolete tests)
 - ensure test_routine.txt reflects current application capabilities and features
+
+## Application Launcher System
+The application uses **omarchy** (not Walker) as the launcher system. The launcher chain works as follows:
+
+1. **Desktop file**: `~/.local/share/applications/3D_Print_Database_TUI.desktop`
+   - Must contain: `Exec=omarchy-launch-or-focus-3d-print-database-tui`
+   - Version must match current application version
+
+2. **Focus launcher**: `~/.local/share/omarchy/bin/omarchy-launch-or-focus-3d-print-database-tui`
+   - Calls: `omarchy-launch-or-focus "$APP_ID" "$LAUNCH_COMMAND"`
+
+3. **Main launcher**: `~/.local/share/omarchy/bin/omarchy-launch-3d-print-database-tui`
+   - Uses: `setsid uwsm-app -- xdg-terminal-exec --app-id=org.omarchy.$APP_NAME -e /path/to/binary`
+
+4. **Binary path**: `/home/grbrum/Work/3d_print/frontend_tui_rust/target/release/frontend_tui_rust`
+
+### Common Launcher Issues & Fixes:
+- **Problem**: Desktop file calls binary directly instead of using omarchy
+  - **Fix**: Change `Exec=` line to use `omarchy-launch-or-focus-3d-print-database-tui`
+- **Problem**: Version mismatch between desktop file and application
+  - **Fix**: Update `Version=` field in desktop file to match Cargo.toml
+- **Problem**: Binary not found
+  - **Fix**: Ensure binary exists at expected path and is executable
+- **Problem**: Terminal setup errors
+  - **Fix**: This is expected when testing outside terminal; omarchy handles terminal creation
+
+### Launcher Verification:
+```bash
+# Check desktop file configuration
+cat ~/.local/share/applications/3D_Print_Database_TUI.desktop
+
+# Check omarchy launchers exist
+ls -la ~/.local/share/omarchy/bin/omarchy-launch-*3d-print*
+
+# Test binary directly (will fail in non-terminal - this is expected)
+cd frontend_tui_rust && ./target/release/frontend_tui_rust --version
+```
 
 ## Project Focus
 - **Project focus**: 3d print database TUI (Rust)
