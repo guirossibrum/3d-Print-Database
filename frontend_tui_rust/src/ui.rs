@@ -997,30 +997,30 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App, version: &str) {
             InputMode::Normal => {
                 if app.has_multiple_panes() {
                     match app.active_pane {
-                        ActivePane::Left => "Tab: edit selected, j/k: select, type: search",
-                        ActivePane::Right => "Tab: back to results, Enter: save, ↑↓: fields",
+                        ActivePane::Left => "↑↓: navigate, Enter: edit, d: delete, o: open folder, type: search",
+                        ActivePane::Right => "Tab: back to list, Enter: save, ↑↓: fields, Esc: cancel",
                     }
                 } else {
-                    "j/k: select product, Enter: edit, type: search"
+                    "↑↓: navigate, Enter: edit, d: delete, o: open folder, type: search"
                 }
             }
             InputMode::EditName => "Edit name, Tab: cancel, Enter: save, ↑↓: fields",
             InputMode::EditDescription => "Edit desc, Tab: cancel, Enter: save, ↑↓: fields",
             InputMode::EditProduction => "←→: toggle, Tab: cancel, Enter: save, ↑↓: fields",
-            _ => "Tab: switch panes, j/k: navigate",
+            _ => "Tab: switch panes, ↑↓: navigate",
         },
         Tab::Inventory => match app.input_mode {
             InputMode::Normal => {
                 if app.has_multiple_panes() {
                     match app.active_pane {
-                        ActivePane::Left => "Tab: right pane, j/k: select product, type: search",
+                        ActivePane::Left => "Tab: right pane, ↑↓: select product, type: search",
                         ActivePane::Right => "Tab: left pane, +/-: adjust stock, Enter: confirm",
                     }
                 } else {
-                    "j/k: select product, type: search"
+                    "↑↓: select product, type: search"
                 }
             }
-            _ => "Tab: switch panes, j/k: navigate",
+            _ => "Tab: switch panes, ↑↓: navigate",
         },
     };
 

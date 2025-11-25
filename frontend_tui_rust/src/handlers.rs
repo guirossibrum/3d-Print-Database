@@ -62,11 +62,11 @@ fn handle_normal_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> 
             app.active_pane = ActivePane::Left;
             app.clear_selection();
         }
-        KeyCode::Down | KeyCode::Char('j') => {
+        KeyCode::Down => {
             // Always use filtered navigation (filter returns all items when empty)
             app.next_filtered_item();
         }
-        KeyCode::Up | KeyCode::Char('k') => {
+        KeyCode::Up => {
             // Always use filtered navigation (filter returns all items when empty)
             app.prev_filtered_item();
         }
