@@ -12,7 +12,8 @@ const NORMAL_STYLE: Style = Style::new().fg(Color::White);
 const ACTIVE_BORDER_STYLE: Style = Style::new().fg(Color::Yellow).add_modifier(Modifier::BOLD);
 const INACTIVE_BORDER_STYLE: Style = Style::new().fg(Color::White);
 
-use crate::app::{ActivePane, App, InputMode, Tab};
+use crate::models::{ActivePane, InputMode, Tab};
+use crate::state::App;
 
 pub fn draw(f: &mut Frame, app: &mut App, version: &str) {
     let size = f.area();

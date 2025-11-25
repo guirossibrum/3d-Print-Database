@@ -10,10 +10,12 @@ use ratatui::{Terminal, backend::CrosstermBackend};
 use std::io;
 
 mod api;
-mod app;
+mod models;
+mod state;
+mod handlers;
 mod ui;
 
-use app::App;
+use state::App;
 
 // Get version from Cargo.toml
 const VERSION: &str = env!("CARGO_PKG_VERSION");

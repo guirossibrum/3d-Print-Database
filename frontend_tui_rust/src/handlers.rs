@@ -1,0 +1,1127 @@
+use anyhow::Result;
+use crossterm::event::KeyCode;
+
+
+use crate::models::*;
+use crate::state::App;
+
+impl App {
+    pub fn handle_key(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+        match self.input_mode {
+            InputMode::Normal => self.handle_normal_mode(key),
+            InputMode::Search => self.handle_search_mode(key),
+            InputMode::InventorySearch => self.handle_inventory_search_mode(key),
+            InputMode::CreateName => self.handle_create_name_mode(key),
+            InputMode::CreateDescription => self.handle_create_description_mode(key),
+            InputMode::CreateCategory => self.handle_create_category_mode(key),
+            InputMode::CreateCategorySelect => self.handle_create_category_select_mode(key),
+            InputMode::CreateProduction => self.handle_create_production_mode(key),
+            InputMode::CreateTags => self.handle_create_tags_mode(key),
+            InputMode::CreateTagSelect => self.handle_tag_select_mode(key),
+            InputMode::EditName => self.handle_edit_name_mode(key),
+            InputMode::EditDescription => self.handle_edit_description_mode(key),
+            InputMode::EditProduction => self.handle_edit_production_mode(key),
+            InputMode::EditTags => self.handle_edit_tags_mode(key),
+            InputMode::EditTagSelect => self.handle_tag_select_mode(key),
+
+
+            InputMode::NewTag | InputMode::NewCategory => self.handle_new_item_mode(key),
+            InputMode::EditTag | InputMode::EditCategory => self.handle_edit_item_mode(key),
+        }
+}
+
+fn handle_normal_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+    match key.code {
+        KeyCode::Char('q') | KeyCode::Esc => {
+            self.running = false;
+        }
+
+        // Enhanced TAB workflow: View → Edit → View
+        KeyCode::Tab => {
+            match self.input_mode {
+                InputMode::Normal => {
+                    if self.has_multiple_panes()
+                        && matches!(self.active_pane, ActivePane::Left)
+                        && !self.products.is_empty()
+                    {
+                        // Refresh data before editing
+                        self.refresh_data();
+                        // Switch to right pane and enter edit mode
+                        self.active_pane = ActivePane::Right;
+                        self.input_mode = InputMode::EditName;
+                    } else if self.has_multiple_panes() {
+                        // Regular pane switching
+                        self.next_pane();
+                    }
+                }
+                InputMode::CreateName => {
+                    self.input_mode = InputMode::CreateDescription;
+                }
+                InputMode::CreateDescription => {
+                    self.input_mode = InputMode::CreateCategory;
+                }
+                InputMode::CreateCategory => {
+                    self.input_mode = InputMode::CreateCategorySelect;
+                    self.active_pane = ActivePane::Right;
+                }
+                InputMode::CreateProduction => {
+                    self.input_mode = InputMode::CreateTags;
+                }
+                InputMode::CreateTags => {
+                    self.input_mode = InputMode::CreateTagSelect;
+                    self.active_pane = ActivePane::Right;
+                }
+                InputMode::CreateCategorySelect => {
+                    self.input_mode = InputMode::CreateProduction;
+                    self.active_pane = ActivePane::Left;
+                }
+                InputMode::CreateTagSelect => {
+                    // Tab in CreateTagSelect does nothing or save?
+                }
+                InputMode::EditName => {
+                    self.input_mode = InputMode::EditDescription;
+                }
+                InputMode::EditDescription => {
+                    self.input_mode = InputMode::EditProduction;
+                }
+                InputMode::EditProduction => {
+                    self.input_mode = InputMode::EditTags;
+                    if let Some(product) = self.products.get(self.selected_index) {
+                        self.edit_tags_string = product.tags.join(", ");
+                    }
+                }
+                InputMode::EditTags => {
+                    self.input_mode = InputMode::EditTagSelect;
+                    self.active_pane = ActivePane::Right;
+                }
+                InputMode::EditTagSelect => {
+                    // Tab in EditTagSelect saves
+            self.edit_backup = None;
+            if let Some(product) = self.products.get(self.selected_index) {
+                let update = crate::api::ProductUpdate {
+                    name: None,
+                    description: None,
+                    tags: Some(product.tags.clone()),
+                    production: None,
+                    material: None,
+                    color: None,
+                    print_time: None,
+                    weight: None,
+                    stock_quantity: None,
+                    reorder_point: None,
+                    unit_cost: None,
+                    selling_price: None,
+                };
+                match self.api_client.update_product(&product.sku, &update) {
+                    Ok(_) => {
+                        self.status_message = "Product updated successfully".to_string();
+                        self.refresh_data();
+                    }
+                    Err(e) => self.status_message = format!("Error updating product: {:?}", e),
+                }
+            }
+            self.input_mode = InputMode::EditProduction;
+            self.active_pane = ActivePane::Left;
+                }
+                _ => {
+                    // TAB in other modes (like search) exits to normal mode
+                    if matches!(
+                        self.input_mode,
+                        InputMode::Search | InputMode::InventorySearch
+                    ) {
+                        self.input_mode = InputMode::Normal;
+                    }
+                }
+            }
+        }
+        KeyCode::BackTab if self.has_multiple_panes() => {
+            self.prev_pane();
+        }
+
+        KeyCode::BackTab => {
+            self.current_tab = self.current_tab.prev();
+            self.active_pane = ActivePane::Left;
+            self.selected_index = 0;
+        }
+        KeyCode::Down | KeyCode::Char('j') => {
+            self.next_item();
+        }
+        KeyCode::Up | KeyCode::Char('k') => {
+            self.prev_item();
+        }
+        KeyCode::Left => {
+            self.current_tab = self.current_tab.prev();
+            self.active_pane = ActivePane::Left;
+            self.selected_index = 0;
+            self.refresh_data();
+        }
+        KeyCode::Right => {
+            self.current_tab = self.current_tab.next();
+            self.active_pane = ActivePane::Left;
+            self.selected_index = 0;
+            self.refresh_data();
+        }
+        KeyCode::Char('/') => {
+            if matches!(self.current_tab, Tab::Search) {
+                self.input_mode = InputMode::Search;
+            } else if matches!(self.current_tab, Tab::Inventory) {
+                self.input_mode = InputMode::InventorySearch;
+            }
+        }
+        KeyCode::Enter => {
+            match self.input_mode {
+                InputMode::Normal => {
+                    if matches!(self.current_tab, Tab::Create) {
+                        self.input_mode = InputMode::CreateName;
+                    } else if matches!(self.current_tab, Tab::Search)
+                        && !self.products.is_empty()
+                    {
+                        // Direct edit from normal mode (legacy behavior)
+                        self.input_mode = InputMode::EditName;
+                    }
+                }
+                input_mode
+                    if matches!(
+                        input_mode,
+                        InputMode::EditName
+                            | InputMode::EditDescription
+                            | InputMode::EditProduction
+                            | InputMode::EditTags
+                    ) =>
+                {
+                    // Save changes and return to normal mode
+                    self.input_mode = InputMode::Normal;
+                    self.active_pane = ActivePane::Left;
+                    // TODO: Persist changes to backend
+                }
+                _ => {}
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn handle_search_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+    match key.code {
+        KeyCode::Esc => {
+            self.input_mode = InputMode::Normal;
+            self.search_query.clear();
+        }
+        KeyCode::Enter => {
+            self.input_mode = InputMode::Normal;
+        }
+        KeyCode::Tab => {
+            self.input_mode = InputMode::Normal;
+            // Don't switch panes when exiting search mode
+        }
+        KeyCode::Backspace => {
+            self.search_query.pop();
+        }
+        KeyCode::Char(c) => {
+            self.search_query.push(c);
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn handle_inventory_search_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+    match key.code {
+        KeyCode::Esc => {
+            self.input_mode = InputMode::Normal;
+            self.inventory_search_query.clear();
+        }
+        KeyCode::Enter => {
+            self.input_mode = InputMode::Normal;
+        }
+        KeyCode::Tab => {
+            self.input_mode = InputMode::Normal;
+            // Don't switch panes when exiting search mode
+        }
+        KeyCode::Backspace => {
+            self.inventory_search_query.pop();
+        }
+        KeyCode::Char(c) => {
+            self.inventory_search_query.push(c);
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn handle_create_name_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+    match key.code {
+        KeyCode::Esc => {
+            self.input_mode = InputMode::Normal;
+            self.create_form.name.clear();
+        }
+        KeyCode::Down => {
+            self.input_mode = InputMode::CreateDescription;
+        }
+        KeyCode::Up => {
+            // Already at first field
+        }
+        KeyCode::Backspace => {
+            self.create_form.name.pop();
+        }
+        KeyCode::Char(c) => {
+            self.create_form.name.push(c);
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn handle_create_description_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+    match key.code {
+        KeyCode::Esc => {
+            self.input_mode = InputMode::CreateName;
+        }
+        KeyCode::Down => {
+            self.input_mode = InputMode::CreateCategory;
+        }
+        KeyCode::Up => {
+            self.input_mode = InputMode::CreateName;
+        }
+        KeyCode::Backspace => {
+            self.create_form.description.pop();
+        }
+        KeyCode::Char(c) => {
+            self.create_form.description.push(c);
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn handle_create_category_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+    match key.code {
+        KeyCode::Esc => {
+            self.input_mode = InputMode::CreateDescription;
+        }
+        KeyCode::Tab => {
+            self.input_mode = InputMode::CreateCategorySelect;
+            self.active_pane = ActivePane::Right;
+        }
+        KeyCode::Down => {
+            self.input_mode = InputMode::CreateProduction;
+        }
+        KeyCode::Up => {
+            self.input_mode = InputMode::CreateDescription;
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn handle_create_category_select_mode(
+    &mut self,
+    key: crossterm::event::KeyEvent,
+) -> Result<()> {
+    match key.code {
+        KeyCode::Esc => {
+            self.input_mode = InputMode::CreateCategory;
+            self.active_pane = ActivePane::Left;
+        }
+        KeyCode::Enter => {
+            // Select the current category
+            if let Some(category) = self
+                .categories
+                .get(self.create_form.category_selected_index)
+            {
+                self.create_form.category_id = category.id;
+            }
+            self.input_mode = InputMode::CreateCategory;
+            self.active_pane = ActivePane::Left;
+        }
+        KeyCode::Down => {
+            if !self.categories.is_empty() {
+                self.create_form.category_selected_index =
+                    (self.create_form.category_selected_index + 1) % self.categories.len();
+            }
+        }
+        KeyCode::Up => {
+            if !self.categories.is_empty() {
+                self.create_form.category_selected_index =
+                    if self.create_form.category_selected_index == 0 {
+                        self.categories.len() - 1
+                    } else {
+                        self.create_form.category_selected_index - 1
+                    };
+            }
+        }
+        KeyCode::Char('n') => {
+            self.item_type = ItemType::Category;
+            self.input_mode = InputMode::NewCategory;
+        }
+        KeyCode::Char('e') => {
+            if let Some(category) = self
+                .categories
+                .get(self.create_form.category_selected_index)
+            {
+                self.category_form.name = category.name.clone();
+                self.category_form.sku = category.sku_initials.clone();
+                self.category_form.description =
+                    category.description.clone().unwrap_or_default();
+                self.edit_item_type = ItemType::Category;
+                self.input_mode = InputMode::EditCategory;
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn handle_create_production_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+    match key.code {
+        KeyCode::Esc => {
+            self.input_mode = InputMode::CreateCategory;
+        }
+        KeyCode::Down => {
+            self.input_mode = InputMode::CreateTags;
+        }
+        KeyCode::Up => {
+            self.input_mode = InputMode::CreateCategory;
+        }
+        KeyCode::Left => {
+            self.create_form.production = true;
+        }
+        KeyCode::Right => {
+            self.create_form.production = false;
+        }
+        KeyCode::Char('y') | KeyCode::Char('Y') => {
+            self.create_form.production = true;
+        }
+        KeyCode::Char('n') | KeyCode::Char('N') => {
+            self.create_form.production = false;
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn handle_create_tags_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+    match key.code {
+        KeyCode::Esc => {
+            self.input_mode = InputMode::CreateProduction;
+        }
+        KeyCode::Enter => {
+            // Save the product
+            self.save_product()?;
+            self.input_mode = InputMode::Normal;
+            self.active_pane = ActivePane::Left;
+        }
+        KeyCode::Tab => {
+            self.tag_selection = vec![false; self.tags.len()];
+            // Pre-select tags that are already in create_form.tags
+            for (i, tag) in self.tags.iter().enumerate() {
+                if self.create_form.tags.contains(tag) {
+                    self.tag_selection[i] = true;
+                }
+            }
+            self.input_mode = InputMode::CreateTagSelect;
+            self.active_pane = ActivePane::Right;
+        }
+        KeyCode::Up => {
+            self.input_mode = InputMode::CreateProduction;
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn handle_tag_select_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+    match key.code {
+        KeyCode::Esc => {
+            self.input_mode = match self.tag_select_mode {
+                TagSelectMode::Create => InputMode::CreateTags,
+                TagSelectMode::Edit => InputMode::EditTags,
+            };
+            self.active_pane = ActivePane::Left;
+        }
+        KeyCode::Enter => {
+            // Add selected tags to create_form.tags
+            for (i, &selected) in self.tag_selection.iter().enumerate() {
+                if selected
+                    && let Some(tag) = self.tags.get(i)
+                        && !self.create_form.tags.contains(tag) {
+                            self.create_form.tags.push(tag.clone());
+                        }
+            }
+            self.tag_selection.clear();
+            self.input_mode = InputMode::CreateTags;
+            self.active_pane = ActivePane::Left;
+        }
+        KeyCode::Down => {
+            if !self.tags.is_empty() {
+                self.create_form.tag_selected_index =
+                    (self.create_form.tag_selected_index + 1) % self.tags.len();
+            }
+        }
+        KeyCode::Up => {
+            if !self.tags.is_empty() {
+                self.create_form.tag_selected_index =
+                    if self.create_form.tag_selected_index == 0 {
+                        self.tags.len() - 1
+                    } else {
+                        self.create_form.tag_selected_index - 1
+                    };
+            }
+        }
+        KeyCode::Char(' ') => {
+            // Toggle selection
+            if self.create_form.tag_selected_index < self.tag_selection.len() {
+                self.tag_selection[self.create_form.tag_selected_index] = !self.tag_selection[self.create_form.tag_selected_index];
+            }
+        }
+        KeyCode::Char('n') => {
+            self.previous_input_mode = Some(self.input_mode);
+            self.input_mode = InputMode::NewTag;
+        }
+        KeyCode::Char('e') => {
+            if let Some(tag) = self.tags.get(self.create_form.tag_selected_index) {
+                self.previous_input_mode = Some(self.input_mode);
+                self.edit_item_type = ItemType::Tag;
+                self.tag_form.name = tag.clone();
+                self.input_mode = InputMode::EditTag;
+            }
+        }
+        KeyCode::Enter => {
+            // Add selected tags to create_form.tags
+            for (i, &selected) in self.tag_selection.iter().enumerate() {
+                if selected
+                    && let Some(tag) = self.tags.get(i)
+                        && !self.create_form.tags.contains(tag) {
+                            self.create_form.tags.push(tag.clone());
+                        }
+            }
+            self.tag_selection.clear();
+            self.input_mode = InputMode::CreateTags;
+            self.active_pane = ActivePane::Left;
+        }
+        KeyCode::Down => {
+            if !self.tags.is_empty() {
+                self.create_form.tag_selected_index =
+                    (self.create_form.tag_selected_index + 1) % self.tags.len();
+            }
+        }
+        KeyCode::Up => {
+            if !self.tags.is_empty() {
+                self.create_form.tag_selected_index =
+                    if self.create_form.tag_selected_index == 0 {
+                        self.tags.len() - 1
+                    } else {
+                        self.create_form.tag_selected_index - 1
+                    };
+            }
+        }
+        KeyCode::Char(' ') => {
+            // Toggle selection
+            if self.create_form.tag_selected_index < self.tag_selection.len() {
+                self.tag_selection[self.create_form.tag_selected_index] =
+                    !self.tag_selection[self.create_form.tag_selected_index];
+            }
+        }
+        KeyCode::Char('n') => {
+            self.input_mode = InputMode::NewTag;
+        }
+        KeyCode::Char('e') => {
+            if let Some(tag) = self.tags.get(self.create_form.tag_selected_index) {
+                self.tag_form.name = tag.clone();
+                self.input_mode = InputMode::EditTag;
+            }
+        }
+        KeyCode::Char('d') => {
+            // Delete tag
+            if self.create_form.tag_selected_index < self.tags.len() {
+                let tag_name = self.tags[self.create_form.tag_selected_index].clone();
+                match self.api_client.delete_tag(&tag_name) {
+                    Ok(_) => {
+                        self.tags.remove(self.create_form.tag_selected_index);
+                        self.tag_selection
+                            .remove(self.create_form.tag_selected_index);
+                        if self.create_form.tag_selected_index >= self.tags.len()
+                            && self.create_form.tag_selected_index > 0
+                        {
+                            self.create_form.tag_selected_index -= 1;
+                        }
+                        self.status_message = format!("Tag '{}' deleted", tag_name);
+                    }
+                    Err(e) => {
+                        self.status_message = format!("Error deleting tag: {:?}", e);
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn handle_edit_name_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+    match key.code {
+        KeyCode::Esc | KeyCode::Tab => {
+            // Cancel changes (discard) and return to normal mode
+            if let Some(original_product) = self.edit_backup.take() {
+                // Restore original product data
+                if let Some(current_product) = self.products.get_mut(self.selected_index) {
+                    *current_product = original_product;
+                }
+            }
+            self.input_mode = InputMode::Normal;
+            self.active_pane = ActivePane::Left;
+        }
+        KeyCode::Enter => {
+            // Save changes and return to normal mode
+            self.edit_backup = None; // Clear backup since we're saving
+            if let Some(product) = self.products.get(self.selected_index) {
+                let update = crate::api::ProductUpdate {
+                    name: Some(product.name.clone()),
+                    description: None,
+                    tags: None,
+                    production: None,
+                    material: None,
+                    color: None,
+                    print_time: None,
+                    weight: None,
+                    stock_quantity: None,
+                    reorder_point: None,
+                    unit_cost: None,
+                    selling_price: None,
+                };
+                match self.api_client.update_product(&product.sku, &update) {
+                    Ok(_) => {
+                        self.status_message = "Product updated successfully".to_string();
+                        self.refresh_data();
+                    }
+                    Err(e) => self.status_message = format!("Error updating product: {:?}", e),
+                }
+            }
+            self.input_mode = InputMode::Normal;
+            self.active_pane = ActivePane::Left;
+        }
+        KeyCode::Down => {
+            self.input_mode = InputMode::EditDescription;
+        }
+        KeyCode::Up => {
+            // Already at first field, do nothing
+        }
+        KeyCode::Backspace => {
+            if let Some(product) = self.products.get_mut(self.selected_index) {
+                product.name.pop();
+            }
+        }
+        KeyCode::Char(c) => {
+            if let Some(product) = self.products.get_mut(self.selected_index) {
+                product.name.push(c);
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn handle_edit_description_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+    match key.code {
+        KeyCode::Esc | KeyCode::Tab => {
+            // Cancel changes (discard) and return to normal mode
+            if let Some(original_product) = self.edit_backup.take() {
+                // Restore original product data
+                if let Some(current_product) = self.products.get_mut(self.selected_index) {
+                    *current_product = original_product;
+                }
+            }
+            self.input_mode = InputMode::Normal;
+            self.active_pane = ActivePane::Left;
+        }
+        KeyCode::Enter => {
+            // Save changes and return to normal mode
+            self.edit_backup = None; // Clear backup since we're saving
+            if let Some(product) = self.products.get(self.selected_index) {
+                let update = crate::api::ProductUpdate {
+                    name: None,
+                    description: product.description.clone(),
+                    tags: None,
+                    production: None,
+                    material: None,
+                    color: None,
+                    print_time: None,
+                    weight: None,
+                    stock_quantity: None,
+                    reorder_point: None,
+                    unit_cost: None,
+                    selling_price: None,
+                };
+                match self.api_client.update_product(&product.sku, &update) {
+                    Ok(_) => {
+                        self.status_message = "Product updated successfully".to_string();
+                        self.refresh_data();
+                    }
+                    Err(e) => self.status_message = format!("Error updating product: {:?}", e),
+                }
+            }
+            self.input_mode = InputMode::Normal;
+            self.active_pane = ActivePane::Left;
+        }
+        KeyCode::Down => {
+            self.input_mode = InputMode::EditProduction;
+        }
+        KeyCode::Up => {
+            self.input_mode = InputMode::EditName;
+        }
+        KeyCode::Backspace => {
+            if let Some(product) = self.products.get_mut(self.selected_index)
+                && let Some(ref mut desc) = product.description
+            {
+                desc.pop();
+            }
+        }
+        KeyCode::Char(c) => {
+            if let Some(product) = self.products.get_mut(self.selected_index) {
+                product.description.get_or_insert_with(String::new).push(c);
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+
+
+
+
+fn handle_new_item_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+    match key.code {
+        KeyCode::Esc => {
+            match self.item_type {
+                ItemType::Tag => {
+                    self.tag_form = TagForm::default();
+                    self.input_mode = self.previous_input_mode.unwrap_or(InputMode::CreateTagSelect);
+                }
+                ItemType::Category => {
+                    self.category_form = CategoryForm::default();
+                    self.popup_field = 0;
+                    self.input_mode = InputMode::CreateCategorySelect;
+                }
+            }
+        }
+        KeyCode::Enter => {
+            match self.item_type {
+                ItemType::Tag => {
+                    // Save new tag
+                    if !self.tag_form.name.trim().is_empty() {
+                        let tag = crate::api::Tag {
+                            name: self.tag_form.name.clone(),
+                            usage_count: 0,
+                        };
+                        match self.api_client.create_tag(&tag) {
+                            Ok(created_tag) => {
+                                self.tags.push(created_tag.name.clone());
+                                self.tags.sort();
+                                self.create_form.tag_selected_index = self
+                                    .tags
+                                    .iter()
+                                    .position(|t| t == &self.tag_form.name)
+                                    .unwrap_or(0);
+                                 self.status_message = format!("Tag '{}' created", self.tag_form.name);
+                                 self.refresh_data();
+                             }
+                             Err(e) => {
+                                 self.status_message = format!("Error creating tag: {:?}", e);
+                             }
+                         }
+                     } else {
+                         self.status_message = "Error: Tag name required".to_string();
+                     }
+                    self.tag_form = TagForm::default();
+                    self.input_mode = match self.tag_select_mode {
+                        TagSelectMode::Create => InputMode::CreateTagSelect,
+                        TagSelectMode::Edit => InputMode::EditTagSelect,
+                    };
+                }
+                ItemType::Category => {
+                    // Save new category
+                    if !self.category_form.name.trim().is_empty() && self.category_form.sku.len() == 3 {
+                        let category = crate::api::Category {
+                            id: None,
+                            name: self.category_form.name.clone(),
+                            sku_initials: self.category_form.sku.clone(),
+                            description: if self.category_form.description.trim().is_empty() {
+                                None
+                            } else {
+                                Some(self.category_form.description.clone())
+                            },
+                        };
+                        match self.api_client.create_category(&category) {
+                            Ok(created_category) => {
+                                self.categories.push(created_category);
+                                self.categories.sort_by(|a, b| a.name.cmp(&b.name));
+                                self.create_form.category_selected_index = self
+                                    .categories
+                                    .iter()
+                                    .position(|c| c.name == self.category_form.name)
+                                    .unwrap_or(0);
+                                self.status_message =
+                                    format!("Category '{}' created", self.category_form.name);
+                                self.refresh_data();
+                            }
+                            Err(e) => {
+                                self.status_message = format!("Error creating category: {:?}", e);
+                            }
+                        }
+                    } else {
+                        self.status_message = "Error: Name required, SKU must be 3 letters".to_string();
+                    }
+                    self.category_form = CategoryForm::default();
+                    self.popup_field = 0;
+                    self.input_mode = InputMode::CreateCategorySelect;
+                }
+            }
+        }
+        KeyCode::Backspace => {
+            match self.item_type {
+                ItemType::Tag => {
+                    self.tag_form.name.pop();
+                }
+                ItemType::Category => match self.popup_field {
+                    0 => {
+                        self.category_form.name.pop();
+                    }
+                    1 => {
+                        self.category_form.sku.pop();
+                    }
+                    2 => {
+                        self.category_form.description.pop();
+                    }
+                    _ => {}
+                },
+            }
+        }
+        KeyCode::Char(c) => {
+            match self.item_type {
+                ItemType::Tag => {
+                    self.tag_form.name.push(c);
+                }
+                ItemType::Category => match self.popup_field {
+                    0 => {
+                        self.category_form.name.push(c);
+                    }
+                    1 => {
+                        if self.category_form.sku.len() < 3 {
+                            self.category_form.sku.push(c);
+                        }
+                    }
+                    2 => {
+                        self.category_form.description.push(c);
+                    }
+                    _ => {}
+                },
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn handle_edit_item_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+    match key.code {
+        KeyCode::Esc => {
+            match self.edit_item_type {
+                ItemType::Tag => {
+                    self.tag_form = TagForm::default();
+                    self.input_mode = match self.tag_select_mode {
+                        TagSelectMode::Create => InputMode::CreateTagSelect,
+                        TagSelectMode::Edit => InputMode::EditTagSelect,
+                    };
+                }
+                ItemType::Category => {
+                    self.category_form = CategoryForm::default();
+                    self.popup_field = 0;
+                    self.input_mode = InputMode::CreateCategorySelect;
+                }
+            }
+        }
+        KeyCode::Enter => {
+            match self.edit_item_type {
+                ItemType::Tag => {
+                    // Save edited tag
+                    if !self.tag_form.name.trim().is_empty() {
+                        if self.create_form.tag_selected_index < self.tags.len() {
+                            let old_name = self.tags[self.create_form.tag_selected_index].clone();
+                            let tag = crate::api::Tag {
+                                name: old_name.clone(),
+                                usage_count: 0, // Not used for update
+                            };
+                            let mut updated_tag = tag.clone();
+                            updated_tag.name = self.tag_form.name.clone();
+                            match self.api_client.update_tag(&updated_tag) {
+                                Ok(_) => {
+                                    self.tags[self.create_form.tag_selected_index] =
+                                        self.tag_form.name.clone();
+                                    self.tags.sort();
+                                    self.create_form.tag_selected_index = self
+                                        .tags
+                                        .iter()
+                                        .position(|t| t == &self.tag_form.name)
+                                        .unwrap_or(self.create_form.tag_selected_index);
+                                     self.status_message =
+                                         format!("Tag '{}' updated", self.tag_form.name);
+                                     self.refresh_data();
+                                }
+                                Err(e) => {
+                                    self.status_message = format!("Error updating tag: {:?}", e);
+                                }
+                            }
+                        }
+                    } else {
+                        self.status_message = "Error: Tag name required".to_string();
+                    }
+                    self.tag_form = TagForm::default();
+                    self.input_mode = match self.tag_select_mode {
+                        TagSelectMode::Create => InputMode::CreateTagSelect,
+                        TagSelectMode::Edit => InputMode::EditTagSelect,
+                    };
+                }
+                ItemType::Category => {
+                    // Save edited category
+                    if !self.category_form.name.trim().is_empty() && self.category_form.sku.len() == 3 {
+                        if self.create_form.category_selected_index < self.categories.len() {
+                            let mut category =
+                                self.categories[self.create_form.category_selected_index].clone();
+                            category.name = self.category_form.name.clone();
+                            category.sku_initials = self.category_form.sku.clone();
+                            category.description = if self.category_form.description.trim().is_empty() {
+                                None
+                            } else {
+                                Some(self.category_form.description.clone())
+                            };
+                            match self.api_client.update_category(&category) {
+                                Ok(updated_category) => {
+                                    self.categories[self.create_form.category_selected_index] =
+                                        updated_category;
+                                    self.categories.sort_by(|a, b| a.name.cmp(&b.name));
+                                    self.create_form.category_selected_index = self
+                                        .categories
+                                        .iter()
+                                        .position(|c| c.name == self.category_form.name)
+                                        .unwrap_or(self.create_form.category_selected_index);
+                                    self.status_message =
+                                        format!("Category '{}' updated", self.category_form.name);
+                                    self.refresh_data();
+                                }
+                                Err(e) => {
+                                    self.status_message = format!("Error updating category: {:?}", e);
+                                }
+                            }
+                        }
+                    } else {
+                        self.status_message = "Error: Name required, SKU must be 3 letters".to_string();
+                    }
+                    self.category_form = CategoryForm::default();
+                    self.popup_field = 0;
+                    self.input_mode = InputMode::CreateCategorySelect;
+                }
+            }
+        }
+        KeyCode::Enter => {
+            // Save edited tag
+            if !self.tag_form.name.trim().is_empty() {
+                if self.create_form.tag_selected_index < self.tags.len() {
+                    let old_name = self.tags[self.create_form.tag_selected_index].clone();
+                    let tag = crate::api::Tag {
+                        name: old_name.clone(),
+                        usage_count: 0, // Not used for update
+                    };
+                    let mut updated_tag = tag.clone();
+                    updated_tag.name = self.tag_form.name.clone();
+                    match self.api_client.update_tag(&updated_tag) {
+                        Ok(_) => {
+                            self.tags[self.create_form.tag_selected_index] =
+                                self.tag_form.name.clone();
+                            self.tags.sort();
+                            self.create_form.tag_selected_index = self
+                                .tags
+                                .iter()
+                                .position(|t| t == &self.tag_form.name)
+                                .unwrap_or(self.create_form.tag_selected_index);
+                             self.status_message =
+                                 format!("Tag '{}' updated", self.tag_form.name);
+                             self.refresh_data();
+                        }
+                        Err(e) => {
+                            self.status_message = format!("Error updating tag: {:?}", e);
+                        }
+                    }
+                }
+             } else {
+                self.status_message = "Error: Tag name required".to_string();
+            }
+            self.tag_form = TagForm::default();
+            self.input_mode = self.previous_input_mode.unwrap_or(InputMode::CreateTagSelect);
+        }
+        KeyCode::Backspace => {
+            self.tag_form.name.pop();
+        }
+        KeyCode::Char(c) => {
+            self.tag_form.name.push(c);
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn handle_edit_tags_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+    match key.code {
+        KeyCode::Esc => {
+            self.input_mode = InputMode::EditProduction;
+        }
+        KeyCode::Enter => {
+            // Parse and save changes
+            if let Some(product) = self.products.get_mut(self.selected_index) {
+                product.tags = self
+                    .edit_tags_string
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect();
+            }
+            self.edit_backup = None;
+            if let Some(product) = self.products.get(self.selected_index) {
+                let update = crate::api::ProductUpdate {
+                    name: Some(product.name.clone()),
+                    description: product.description.clone(),
+                    tags: Some(product.tags.clone()),
+                    production: Some(product.production),
+                    material: None,
+                    color: None,
+                    print_time: None,
+                    weight: None,
+                    stock_quantity: None,
+                    reorder_point: None,
+                    unit_cost: None,
+                    selling_price: None,
+                };
+                match self.api_client.update_product(&product.sku, &update) {
+                    Ok(_) => {
+                        self.status_message = "Product updated successfully".to_string();
+                        self.refresh_data();
+                    }
+                    Err(e) => self.status_message = format!("Error updating product: {:?}", e),
+                }
+            }
+            self.input_mode = InputMode::Normal;
+            self.active_pane = ActivePane::Left;
+        }
+        KeyCode::Tab => {
+            // Parse current edit_tags_string to product.tags
+            if let Some(product) = self.products.get_mut(self.selected_index) {
+                product.tags = self
+                    .edit_tags_string
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect();
+            }
+            self.tag_selection = vec![false; self.tags.len()];
+            // Pre-select tags that are already in the current product
+            if let Some(product) = self.products.get(self.selected_index) {
+                for (i, tag) in self.tags.iter().enumerate() {
+                    if product.tags.contains(tag) {
+                        self.tag_selection[i] = true;
+                    }
+                }
+            }
+            self.input_mode = InputMode::EditTagSelect;
+            self.active_pane = ActivePane::Right;
+        }
+        KeyCode::Up => {
+            self.input_mode = InputMode::EditProduction;
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+
+
+fn handle_edit_production_mode(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
+    match key.code {
+        KeyCode::Esc | KeyCode::Tab => {
+            // Cancel changes (discard) and return to normal mode
+            if let Some(original_product) = self.edit_backup.take() {
+                // Restore original product data
+                if let Some(current_product) = self.products.get_mut(self.selected_index) {
+                    *current_product = original_product;
+                }
+            }
+            self.input_mode = InputMode::Normal;
+            self.active_pane = ActivePane::Left;
+        }
+        KeyCode::Enter => {
+            // Save changes and return to normal mode
+            self.edit_backup = None; // Clear backup since we're saving
+            if let Some(product) = self.products.get(self.selected_index) {
+                let update = crate::api::ProductUpdate {
+                    name: None,
+                    description: None,
+                    tags: None,
+                    production: Some(product.production),
+                    material: None,
+                    color: None,
+                    print_time: None,
+                    weight: None,
+                    stock_quantity: None,
+                    reorder_point: None,
+                    unit_cost: None,
+                    selling_price: None,
+                };
+                match self.api_client.update_product(&product.sku, &update) {
+                    Ok(_) => {
+                        self.status_message = "Product updated successfully".to_string();
+                        self.refresh_data();
+                    }
+                    Err(e) => self.status_message = format!("Error updating product: {:?}", e),
+                }
+            }
+            self.input_mode = InputMode::Normal;
+            self.active_pane = ActivePane::Left;
+        }
+        KeyCode::Up => {
+            self.input_mode = InputMode::EditDescription;
+        }
+        KeyCode::Down => {
+            self.input_mode = InputMode::EditTags;
+        }
+        KeyCode::Left => {
+            if let Some(product) = self.products.get_mut(self.selected_index) {
+                product.production = true;
+            }
+        }
+        KeyCode::Right => {
+            if let Some(product) = self.products.get_mut(self.selected_index) {
+                product.production = false;
+            }
+        }
+        KeyCode::Char('y') | KeyCode::Char('Y') => {
+            if let Some(product) = self.products.get_mut(self.selected_index) {
+                product.production = true;
+            }
+        }
+        KeyCode::Char('n') | KeyCode::Char('N') => {
+            if let Some(product) = self.products.get_mut(self.selected_index) {
+                product.production = false;
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+
+
+
+
+
+
+}
