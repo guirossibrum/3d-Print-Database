@@ -1,5 +1,5 @@
 use anyhow::Result;
-use crossterm::event::{Event, KeyCode};
+use crossterm::event::Event;
 use ratatui::Terminal;
 use std::time::Duration;
 

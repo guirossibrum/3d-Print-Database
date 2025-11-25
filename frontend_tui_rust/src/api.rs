@@ -141,6 +141,7 @@ impl ApiClient {
         Ok(updated_tag)
     }
 
+    #[allow(dead_code)]
     pub fn delete_tag(&self, tag_name: &str) -> Result<()> {
         let url = format!("{}/tags/{}", self.base_url, tag_name);
         self.client.delete(&url).send()?;

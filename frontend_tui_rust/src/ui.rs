@@ -229,11 +229,11 @@ fn draw_create_left_pane(f: &mut Frame, area: Rect, app: &App, border_style: Sty
     // Tags field
     let tags_style = if matches!(
         app.input_mode,
-        InputMode::CreateTags | InputMode::CreateTagSelect
+        InputMode::CreateTags | InputMode::CreateTagSelect | InputMode::EditTagSelect
     ) {
         Style::default().fg(Color::Yellow).bold()
     } else {
-        Style::default().fg(Color::Cyan)
+        NORMAL_STYLE
     };
     content.push(Line::from(vec![
         Span::styled("Tags: ", tags_style),
@@ -711,7 +711,11 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
             Style::default().fg(Color::Cyan)
         };
 
-        let tags_style = NORMAL_STYLE;
+        let tags_style = if matches!(app.input_mode, InputMode::EditTags) {
+            Style::default().fg(Color::Yellow).bold()
+        } else {
+            NORMAL_STYLE
+        };
 
         let tags_text = product.tags.join(", ");
 

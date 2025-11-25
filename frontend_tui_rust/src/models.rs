@@ -10,6 +10,7 @@ pub enum Tab {
 #[derive(Debug, Clone, PartialEq)]
 pub enum TagSelectMode {
     Create,
+    #[allow(dead_code)]
     Edit,
 }
 
@@ -17,6 +18,7 @@ pub enum TagSelectMode {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ItemType {
     Tag,
+    #[allow(dead_code)]
     Category,
 }
 
@@ -62,9 +64,13 @@ pub enum InputMode {
     EditProduction,
     EditTags,
     EditTagSelect,
+    #[allow(dead_code)]
     NewCategory,
+    #[allow(dead_code)]
     EditCategory,
+    #[allow(dead_code)]
     NewTag,
+    #[allow(dead_code)]
     EditTag,
 }
 
