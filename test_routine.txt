@@ -1,0 +1,138 @@
+# Test Routine for 3D Print Database TUI (Rust)
+
+## Purpose
+This document outlines the comprehensive test routine for verifying the functionality and quality of the 3D Print Database TUI application before release approval.
+
+## Pre-Test Setup
+1. Ensure backend API is running: `cd Code/backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
+2. Ensure database has test data: `cd Code/backend && python -m pytest tests/ -v`
+3. Compile latest Rust TUI: `cd frontend_tui_rust && cargo build --release`
+4. Verify only one binary exists: Check for single executable in target/release/
+
+## Core Functionality Tests
+
+### 1. Application Startup
+- [ ] Application launches without errors
+- [ ] Terminal size validation works (shows error for small terminals)
+- [ ] Header displays correctly with version number
+- [ ] All tabs (Create, Search, Inventory) are visible
+- [ ] Footer shows correct instructions and status
+
+### 2. Tab Navigation
+- [ ] Left/Right arrow keys switch between tabs correctly
+- [ ] Tab content updates appropriately
+- [ ] Active tab highlighting works
+- [ ] Footer instructions update based on active tab
+
+### 3. Create Tab Functionality
+- [ ] Press ENTER to start product creation
+- [ ] Form fields appear in left pane, options in right pane
+- [ ] Name field: Can type text, backspace works
+- [ ] Description field: Can type text, backspace works
+- [ ] Category field: TAB opens category selection
+  - [ ] Can navigate categories with up/down arrows
+  - [ ] Can select category with ENTER
+  - [ ] Can create new category with 'n'
+  - [ ] Can edit existing category with 'e'
+- [ ] Production field: Can toggle with left/right arrows or y/n keys
+- [ ] Tags field: TAB opens tag selection
+  - [ ] Can navigate tags with up/down arrows
+  - [ ] Can select multiple tags with spacebar
+  - [ ] Can create new tags with 'n'
+  - [ ] Can edit existing tags with 'e'
+- [ ] Form validation: Empty name shows error message
+- [ ] Form validation: No category selected shows error message
+- [ ] Successful product creation shows success message
+- [ ] Form clears after successful creation
+- [ ] ESC cancels creation and returns to normal mode
+
+### 4. Search Tab Functionality
+- [ ] Products list displays on startup
+- [ ] Search input field works: Press '/' to enter search mode
+- [ ] Search typing: Characters appear in search box
+- [ ] Search filtering: Results narrow as you type
+- [ ] Search filtering: Works by product name (case insensitive)
+- [ ] Search filtering: Works by SKU (case insensitive)
+- [ ] **CRITICAL**: Selection limited to filtered results only
+  - [ ] Up/down arrows only navigate through filtered items
+  - [ ] Selection highlight stays within filtered list
+  - [ ] Cannot select items not in filtered results
+- [ ] Search exit: ENTER confirms search, ESC clears search
+- [ ] Product selection: Up/down arrows work in normal mode
+- [ ] Product editing: TAB switches to right pane for editing
+- [ ] Edit modes: Name, Description, Production, Tags all editable
+- [ ] Edit navigation: Up/down arrows move between edit fields
+- [ ] Edit save: ENTER saves changes to backend
+- [ ] Edit cancel: TAB/ESC discards changes
+- [ ] Right pane displays correct product details
+- [ ] Tag editing in product view works correctly
+
+### 5. Inventory Tab Functionality
+- [ ] Products display in table format with columns
+- [ ] Search functionality works (same as Search tab)
+- [ ] **CRITICAL**: Selection limited to filtered results only
+- [ ] Stock adjustment pane shows selected product details
+- [ ] Mock inventory data displays correctly
+- [ ] Inventory summary shows totals at bottom
+
+### 6. Keyboard Navigation
+- [ ] j/k keys work for up/down navigation
+- [ ] Arrow keys work for navigation
+- [ ] TAB switches panes where applicable
+- [ ] Backtab (Shift+TAB) works for reverse navigation
+- [ ] ESC cancels operations and returns to normal mode
+- [ ] q key quits application
+
+### 7. Error Handling
+- [ ] Network errors show appropriate messages
+- [ ] Backend connection failures handled gracefully
+- [ ] Invalid input validation works
+- [ ] Status messages display correctly in footer
+
+### 8. Data Consistency
+- [ ] Created products appear in search results immediately
+- [ ] Edited products reflect changes immediately
+- [ ] Tag creation/update works across all tabs
+- [ ] Category creation/update works across all tabs
+- [ ] Search results update after data changes
+
+## Performance Tests
+- [ ] Application starts within acceptable time (< 3 seconds)
+- [ ] Search filtering is responsive with large datasets
+- [ ] Navigation between tabs is smooth
+- [ ] No memory leaks during extended use
+
+## Edge Cases
+- [ ] Empty database handling
+- [ ] Very long product names/descriptions
+- [ ] Special characters in search
+- [ ] Rapid key presses don't cause crashes
+- [ ] Terminal resize handling
+
+## Regression Tests
+- [ ] All previously working features still work
+- [ ] No new bugs introduced in existing functionality
+- [ ] Performance hasn't degraded
+
+## Final Approval Criteria
+- [ ] All critical functionality tests pass
+- [ ] No crashes or hangs during testing
+- [ ] User experience is smooth and intuitive
+- [ ] Error messages are clear and helpful
+- [ ] Performance meets expectations
+- [ ] Code follows project guidelines
+- [ ] Version number has been incremented
+- [ ] Git commit has been made with descriptive message
+- [ ] Only one compiled binary exists
+
+## Test Results Summary
+Total Tests: ___
+Passed: ___
+Failed: ___
+Critical Issues: ___
+
+Approval Status: [ ] APPROVED [ ] REJECTED [ ] NEEDS REVISION
+
+Notes:
+________________________________________________________________________________
+________________________________________________________________________________

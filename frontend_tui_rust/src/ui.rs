@@ -547,7 +547,7 @@ fn display_as_list(
 
     // Add the list items
     for (i, product) in products.iter().enumerate() {
-        let style = if i == app.selected_index {
+        let style = if i == app.filtered_selection_index {
             Style::default().fg(Color::Black).bg(Color::Cyan)
         } else {
             Style::default().fg(Color::White)
@@ -595,7 +595,7 @@ fn display_as_table(
     // Product rows
     let mut rows = vec![];
     for (i, product) in products.iter().enumerate() {
-        let style = if i == app.selected_index {
+        let style = if i == app.filtered_selection_index {
             Style::default().fg(Color::Black).bg(Color::Cyan)
         } else {
             Style::default().fg(Color::White)

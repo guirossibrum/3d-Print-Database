@@ -61,23 +61,38 @@ fn handle_normal_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> 
             app.current_tab = app.current_tab.prev();
             app.active_pane = ActivePane::Left;
             app.selected_index = 0;
+            app.filtered_selection_index = 0;
         }
         KeyCode::Down | KeyCode::Char('j') => {
-            app.next_item();
+            // Use filtered navigation if in search/inventory tabs with active search
+            if (matches!(app.current_tab, Tab::Search) && !app.search_query.is_empty()) ||
+               (matches!(app.current_tab, Tab::Inventory) && !app.inventory_search_query.is_empty()) {
+                app.next_filtered_item();
+            } else {
+                app.next_item();
+            }
         }
         KeyCode::Up | KeyCode::Char('k') => {
-            app.prev_item();
+            // Use filtered navigation if in search/inventory tabs with active search
+            if (matches!(app.current_tab, Tab::Search) && !app.search_query.is_empty()) ||
+               (matches!(app.current_tab, Tab::Inventory) && !app.inventory_search_query.is_empty()) {
+                app.prev_filtered_item();
+            } else {
+                app.prev_item();
+            }
         }
         KeyCode::Left => {
             app.current_tab = app.current_tab.prev();
             app.active_pane = ActivePane::Left;
             app.selected_index = 0;
+            app.filtered_selection_index = 0;
             app.refresh_data();
         }
         KeyCode::Right => {
             app.current_tab = app.current_tab.next();
             app.active_pane = ActivePane::Left;
             app.selected_index = 0;
+            app.filtered_selection_index = 0;
             app.refresh_data();
         }
         KeyCode::Char('/') => {
@@ -121,6 +136,7 @@ fn handle_search_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> 
         KeyCode::Esc => {
             app.input_mode = InputMode::Normal;
             app.search_query.clear();
+            app.reset_filtered_selection();
         }
         KeyCode::Enter => {
             app.input_mode = InputMode::Normal;
@@ -131,9 +147,11 @@ fn handle_search_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> 
         }
         KeyCode::Backspace => {
             app.search_query.pop();
+            app.reset_filtered_selection();
         }
         KeyCode::Char(c) => {
             app.search_query.push(c);
+            app.reset_filtered_selection();
         }
         _ => {}
     }
@@ -145,6 +163,7 @@ fn handle_inventory_search_mode(app: &mut super::App, key: crossterm::event::Key
         KeyCode::Esc => {
             app.input_mode = InputMode::Normal;
             app.inventory_search_query.clear();
+            app.reset_filtered_selection();
         }
         KeyCode::Enter => {
             app.input_mode = InputMode::Normal;
@@ -155,9 +174,11 @@ fn handle_inventory_search_mode(app: &mut super::App, key: crossterm::event::Key
         }
         KeyCode::Backspace => {
             app.inventory_search_query.pop();
+            app.reset_filtered_selection();
         }
         KeyCode::Char(c) => {
             app.inventory_search_query.push(c);
+            app.reset_filtered_selection();
         }
         _ => {}
     }

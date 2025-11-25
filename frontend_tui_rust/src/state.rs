@@ -28,6 +28,7 @@ pub struct App {
 
     // UI state
     pub selected_index: usize,
+    pub filtered_selection_index: usize,
     pub search_query: String,
     pub inventory_search_query: String,
     pub status_message: String,
@@ -72,6 +73,7 @@ impl App {
             tags,
             categories,
             selected_index: 0,
+            filtered_selection_index: 0,
             search_query: String::new(),
             inventory_search_query: String::new(),
             status_message: String::new(),
@@ -160,6 +162,86 @@ impl App {
             } else {
                 self.selected_index - 1
             };
+        }
+    }
+
+    pub fn get_filtered_products(&self) -> Vec<&crate::api::Product> {
+        let query = if matches!(self.current_tab, Tab::Search) {
+            &self.search_query
+        } else if matches!(self.current_tab, Tab::Inventory) {
+            &self.inventory_search_query
+        } else {
+            return self.products.iter().collect();
+        };
+
+        if query.is_empty() {
+            self.products.iter().collect()
+        } else {
+            self.products
+                .iter()
+                .filter(|product| {
+                    product
+                        .name
+                        .to_lowercase()
+                        .contains(&query.to_lowercase())
+                        || product
+                            .sku
+                            .to_lowercase()
+                            .contains(&query.to_lowercase())
+                })
+                .collect()
+        }
+    }
+
+    pub fn next_filtered_item(&mut self) {
+        let filtered_products: Vec<crate::api::Product> = self.get_filtered_products()
+            .into_iter()
+            .cloned()
+            .collect();
+        if !filtered_products.is_empty() {
+            let new_index = (self.filtered_selection_index + 1) % filtered_products.len();
+            self.filtered_selection_index = new_index;
+            // Update the main selected_index to point to the actual product
+            if let Some(product) = filtered_products.get(new_index) {
+                if let Some(index) = self.products.iter().position(|p| p.sku == product.sku) {
+                    self.selected_index = index;
+                }
+            }
+        }
+    }
+
+    pub fn prev_filtered_item(&mut self) {
+        let filtered_products: Vec<crate::api::Product> = self.get_filtered_products()
+            .into_iter()
+            .cloned()
+            .collect();
+        if !filtered_products.is_empty() {
+            let new_index = if self.filtered_selection_index == 0 {
+                filtered_products.len() - 1
+            } else {
+                self.filtered_selection_index - 1
+            };
+            self.filtered_selection_index = new_index;
+            // Update the main selected_index to point to the actual product
+            if let Some(product) = filtered_products.get(new_index) {
+                if let Some(index) = self.products.iter().position(|p| p.sku == product.sku) {
+                    self.selected_index = index;
+                }
+            }
+        }
+    }
+
+    pub fn reset_filtered_selection(&mut self) {
+        self.filtered_selection_index = 0;
+        // If there are filtered results, select the first one
+        let filtered_products: Vec<crate::api::Product> = self.get_filtered_products()
+            .into_iter()
+            .cloned()
+            .collect();
+        if let Some(product) = filtered_products.first() {
+            if let Some(index) = self.products.iter().position(|p| p.sku == product.sku) {
+                self.selected_index = index;
+            }
         }
     }
 
