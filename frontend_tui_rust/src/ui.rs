@@ -545,8 +545,8 @@ fn display_as_list(
     // Search instruction removed - now only in footer
 
     // Add the list items - use product ID for selection
-    for (_i, product) in products.iter().enumerate() {
-        let style = if product.id == app.selected_product_id {
+    for (i, product) in products.iter().enumerate() {
+        let style = if product.id == app.selected_product_id || (app.selected_product_id.is_none() && i == 0) {
             Style::default().fg(Color::Yellow)  // Yellow text for selected item
         } else {
             Style::default().fg(Color::White)   // White text for unselected items
@@ -595,7 +595,7 @@ fn display_as_table(
     let mut rows = vec![];
     
     for (i, product) in products.iter().enumerate() {
-        let style = if product.id == app.selected_product_id {
+        let style = if product.id == app.selected_product_id || (app.selected_product_id.is_none() && i == 0) {
             Style::default().fg(Color::Yellow)  // Yellow text for selected item
         } else {
             Style::default().fg(Color::White)   // White text for unselected items
