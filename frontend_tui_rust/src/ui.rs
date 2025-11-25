@@ -977,56 +977,52 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App, version: &str) {
     // Get instructions based on current tab, pane, and mode
     let instructions = match app.current_tab {
         Tab::Create => match app.input_mode {
-            InputMode::Normal => "←→: switch tabs, Enter: create product",
-            InputMode::CreateName => "Enter name, Tab/↓: next, ↑: prev, Esc: cancel",
-            InputMode::CreateDescription => "Enter desc, Tab/↓: next, ↑: prev, Esc: cancel",
-            InputMode::CreateCategory => "Tab: Select, Esc: cancel",
-            InputMode::CreateCategorySelect => {
-                "↑↓: select, Enter: choose, n: new, e: edit, Esc: back"
-            }
-            InputMode::CreateProduction => "←→/y/n: toggle, Tab/↓: next, ↑: prev, Esc: cancel",
-            InputMode::CreateTags => "Tab: Select Tags, Enter: save, ↑: prev, Esc: cancel",
-            InputMode::CreateTagSelect => "↑↓: select, Enter: choose, n: new, e: edit, Esc: back",
-            InputMode::NewCategory | InputMode::EditCategory => {
-                "Enter name, Enter: save, Esc: cancel"
-            }
-            InputMode::NewTag | InputMode::EditTag => "Enter name, Enter: save, Esc: cancel",
-            _ => "←→: switch tabs",
+            InputMode::Normal => "[←→] switch tabs     [Enter] create product",
+            InputMode::CreateName => "[Enter] name         [Tab/↓] next field",
+            InputMode::CreateDescription => "[Enter] description   [Tab/↓] next field",
+            InputMode::CreateCategory => "[Tab] select category [Esc] cancel",
+            InputMode::CreateCategorySelect => "[↑↓] select option    [Enter] choose",
+            InputMode::CreateProduction => "[←→] toggle yes/no  [Tab/↓] next field",
+            InputMode::CreateTags => "[Tab] select tags    [Enter] save",
+            InputMode::CreateTagSelect => "[↑↓] select tag      [Enter] choose",
+            InputMode::NewCategory | InputMode::EditCategory => "[Enter] name         [Enter] save",
+            InputMode::NewTag | InputMode::EditTag => "[Enter] name         [Enter] save",
+            _ => "[←→] switch tabs",
         },
         Tab::Search => match app.input_mode {
             InputMode::Normal => {
                 if app.has_multiple_panes() {
                     match app.active_pane {
-                        ActivePane::Left => "↑↓: navigate, Enter: edit, d: delete, o: open folder, type: search",
-                        ActivePane::Right => "Tab: back to list, Enter: save, ↑↓: fields, Esc: cancel",
+                        ActivePane::Left => "[↑↓] navigate     [Enter] edit     [d] delete     [o] open folder",
+                        ActivePane::Right => "[Tab] back to list  [Enter] save     [↑↓] fields",
                     }
                 } else {
-                    "↑↓: navigate, Enter: edit, d: delete, o: open folder, type: search"
+                    "[↑↓] navigate     [Enter] edit     [d] delete     [o] open folder"
                 }
             }
-            InputMode::EditName => "Edit name, Tab: cancel, Enter: save, ↑↓: fields",
-            InputMode::EditDescription => "Edit desc, Tab: cancel, Enter: save, ↑↓: fields",
-            InputMode::EditProduction => "←→: toggle, Tab: cancel, Enter: save, ↑↓: fields",
-            _ => "Tab: switch panes, ↑↓: navigate",
+            InputMode::EditName => "[Enter] save         [Tab/↓] next field",
+            InputMode::EditDescription => "[Enter] save         [Tab/↓] next field",
+            InputMode::EditProduction => "[←→] toggle yes/no  [Tab/↓] next field",
+            _ => "[Tab] switch panes",
         },
         Tab::Inventory => match app.input_mode {
             InputMode::Normal => {
                 if app.has_multiple_panes() {
                     match app.active_pane {
-                        ActivePane::Left => "Tab: right pane, ↑↓: select product, type: search",
-                        ActivePane::Right => "Tab: left pane, +/-: adjust stock, Enter: confirm",
+                        ActivePane::Left => "[↑↓] select product [type] search",
+                        ActivePane::Right => "[Tab] left pane    [+/-] adjust stock",
                     }
                 } else {
-                    "↑↓: select product, type: search"
+                    "[↑↓] select product [type] search"
                 }
             }
-            _ => "Tab: switch panes, ↑↓: navigate",
+            _ => "[Tab] switch panes",
         },
     };
 
     // Truncate status message if too long
     let max_status_len = 30;
-    let truncated_status = if app.status_message.len() > max_status_len {
+    let _truncated_status = if app.status_message.len() > max_status_len {
         format!(
             "{}...",
             &app.status_message[..max_status_len.saturating_sub(3)]
@@ -1035,14 +1031,28 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App, version: &str) {
         app.status_message.clone()
     };
 
-    let footer_text = format!(
-        "{} | {} | q:quit v{}",
-        truncated_status, instructions, version
-    );
+    let footer_text = instructions.to_string();
 
-    let footer = Paragraph::new(footer_text)
+    let footer_left = Paragraph::new(footer_text)
         .style(Style::default().fg(Color::Cyan))
         .wrap(Wrap { trim: false });
 
-    f.render_widget(footer, area);
+    let version_text = format!("v{}", version);
+    let footer_right = Paragraph::new(version_text)
+        .style(Style::default().fg(Color::Gray))
+        .wrap(Wrap { trim: false });
+
+    let footer_layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Min(50), // Space for instructions
+            Constraint::Length(15), // Space for version
+        ])
+        .split(area);
+
+    f.render_widget(&footer_left, footer_layout[0]);
+    f.render_widget(&footer_right, footer_layout[1]);
+
+    f.render_widget(footer_left, footer_layout[0]);
+    f.render_widget(footer_right, footer_layout[1]);
 }
