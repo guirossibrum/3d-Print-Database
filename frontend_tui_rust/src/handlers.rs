@@ -93,6 +93,21 @@ fn handle_normal_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> 
                 }
             }
         }
+        KeyCode::Char('o') => {
+            // Open product folder functionality for Search tab
+            if matches!(app.current_tab, Tab::Search) && !app.products.is_empty() {
+                if let Some(product) = app.get_selected_product() {
+                    match open_product_folder(&product.sku) {
+                        Ok(_) => {
+                            app.status_message = format!("Opened folder for product {}", product.sku);
+                        }
+                        Err(e) => {
+                            app.status_message = format!("Error opening folder: {}", e);
+                        }
+                    }
+                }
+            }
+        }
         KeyCode::Char(c) => {
             // Direct typing in search box for Search and Inventory tabs
             if matches!(app.current_tab, Tab::Search) {
@@ -1031,6 +1046,35 @@ fn scan_directory(dir_path: &std::path::Path, prefix: &str) -> Result<Vec<String
     }
     
     Ok(content)
+}
+
+fn open_product_folder(sku: &str) -> Result<()> {
+    use std::process::Command;
+    use std::path::Path;
+    use anyhow::anyhow;
+    
+    let base_path = Path::new("/Products").join(sku);
+    
+    if !base_path.exists() {
+        return Err(anyhow!("Product folder not found: {}", base_path.display()));
+    }
+    
+    // Try to open with xdg-open (Linux standard)
+    match Command::new("xdg-open").arg(&base_path).spawn() {
+        Ok(_) => Ok(()),
+        Err(_) => {
+            // Fallback to other methods if xdg-open fails
+            match Command::new("nautilus").arg(&base_path).spawn() {
+                Ok(_) => Ok(()),
+                Err(_) => {
+                    match Command::new("dolphin").arg(&base_path).spawn() {
+                        Ok(_) => Ok(()),
+                        Err(e) => Err(anyhow!("Failed to open folder: {}", e))
+                    }
+                }
+            }
+        }
+    }
 }
 
 fn handle_edit_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {

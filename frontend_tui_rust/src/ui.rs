@@ -459,8 +459,14 @@ fn draw_popup(f: &mut Frame, area: Rect, app: &App) {
     }
 
     content.push(Line::from(""));
+    let help_text = match app.input_mode {
+        InputMode::DeleteConfirm => "[ENTER: Confirm] [ESC: Cancel] [1/2: Select option]",
+        InputMode::DeleteFileConfirm => "[y: Confirm deletion] [n: Cancel] [ESC: Back]",
+        _ => "[ENTER: Save] [ESC: Cancel] (Tip: Use commas for multiple tags)",
+    };
+    
     content.push(Line::from(vec![Span::styled(
-        "[ENTER: Save] [ESC: Cancel] (Tip: Use commas for multiple tags)",
+        help_text,
         Style::default().fg(Color::Gray),
     )]));
 
