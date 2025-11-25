@@ -27,7 +27,7 @@ pub struct App {
     pub categories: Vec<Category>,
 
     // UI state
-    pub filtered_selection_index: usize,
+    pub selected_product_id: Option<i32>,
     pub search_query: String,
     pub inventory_search_query: String,
     pub status_message: String,
@@ -71,7 +71,7 @@ impl App {
             products,
             tags,
             categories,
-            filtered_selection_index: 0,
+            selected_product_id: None,
             search_query: String::new(),
             inventory_search_query: String::new(),
             status_message: String::new(),
@@ -166,30 +166,48 @@ impl App {
         }
     }
 
-    pub fn next_filtered_item(&mut self) {
-        let filtered_products: Vec<crate::api::Product> = self.get_filtered_products()
-            .into_iter()
-            .cloned()
-            .collect();
-        if !filtered_products.is_empty() {
-            let new_index = (self.filtered_selection_index + 1) % filtered_products.len();
-            self.filtered_selection_index = new_index;
+    pub fn get_selected_product(&self) -> Option<&crate::api::Product> {
+        let filtered_products = self.get_filtered_products();
+        match self.selected_product_id {
+            Some(product_id) => filtered_products.iter().find(|p| p.id == Some(product_id)).copied(),
+            None => filtered_products.first().copied(),
         }
     }
 
-pub fn prev_filtered_item(&mut self) {
-        let filtered_products: Vec<crate::api::Product> = self.get_filtered_products()
-            .into_iter()
-            .cloned()
-            .collect();
+    pub fn get_selected_index(&self) -> usize {
+        let filtered_products = self.get_filtered_products();
+        match self.selected_product_id {
+            Some(product_id) => {
+                filtered_products.iter().position(|p| p.id == Some(product_id)).unwrap_or(0)
+            }
+            None => 0,
+        }
+    }
+
+    pub fn next_filtered_item(&mut self) {
+        let filtered_products: Vec<&crate::api::Product> = self.get_filtered_products();
         if !filtered_products.is_empty() {
-            let new_index = if self.filtered_selection_index == 0 {
+            let current_index = self.get_selected_index();
+            let new_index = (current_index + 1) % filtered_products.len();
+            self.selected_product_id = filtered_products[new_index].id;
+        }
+    }
+
+    pub fn prev_filtered_item(&mut self) {
+        let filtered_products: Vec<&crate::api::Product> = self.get_filtered_products();
+        if !filtered_products.is_empty() {
+            let current_index = self.get_selected_index();
+            let new_index = if current_index == 0 {
                 filtered_products.len() - 1
             } else {
-                self.filtered_selection_index - 1
+                current_index - 1
             };
-            self.filtered_selection_index = new_index;
+            self.selected_product_id = filtered_products[new_index].id;
         }
+    }
+
+    pub fn clear_selection(&mut self) {
+        self.selected_product_id = None;
     }
 
     pub fn handle_mouse_event(&mut self, _mouse_event: crossterm::event::MouseEvent) {

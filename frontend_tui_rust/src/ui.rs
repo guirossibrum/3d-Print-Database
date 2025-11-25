@@ -544,9 +544,9 @@ fn display_as_list(
 
     // Search instruction removed - now only in footer
 
-    // Add the list items - always use filtered_selection_index for consistency
-    for (i, product) in products.iter().enumerate() {
-        let style = if i == app.filtered_selection_index {
+    // Add the list items - use product ID for selection
+    for (_i, product) in products.iter().enumerate() {
+        let style = if product.id == app.selected_product_id {
             Style::default().fg(Color::Yellow)  // Yellow text for selected item
         } else {
             Style::default().fg(Color::White)   // White text for unselected items
@@ -595,7 +595,7 @@ fn display_as_table(
     let mut rows = vec![];
     
     for (i, product) in products.iter().enumerate() {
-        let style = if i == app.filtered_selection_index {
+        let style = if product.id == app.selected_product_id {
             Style::default().fg(Color::Yellow)  // Yellow text for selected item
         } else {
             Style::default().fg(Color::White)   // White text for unselected items
@@ -689,7 +689,7 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
             )
             .wrap(Wrap { trim: true });
         f.render_widget(paragraph, area);
-    } else if let Some(product) = app.products.get(app.filtered_selection_index) {
+    } else if let Some(product) = app.get_selected_product() {
         let name_style = if matches!(app.input_mode, InputMode::EditName) {
             Style::default().fg(Color::Yellow).bold()
         } else {
@@ -829,7 +829,7 @@ fn draw_inventory_right_pane(f: &mut Frame, area: Rect, app: &App) {
         INACTIVE_BORDER_STYLE
     };
 
-if let Some(product) = app.products.get(app.filtered_selection_index) {
+if let Some(product) = app.get_selected_product() {
         let content = vec![
             Line::from(vec![
                 Span::styled("Product: ", Style::default().fg(Color::Cyan)),
