@@ -608,7 +608,15 @@ fn handle_edit_production_mode(app: &mut super::App, key: crossterm::event::KeyE
 fn handle_edit_tags_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
     match key.code {
         KeyCode::Esc => {
-            app.input_mode = InputMode::EditProduction;
+            // Cancel changes and return to normal mode
+            if let Some(original_product) = app.edit_backup.take() {
+                // Restore original product data
+                if let Some(current_product) = app.products.get_mut(app.filtered_selection_index) {
+                    *current_product = original_product;
+                }
+            }
+            app.input_mode = InputMode::Normal;
+            app.active_pane = ActivePane::Left;
         }
         KeyCode::Enter => {
             // Parse and save changes
