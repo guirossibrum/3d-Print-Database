@@ -3,7 +3,7 @@ use crossterm::{
     execute,
     terminal::{
         Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode,
-        enable_raw_mode,
+        enable_raw_mode, SetTitle,
     },
 };
 use ratatui::{Terminal, backend::CrosstermBackend};
@@ -41,6 +41,8 @@ fn setup_terminal()
     }
 
     let mut stdout = io::stdout();
+    // Set window title for Hyprland detection
+    execute!(stdout, SetTitle("3D Print Database TUI")).map_err(|e| TerminalError::SetupFailed(e.into()))?;
     // Aggressive screen clearing
     execute!(stdout, Clear(ClearType::All)).map_err(|e| TerminalError::SetupFailed(e.into()))?;
     execute!(stdout, Hide).map_err(|e| TerminalError::SetupFailed(e.into()))?;

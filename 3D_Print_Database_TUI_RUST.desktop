@@ -8,8 +8,7 @@ Icon=/home/grbrum/Work/3d_print/Code/frontend/icon.svg
 Terminal=true
 Categories=Office;
 Keywords=3d;print;database;product;management;tui;terminal;cli;rust;ratatui;navigation;pane;
-StartupNotify=false
+StartupNotify=true
 Path=/home/grbrum/Work/3d_print/
-# Hyprland window rules for floating terminal
-
-X-Hyprland-Window-Rule=center,^(3D Print Database TUI)$
+# Window class for Hyprland detection
+StartupWMClass=3D Print Database TUI
