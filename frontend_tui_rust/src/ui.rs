@@ -545,19 +545,12 @@ fn display_as_list(
 
     // Search instruction removed - now only in footer
 
-    // Determine which selection index to use based on search query
-    let search_query = if matches!(app.current_tab, Tab::Search) {
-        &app.search_query
-    } else {
-        ""
-    };
-
-    // Add the list items
+    // Add the list items - always use filtered_selection_index for consistency
     for (i, product) in products.iter().enumerate() {
-        let style = if i == if search_query.is_empty() { app.selected_index } else { app.filtered_selection_index } {
-            Style::default().fg(Color::Black).bg(Color::Yellow)
+        let style = if i == app.filtered_selection_index {
+            Style::default().fg(Color::Yellow)  // Yellow text for selected item
         } else {
-            Style::default().fg(Color::White)
+            Style::default().fg(Color::White)   // White text for unselected items
         };
 
         content_lines.push(Line::from(Span::styled(
@@ -602,18 +595,11 @@ fn display_as_table(
     // Product rows
     let mut rows = vec![];
     
-    // Determine which selection index to use based on search query
-    let search_query = if matches!(app.current_tab, Tab::Inventory) {
-        &app.inventory_search_query
-    } else {
-        ""
-    };
-    
     for (i, product) in products.iter().enumerate() {
-        let style = if i == if search_query.is_empty() { app.selected_index } else { app.filtered_selection_index } {
-            Style::default().fg(Color::Black).bg(Color::Yellow)
+        let style = if i == app.filtered_selection_index {
+            Style::default().fg(Color::Yellow)  // Yellow text for selected item
         } else {
-            Style::default().fg(Color::White)
+            Style::default().fg(Color::White)   // White text for unselected items
         };
 
         // Mock inventory data for now (in real app, this would come from API)
@@ -655,15 +641,13 @@ fn display_as_table(
 }
 
 fn draw_search_left_pane(f: &mut Frame, area: Rect, app: &App) {
-    let search_border_style = if matches!(app.input_mode, InputMode::Search) {
+    let search_border_style = if matches!(app.active_pane, ActivePane::Left) {
         Style::default().fg(Color::Yellow).bold()
     } else {
         Style::default().fg(Color::White)
     };
 
-    let results_border_style = if matches!(app.active_pane, ActivePane::Left)
-        && !matches!(app.input_mode, InputMode::Search)
-    {
+    let results_border_style = if matches!(app.active_pane, ActivePane::Left) {
         Style::default().fg(Color::Yellow).bold()
     } else {
         Style::default().fg(Color::White)
@@ -814,15 +798,13 @@ fn draw_inventory_tab(f: &mut Frame, content_area: Rect, totals_area: Rect, app:
 }
 
 fn draw_inventory_left_pane(f: &mut Frame, area: Rect, app: &App) {
-    let search_border_style = if matches!(app.input_mode, InputMode::InventorySearch) {
+    let search_border_style = if matches!(app.active_pane, ActivePane::Left) {
         Style::default().fg(Color::Yellow).bold()
     } else {
         Style::default().fg(Color::White)
     };
 
-    let results_border_style = if matches!(app.active_pane, ActivePane::Left)
-        && !matches!(app.input_mode, InputMode::InventorySearch)
-    {
+    let results_border_style = if matches!(app.active_pane, ActivePane::Left) {
         Style::default().fg(Color::Yellow).bold()
     } else {
         Style::default().fg(Color::White)

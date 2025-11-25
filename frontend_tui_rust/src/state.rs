@@ -118,13 +118,6 @@ impl App {
         Ok(())
     }
 
-    pub fn get_max_items(&self) -> usize {
-        match self.current_tab {
-            Tab::Search | Tab::Inventory => self.products.len(),
-            Tab::Create => 0,
-        }
-    }
-
     pub fn has_multiple_panes(&self) -> bool {
         matches!(self.current_tab, Tab::Search | Tab::Inventory)
     }
@@ -143,24 +136,6 @@ impl App {
             self.active_pane = match self.active_pane {
                 ActivePane::Left => ActivePane::Right,
                 ActivePane::Right => ActivePane::Left,
-            };
-        }
-    }
-
-    pub fn next_item(&mut self) {
-        let max_items = self.get_max_items();
-        if max_items > 0 {
-            self.selected_index = (self.selected_index + 1) % max_items;
-        }
-    }
-
-    pub fn prev_item(&mut self) {
-        let max_items = self.get_max_items();
-        if max_items > 0 {
-            self.selected_index = if self.selected_index == 0 {
-                max_items - 1
-            } else {
-                self.selected_index - 1
             };
         }
     }

@@ -60,38 +60,25 @@ fn handle_normal_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> 
         KeyCode::BackTab => {
             app.current_tab = app.current_tab.prev();
             app.active_pane = ActivePane::Left;
-            app.selected_index = 0;
             app.filtered_selection_index = 0;
         }
         KeyCode::Down | KeyCode::Char('j') => {
-            // Use filtered navigation if in search/inventory tabs with active search
-            if (matches!(app.current_tab, Tab::Search) && !app.search_query.is_empty()) ||
-               (matches!(app.current_tab, Tab::Inventory) && !app.inventory_search_query.is_empty()) {
-                app.next_filtered_item();
-            } else {
-                app.next_item();
-            }
+            // Always use filtered navigation (filter returns all items when empty)
+            app.next_filtered_item();
         }
         KeyCode::Up | KeyCode::Char('k') => {
-            // Use filtered navigation if in search/inventory tabs with active search
-            if (matches!(app.current_tab, Tab::Search) && !app.search_query.is_empty()) ||
-               (matches!(app.current_tab, Tab::Inventory) && !app.inventory_search_query.is_empty()) {
-                app.prev_filtered_item();
-            } else {
-                app.prev_item();
-            }
+            // Always use filtered navigation (filter returns all items when empty)
+            app.prev_filtered_item();
         }
         KeyCode::Left => {
             app.current_tab = app.current_tab.prev();
             app.active_pane = ActivePane::Left;
-            app.selected_index = 0;
             app.filtered_selection_index = 0;
             app.refresh_data();
         }
         KeyCode::Right => {
             app.current_tab = app.current_tab.next();
             app.active_pane = ActivePane::Left;
-            app.selected_index = 0;
             app.filtered_selection_index = 0;
             app.refresh_data();
         }
