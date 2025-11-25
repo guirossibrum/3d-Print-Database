@@ -32,25 +32,8 @@ fn handle_normal_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> 
             app.running = false;
         }
         KeyCode::Tab => {
-            if app.has_multiple_panes()
-                && matches!(app.active_pane, ActivePane::Left)
-                && !app.products.is_empty()
-            {
-                // Refresh data before editing
-                app.refresh_data();
-                // Backup current product for potential cancellation
-                if let Some(product) = app.get_selected_product() {
-                    app.edit_backup = Some(product.clone());
-                }
-                // Initialize edit_tags_string with current product tags
-                if let Some(product) = app.get_selected_product() {
-                    app.edit_tags_string = product.tags.join(", ");
-                }
-                // Switch to right pane and enter edit mode
-                app.active_pane = ActivePane::Right;
-                app.input_mode = InputMode::EditName;
-            } else if app.has_multiple_panes() {
-                // Regular pane switching
+            if app.has_multiple_panes() {
+                // Always switch between left and right panes
                 app.next_pane();
             }
         }
@@ -136,7 +119,17 @@ fn handle_normal_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> 
                     } else if matches!(app.current_tab, Tab::Search)
                         && !app.products.is_empty()
                     {
-                        // Direct edit from normal mode (legacy behavior)
+                        // Switch to edit mode
+                        app.refresh_data();
+                        // Backup current product for potential cancellation
+                        if let Some(product) = app.get_selected_product() {
+                            app.edit_backup = Some(product.clone());
+                        }
+                        // Initialize edit_tags_string with current product tags
+                        if let Some(product) = app.get_selected_product() {
+                            app.edit_tags_string = product.tags.join(", ");
+                        }
+                        app.active_pane = ActivePane::Right;
                         app.input_mode = InputMode::EditName;
                     }
                 }
@@ -1002,16 +995,20 @@ fn build_file_tree(sku: &str) -> Result<Vec<String>> {
     
     // Scan subdirectories
     let subdirs = ["images", "models", "notes", "print_files"];
-    for subdir in &subdirs {
+    for (i, subdir) in subdirs.iter().enumerate() {
         let subdir_path = base_path.join(subdir);
         if subdir_path.exists() {
-            content.push(format!("├── 📁 {}/", subdir));
+            let is_last = i == subdirs.len() - 1;
+            let connector = if is_last { "└──" } else { "├──" };
+            content.push(format!("{}{} 📁 {}/", "    ", connector, subdir));
             match scan_directory(&subdir_path, "    │   ") {
                 Ok(files) => content.extend(files),
                 Err(_) => content.push(format!("    │       └── (Error reading directory)")),
             }
         } else {
-            content.push(format!("├── 📁 {}/ (empty)", subdir));
+            let is_last = i == subdirs.len() - 1;
+            let connector = if is_last { "└──" } else { "├──" };
+            content.push(format!("{}{} 📁 {}/ (empty)", "    ", connector, subdir));
         }
     }
     
