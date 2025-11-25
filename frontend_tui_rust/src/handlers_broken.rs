@@ -183,7 +183,7 @@ fn handle_create_name_mode(app: &mut super::App, key: crossterm::event::KeyEvent
             app.create_form.name.push(c);
         }
         KeyCode::Enter => {
-            // Save product
+            // Save the product
             app.save_product()?;
             app.input_mode = InputMode::Normal;
             app.active_pane = ActivePane::Left;
@@ -211,7 +211,7 @@ fn handle_create_description_mode(app: &mut super::App, key: crossterm::event::K
             app.create_form.description.push(c);
         }
         KeyCode::Enter => {
-            // Save product
+            // Save the product
             app.save_product()?;
             app.input_mode = InputMode::Normal;
             app.active_pane = ActivePane::Left;
@@ -317,7 +317,7 @@ fn handle_create_production_mode(app: &mut super::App, key: crossterm::event::Ke
             app.create_form.production = false;
         }
         KeyCode::Enter => {
-            // Save product
+            // Save the product
             app.save_product()?;
             app.input_mode = InputMode::Normal;
             app.active_pane = ActivePane::Left;
@@ -787,6 +787,32 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                             
                             let message = if created_count == 1 {
                                 format!("Tag '{}' created", created_tag_names.first().unwrap_or(&String::new()))
+                            } else {
+                                format!("{} tags created", created_count)
+                            };
+                            app.status_message = message;
+                        }
+                            }
+                        }
+                        
+                        if created_count > 0 {
+                            app.tags.sort();
+                            app.refresh_data();
+                            
+                            // Update tag selection array to match new tags length
+                            app.tag_selection.resize(app.tags.len(), false);
+                            
+                            // Set selection index to first new tag if available
+                            if let Some(ref new_tag_name) = first_new_tag_index {
+                                if let Some(index) = app.tags.iter().position(|t| t == new_tag_name) {
+                                    app.create_form.tag_selected_index = index;
+                                    // Pre-select the new tag
+                                    app.tag_selection[index] = true;
+                                }
+                            }
+                            
+                            let message = if created_count == 1 {
+                                format!("Tag '{}' created", first_new_tag_index.unwrap_or_default())
                             } else {
                                 format!("{} tags created", created_count)
                             };
