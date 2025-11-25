@@ -719,7 +719,7 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
 
         let tags_text = product.tags.join(", ");
 
-        let mut content = vec![
+let content = vec![
             Line::from(vec![
                 Span::styled("SKU: ", Style::default().fg(Color::Cyan)),
                 Span::raw(&product.sku),
@@ -760,15 +760,6 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
             ]),
             Line::from(""),
         ];
-
-        // Add available tags in a separate section
-        if !app.tags.is_empty() {
-            content.push(Line::from(vec![Span::styled(
-                "Available Tags:",
-                Style::default().fg(Color::Green).bold(),
-            )]));
-            content.push(Line::from(app.tags.join(", ")));
-        }
 
         let paragraph = Paragraph::new(content)
             .block(
