@@ -545,10 +545,17 @@ fn display_as_list(
 
     // Search instruction removed - now only in footer
 
+    // Determine which selection index to use based on search query
+    let search_query = if matches!(app.current_tab, Tab::Search) {
+        &app.search_query
+    } else {
+        ""
+    };
+
     // Add the list items
     for (i, product) in products.iter().enumerate() {
-        let style = if i == app.filtered_selection_index {
-            Style::default().fg(Color::Black).bg(Color::Cyan)
+        let style = if i == if search_query.is_empty() { app.selected_index } else { app.filtered_selection_index } {
+            Style::default().fg(Color::Black).bg(Color::Yellow)
         } else {
             Style::default().fg(Color::White)
         };
@@ -594,9 +601,17 @@ fn display_as_table(
 
     // Product rows
     let mut rows = vec![];
+    
+    // Determine which selection index to use based on search query
+    let search_query = if matches!(app.current_tab, Tab::Inventory) {
+        &app.inventory_search_query
+    } else {
+        ""
+    };
+    
     for (i, product) in products.iter().enumerate() {
-        let style = if i == app.filtered_selection_index {
-            Style::default().fg(Color::Black).bg(Color::Cyan)
+        let style = if i == if search_query.is_empty() { app.selected_index } else { app.filtered_selection_index } {
+            Style::default().fg(Color::Black).bg(Color::Yellow)
         } else {
             Style::default().fg(Color::White)
         };
@@ -714,7 +729,7 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
         let tags_style = if matches!(app.input_mode, InputMode::EditTags) {
             Style::default().fg(Color::Yellow).bold()
         } else {
-            NORMAL_STYLE
+            Style::default().fg(Color::Cyan)
         };
 
         let tags_text = product.tags.join(", ");
