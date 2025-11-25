@@ -38,6 +38,14 @@ fn handle_normal_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> 
             {
                 // Refresh data before editing
                 app.refresh_data();
+                // Backup current product for potential cancellation
+                if let Some(product) = app.products.get(app.selected_index) {
+                    app.edit_backup = Some(product.clone());
+                }
+                // Initialize edit_tags_string with current product tags
+                if let Some(product) = app.products.get(app.selected_index) {
+                    app.edit_tags_string = product.tags.join(", ");
+                }
                 // Switch to right pane and enter edit mode
                 app.active_pane = ActivePane::Right;
                 app.input_mode = InputMode::EditName;
@@ -254,6 +262,14 @@ fn handle_create_category_select_mode(app: &mut super::App, key: crossterm::even
                     };
             }
         }
+        KeyCode::Char('n') => {
+            // Create new category
+            app.item_type = ItemType::Category;
+            app.category_form = CategoryForm::default();
+            app.popup_field = 0;
+            app.previous_input_mode = Some(InputMode::CreateCategorySelect);
+            app.input_mode = InputMode::NewCategory;
+        }
         _ => {}
     }
     Ok(())
@@ -306,6 +322,7 @@ fn handle_create_tags_mode(app: &mut super::App, key: crossterm::event::KeyEvent
                     app.tag_selection[i] = true;
                 }
             }
+            app.tag_select_mode = TagSelectMode::Create;
             app.input_mode = InputMode::CreateTagSelect;
             app.active_pane = ActivePane::Right;
         }
@@ -327,17 +344,39 @@ fn handle_tag_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent)
             app.active_pane = ActivePane::Left;
         }
         KeyCode::Enter => {
-            // Add selected tags to create_form.tags
-            for (i, &selected) in app.tag_selection.iter().enumerate() {
-                if selected
-                    && let Some(tag) = app.tags.get(i)
-                    && !app.create_form.tags.contains(tag) {
-                        app.create_form.tags.push(tag.clone());
+            // Handle based on context (Create vs Edit)
+            match app.tag_select_mode {
+                TagSelectMode::Create => {
+                    // Add selected tags to create_form.tags
+                    app.create_form.tags.clear();
+                    for (i, &selected) in app.tag_selection.iter().enumerate() {
+                        if selected
+                            && let Some(tag) = app.tags.get(i) {
+                                app.create_form.tags.push(tag.clone());
+                            }
                     }
+                    app.tag_selection.clear();
+                    app.input_mode = InputMode::CreateTags;
+                    app.active_pane = ActivePane::Left;
+                }
+                TagSelectMode::Edit => {
+                    // Update product tags with selected tags
+                    if let Some(product) = app.products.get_mut(app.selected_index) {
+                        product.tags.clear();
+                        for (i, &selected) in app.tag_selection.iter().enumerate() {
+                            if selected
+                                && let Some(tag) = app.tags.get(i) {
+                                    product.tags.push(tag.clone());
+                                }
+                        }
+                        // Update edit_tags_string to reflect changes
+                        app.edit_tags_string = product.tags.join(", ");
+                    }
+                    app.tag_selection.clear();
+                    app.input_mode = InputMode::EditTags;
+                    app.active_pane = ActivePane::Left;
+                }
             }
-            app.tag_selection.clear();
-            app.input_mode = InputMode::CreateTags;
-            app.active_pane = ActivePane::Left;
         }
         KeyCode::Down => {
             if !app.tags.is_empty() {
@@ -361,6 +400,13 @@ fn handle_tag_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent)
                 app.tag_selection[app.create_form.tag_selected_index] =
                     !app.tag_selection[app.create_form.tag_selected_index];
             }
+        }
+        KeyCode::Char('n') => {
+            // Create new tag
+            app.item_type = ItemType::Tag;
+            app.tag_form = TagForm::default();
+            app.previous_input_mode = Some(app.input_mode);
+            app.input_mode = InputMode::NewTag;
         }
         _ => {}
     }
@@ -629,6 +675,7 @@ fn handle_edit_tags_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
                     }
                 }
             }
+            app.tag_select_mode = TagSelectMode::Edit;
             app.input_mode = InputMode::EditTagSelect;
             app.active_pane = ActivePane::Right;
         }
@@ -745,6 +792,16 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                     }
                     _ => {}
                 },
+            }
+        }
+        KeyCode::Tab | KeyCode::Down => {
+            if app.item_type == ItemType::Category {
+                app.popup_field = (app.popup_field + 1) % 3;
+            }
+        }
+        KeyCode::BackTab => {
+            if app.item_type == ItemType::Category {
+                app.popup_field = if app.popup_field == 0 { 2 } else { app.popup_field - 1 };
             }
         }
         KeyCode::Char(c) => {
