@@ -978,10 +978,10 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App, version: &str) {
     let instructions = match app.current_tab {
 Tab::Create => match app.input_mode {
             InputMode::Normal => "[←/→] switch tabs     [Enter] create product",
-            InputMode::CreateName => "[Enter] name         [Tab/↓] next     [↑] prev     [Esc] cancel",
-            InputMode::CreateDescription => "[Enter] desc         [Tab/↓] next     [↑] prev     [Esc] cancel",
+            InputMode::CreateName => "[Enter] name         [↑/↓] next     [↑] prev     [Esc] cancel",
+            InputMode::CreateDescription => "[Enter] desc         [↑/↓] next     [↑] prev     [Esc] cancel",
             InputMode::CreateCategory => "[Tab] select         [Esc] cancel",
-            InputMode::CreateProduction => "[←/→] toggle        [y/n] toggle     [Tab/↓] next     [↑] prev     [Esc] cancel",
+            InputMode::CreateProduction => "[←/→] toggle        [y/n] toggle     [↑/↓] next     [↑] prev     [Esc] cancel",
             InputMode::CreateTags => "[Tab] select tags     [Enter] save       [↑] prev     [Esc] cancel",
             InputMode::CreateTagSelect => "[↑/↓] select     [Enter] choose     [Ctrl+n] new     [Ctrl+e] edit     [Esc] back",
             InputMode::NewCategory | InputMode::EditCategory => {
