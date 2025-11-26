@@ -248,7 +248,7 @@ fn draw_create_left_pane(f: &mut Frame, area: Rect, app: &App, border_style: Sty
     content.push(Line::from(""));
     let help_text = match app.input_mode {
         InputMode::CreateName => "[TAB/↓: Next] [↑: Prev] [ESC: Cancel]",
-        InputMode::CreateDescription => "[TAB/↓: Next] [↑: Prev] [ESC: Cancel]",
+        InputMode::CreateDescription => "[Enter] desc         [↑/↓] next     [↑] prev     [Esc] cancel",
         InputMode::CreateCategory => "[TAB: Select] [ESC: Cancel]",
         InputMode::CreateProduction => "[←→/y/n: Toggle] [TAB/↓: Next] [↑: Prev] [ESC: Cancel]",
         InputMode::CreateTags => "[TAB: Select Tags] [ENTER: Save] [↑: Prev] [ESC: Cancel]",
