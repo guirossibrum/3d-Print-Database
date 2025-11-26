@@ -1,5 +1,7 @@
 # 3D Print Database
 
+I am not a coder, this application was created using opencode.
+
 A comprehensive GUI application for managing 3D printing products with database integration and file system management.
 
 ## Features
