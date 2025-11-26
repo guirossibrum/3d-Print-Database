@@ -892,6 +892,22 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
             )
             .wrap(Wrap { trim: true });
         f.render_widget(paragraph, area);
+    } else if matches!(app.input_mode, InputMode::EditMaterialSelect) {
+        // Draw material selection
+        let content = build_material_selection_content(
+            app,
+            "Available Materials:",
+            "[↑↓: Navigate] [Space: Select] [ENTER: Add Selected] [n: New] [d: Delete] [ESC: Back]",
+        );
+        let paragraph = Paragraph::new(content)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Material Selection")
+                    .border_style(border_style),
+            )
+            .wrap(Wrap { trim: true });
+        f.render_widget(paragraph, area);
     } else if let Some(product) = app.get_selected_product() {
         let name_style = if matches!(app.input_mode, InputMode::EditName) {
             Style::default().fg(Color::Yellow).bold()
@@ -923,12 +939,21 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
             Style::default().fg(Color::Cyan)
         };
 
+        let materials_style = if matches!(app.input_mode, InputMode::EditMaterials) {
+            Style::default().fg(Color::Yellow).bold()
+        } else {
+            Style::default().fg(Color::Cyan)
+        };
+
         let category_name = app.categories.iter()
             .find(|c| c.id == product.category_id)
             .map(|c| c.name.as_str())
             .unwrap_or("Unknown");
 
         let tags_text = product.tags.join(", ");
+        let materials_text = product.material.as_ref()
+            .map(|m| m.join(", "))
+            .unwrap_or_else(|| "None".to_string());
 
 let content = vec![
             Line::from(vec![
@@ -972,6 +997,10 @@ let content = vec![
             Line::from(vec![
                 Span::styled("Tags: ", tags_style),
                 Span::raw(&tags_text),
+            ]),
+            Line::from(vec![
+                Span::styled("Materials: ", materials_style),
+                Span::raw(&materials_text),
             ]),
             Line::from(""),
         ];
@@ -1152,6 +1181,7 @@ Tab::Create => match app.input_mode {
             InputMode::EditDescription => "[Enter] desc      [Tab] cancel     [Enter] save     [↑/↓] select",
             InputMode::EditProduction => "[←/→] toggle     [Tab] cancel     [Enter] save     [↑/↓] select",
             InputMode::EditCategories => "[Tab] select category     [Enter] save     [↑/↓] select",
+            InputMode::EditMaterials => "[Tab] select materials     [Enter] save     [↑/↓] select",
             _ => "[Tab] switch panes     [↑/↓] navigate",
         },
         Tab::Inventory => match app.input_mode {

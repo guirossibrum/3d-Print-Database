@@ -67,6 +67,8 @@ pub enum InputMode {
     EditCategorySelect,
     EditTags,
     EditTagSelect,
+    EditMaterials,
+    EditMaterialSelect,
     #[allow(dead_code)]
     NewCategory,
     #[allow(dead_code)]

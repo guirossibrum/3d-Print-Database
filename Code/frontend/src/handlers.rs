@@ -23,6 +23,8 @@ pub fn handle_key_dispatch(app: &mut super::App, key: crossterm::event::KeyEvent
         InputMode::EditCategorySelect => handle_category_select_mode(app, key),
         InputMode::EditTags => handle_edit_tags_mode(app, key),
         InputMode::EditTagSelect => handle_tag_select_mode(app, key),
+        InputMode::EditMaterials => handle_edit_materials_mode(app, key),
+        InputMode::EditMaterialSelect => handle_material_select_mode(app, key),
         InputMode::NewTag | InputMode::NewCategory | InputMode::NewMaterial => handle_new_item_mode(app, key),
         InputMode::EditTag | InputMode::EditCategory | InputMode::EditMaterial => handle_edit_item_mode(app, key),
         InputMode::DeleteConfirm => handle_delete_confirm_mode(app, key),
@@ -157,7 +159,8 @@ fn handle_normal_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> 
                     | InputMode::EditDescription
                     | InputMode::EditProduction
                     | InputMode::EditCategories
-                    | InputMode::EditTags => {
+                    | InputMode::EditTags
+                    | InputMode::EditMaterials => {
                     // Save changes and return to normal mode
                     app.input_mode = InputMode::Normal;
                     app.active_pane = ActivePane::Left;
@@ -541,94 +544,6 @@ fn handle_tag_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent)
     Ok(())
 }
 
-fn handle_material_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
-    match key.code {
-        KeyCode::Esc => {
-            app.input_mode = InputMode::CreateMaterials;
-            app.tag_selection.clear();
-            app.active_pane = ActivePane::Left; // Return to left pane
-        }
-        KeyCode::Enter => {
-            // Add selected materials to create_form.materials
-            app.create_form.materials.clear();
-            for (i, &selected) in app.tag_selection.iter().enumerate() {
-                if selected
-                    && let Some(material) = app.materials.get(i) {
-                        app.create_form.materials.push(material.clone());
-                    }
-            }
-            app.tag_selection.clear();
-            app.input_mode = InputMode::CreateMaterials;
-            app.active_pane = ActivePane::Left;
-        }
-        KeyCode::Down => {
-            if !app.materials.is_empty() {
-                app.create_form.material_selected_index =
-                    (app.create_form.material_selected_index + 1) % app.materials.len();
-            }
-        }
-        KeyCode::Up => {
-            if !app.materials.is_empty() {
-                app.create_form.material_selected_index =
-                    if app.create_form.material_selected_index == 0 {
-                        app.materials.len() - 1
-                    } else {
-                        app.create_form.material_selected_index - 1
-                    };
-            }
-        }
-        KeyCode::Char(' ') => {
-            // Toggle selection
-            if app.create_form.material_selected_index < app.tag_selection.len() {
-                app.tag_selection[app.create_form.material_selected_index] =
-                    !app.tag_selection[app.create_form.material_selected_index];
-            }
-        }
-        KeyCode::Char('d') => {
-            // Delete selected material
-            if app.create_form.material_selected_index < app.materials.len() {
-                let material_to_delete = app.materials[app.create_form.material_selected_index].clone();
-                
-                // Check if material is in use by any product
-                let material_in_use = app.products.iter().any(|p| {
-                    p.material.as_ref()
-                        .map_or(false, |materials| materials.contains(&material_to_delete))
-                });
-                
-                if material_in_use {
-                    app.set_status_message(format!("Cannot delete material '{}' - it is in use by products", material_to_delete));
-                } else {
-                    // Delete material from backend
-                    match app.api_client.delete_material(&material_to_delete) {
-                        Ok(_) => {
-                            // Remove material from local list
-                            app.materials.retain(|m| m != &material_to_delete);
-                            
-                            // Adjust selected index if needed
-                            if app.create_form.material_selected_index >= app.materials.len() && !app.materials.is_empty() {
-                                app.create_form.material_selected_index = app.materials.len() - 1;
-                            }
-                            
-                            app.set_status_message(format!("Material '{}' deleted successfully", material_to_delete));
-                        }
-                        Err(e) => {
-                            app.set_status_message(format!("Error deleting material '{}': {}", material_to_delete, e));
-                        }
-                    }
-                }
-            }
-        }
-        KeyCode::Char('n') => {
-            // Create new material
-            app.item_type = ItemType::Material;
-            app.tag_form = TagForm::default(); // Reuse TagForm for Material (just has name field)
-            app.previous_input_mode = Some(app.input_mode);
-            app.input_mode = InputMode::NewMaterial;
-        }
-        _ => {}
-    }
-    Ok(())
-}
 
 fn handle_edit_name_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
     match key.code {
@@ -892,7 +807,7 @@ fn handle_edit_categories_mode(app: &mut super::App, key: crossterm::event::KeyE
             app.input_mode = InputMode::EditProduction;
         }
         KeyCode::Down => {
-            app.input_mode = InputMode::EditTags;
+            app.input_mode = InputMode::EditMaterials;
         }
         _ => {}
     }
@@ -941,6 +856,167 @@ fn handle_category_select_mode(app: &mut super::App, key: crossterm::event::KeyE
             app.category_selection = vec![false; app.categories.len()];
             if app.selected_category_index < app.category_selection.len() {
                 app.category_selection[app.selected_category_index] = true;
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn handle_edit_materials_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
+    match key.code {
+        KeyCode::Esc => {
+            // Cancel changes and return to normal mode
+            if let Some(original_product) = app.edit_backup.take() {
+                // Restore original product data
+                if let Some(current_product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
+                    *current_product = original_product;
+                }
+            }
+            app.input_mode = InputMode::Normal;
+            app.active_pane = ActivePane::Left;
+        }
+        KeyCode::Enter => {
+            // Save changes and return to normal mode
+            app.edit_backup = None; // Clear backup since we're saving
+            if let Some(product) = app.products.iter().find(|p| p.id == app.selected_product_id) {
+                let update = crate::api::ProductUpdate {
+                    name: Some(product.name.clone()),
+                    description: product.description.clone(),
+                    tags: Some(product.tags.clone()),
+                    production: Some(product.production),
+                    material: Some(product.material.clone().unwrap_or_default()),
+                    color: product.color.clone(),
+                    print_time: product.print_time,
+                    weight: product.weight,
+                    stock_quantity: product.stock_quantity,
+                    reorder_point: product.reorder_point,
+                    unit_cost: product.unit_cost,
+                    selling_price: product.selling_price,
+                };
+                match app.api_client.update_product(&product.sku, &update) {
+                    Ok(_) => {
+                        app.set_status_message("Product updated successfully".to_string());
+                        app.refresh_data();
+                    }
+                    Err(e) => app.set_status_message(format!("Error updating product: {:?}", e)),
+                }
+            }
+            app.input_mode = InputMode::Normal;
+            app.active_pane = ActivePane::Left;
+        }
+        KeyCode::Tab => {
+            // Open material selection
+            app.material_selection = vec![false; app.materials.len()];
+            // Pre-select materials that are already in the current product
+            if let Some(product) = app.products.iter().find(|p| p.id == app.selected_product_id) {
+                for (i, material) in app.materials.iter().enumerate() {
+                    if product.material.as_ref()
+                        .map(|m| m.contains(material))
+                        .unwrap_or(false) {
+                        app.material_selection[i] = true;
+                    }
+                }
+            }
+            app.input_mode = InputMode::EditMaterialSelect;
+            app.active_pane = ActivePane::Right;
+        }
+        KeyCode::Up => {
+            app.input_mode = InputMode::EditTags;
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn handle_material_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
+    match key.code {
+        KeyCode::Esc => {
+            app.input_mode = InputMode::EditMaterials;
+            app.material_selection.clear();
+            app.active_pane = ActivePane::Left;
+        }
+        KeyCode::Enter => {
+            // Apply selected materials to product
+            let mut selected_materials = Vec::new();
+            for (i, &selected) in app.material_selection.iter().enumerate() {
+                if selected {
+                    if let Some(material) = app.materials.get(i) {
+                        selected_materials.push(material.to_string());
+                    }
+                }
+            }
+            if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
+                product.material = if selected_materials.is_empty() {
+                    None
+                } else {
+                    Some(selected_materials)
+                };
+            }
+            app.material_selection.clear();
+            app.input_mode = InputMode::EditMaterials;
+            app.active_pane = ActivePane::Left;
+        }
+        KeyCode::Down => {
+            if !app.materials.is_empty() {
+                app.selected_material_index = (app.selected_material_index + 1) % app.materials.len();
+            }
+        }
+        KeyCode::Up => {
+            if !app.materials.is_empty() {
+                app.selected_material_index = if app.selected_material_index == 0 {
+                    app.materials.len() - 1
+                } else {
+                    app.selected_material_index - 1
+                };
+            }
+        }
+        KeyCode::Char(' ') => {
+            // Toggle selection
+            if app.selected_material_index < app.material_selection.len() {
+                app.material_selection[app.selected_material_index] =
+                    !app.material_selection[app.selected_material_index];
+            }
+        }
+        KeyCode::Char('n') => {
+            // Create new material
+            app.item_type = ItemType::Material;
+            app.tag_form = TagForm::default(); // Reuse TagForm for Material
+            app.previous_input_mode = Some(app.input_mode);
+            app.input_mode = InputMode::NewMaterial;
+        }
+        KeyCode::Char('d') => {
+            // Delete selected material
+            if app.selected_material_index < app.materials.len() {
+                let material_to_delete = app.materials[app.selected_material_index].clone();
+
+                // Check if material is in use by any product
+                let material_in_use = app.products.iter().any(|p| {
+                    p.material.as_ref()
+                        .map_or(false, |materials| materials.contains(&material_to_delete))
+                });
+
+                if material_in_use {
+                    app.status_message = format!("Cannot delete material '{}' - it is in use by products", material_to_delete);
+                } else {
+                    // Delete material from backend
+                    match app.api_client.delete_material(&material_to_delete) {
+                        Ok(_) => {
+                            // Remove material from local list
+                            app.materials.retain(|m| m != &material_to_delete);
+
+                            // Adjust selected index if needed
+                            if app.selected_material_index >= app.materials.len() && !app.materials.is_empty() {
+                                app.selected_material_index = app.materials.len() - 1;
+                            }
+
+                            app.set_status_message(format!("Material '{}' deleted successfully", material_to_delete));
+                        }
+                        Err(e) => {
+                            app.set_status_message(format!("Error deleting material '{}': {}", material_to_delete, e));
+                        }
+                    }
+                }
             }
         }
         _ => {}
