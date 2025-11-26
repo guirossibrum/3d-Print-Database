@@ -403,6 +403,7 @@ fn handle_create_materials_mode(app: &mut super::App, key: crossterm::event::Key
                 }
             }
             app.create_form.material_selected_index = 0; // Initialize selection index
+            app.tag_select_mode = TagSelectMode::Create;
             app.item_type = ItemType::Material;
             app.input_mode = InputMode::CreateMaterialSelect;
             app.active_pane = ActivePane::Right;
@@ -803,7 +804,7 @@ fn handle_edit_materials_mode(app: &mut super::App, key: crossterm::event::KeyEv
             update.reorder_point = product.reorder_point;
             update.unit_cost = product.unit_cost;
             update.selling_price = product.selling_price;
-            app.perform_update(&product_data.sku, update)?;
+            app.perform_update(&sku, update)?;
             app.input_mode = InputMode::Normal;
             app.active_pane = ActivePane::Left;
         }
@@ -821,6 +822,7 @@ fn handle_edit_materials_mode(app: &mut super::App, key: crossterm::event::KeyEv
                 }
             }
             app.create_form.material_selected_index = 0; // Initialize selection index
+            app.tag_select_mode = TagSelectMode::Edit;
             app.input_mode = InputMode::EditMaterialSelect;
             app.active_pane = ActivePane::Right;
         }
@@ -835,44 +837,70 @@ fn handle_edit_materials_mode(app: &mut super::App, key: crossterm::event::KeyEv
 fn handle_material_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
     match key.code {
         KeyCode::Esc => {
-            // Auto-apply current selections before exiting
-            let mut selected_materials = Vec::new();
-            for (i, &selected) in app.tag_selection.iter().enumerate() {
-                if selected
-                    && let Some(material) = app.materials.get(i) {
-                    selected_materials.push(material.to_string());
+            match app.tag_select_mode {
+                TagSelectMode::Create => {
+                    app.input_mode = InputMode::CreateMaterials;
+                    app.tag_selection.clear();
+                    app.active_pane = ActivePane::Left;
+                }
+                TagSelectMode::Edit => {
+                    // Auto-apply current selections before exiting
+                    let mut selected_materials = Vec::new();
+                    for (i, &selected) in app.tag_selection.iter().enumerate() {
+                        if selected
+                            && let Some(material) = app.materials.get(i) {
+                            selected_materials.push(material.to_string());
+                        }
+                    }
+                    if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
+                        product.material = if selected_materials.is_empty() {
+                            None
+                        } else {
+                            Some(selected_materials)
+                        };
+                    }
+                    app.tag_selection.clear();
+                    app.input_mode = InputMode::EditMaterials;
+                    app.active_pane = ActivePane::Left;
                 }
             }
-            if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
-                product.material = if selected_materials.is_empty() {
-                    None
-                } else {
-                    Some(selected_materials)
-                };
-            }
-            app.tag_selection.clear();
-            app.input_mode = InputMode::EditMaterials;
-            app.active_pane = ActivePane::Left;
         }
         KeyCode::Enter => {
-            // Apply selected materials to product
-            let mut selected_materials = Vec::new();
-            for (i, &selected) in app.tag_selection.iter().enumerate() {
-                if selected
-                    && let Some(material) = app.materials.get(i) {
-                    selected_materials.push(material.to_string());
+            match app.tag_select_mode {
+                TagSelectMode::Create => {
+                    // Add selected materials to create_form.materials
+                    app.create_form.materials.clear();
+                    for (i, &selected) in app.tag_selection.iter().enumerate() {
+                        if selected
+                            && let Some(material) = app.materials.get(i) {
+                            app.create_form.materials.push(material.clone());
+                        }
+                    }
+                    app.tag_selection.clear();
+                    app.input_mode = InputMode::CreateMaterials;
+                    app.active_pane = ActivePane::Left;
+                }
+                TagSelectMode::Edit => {
+                    // Apply selected materials to product
+                    let mut selected_materials = Vec::new();
+                    for (i, &selected) in app.tag_selection.iter().enumerate() {
+                        if selected
+                            && let Some(material) = app.materials.get(i) {
+                            selected_materials.push(material.to_string());
+                        }
+                    }
+                    if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
+                        product.material = if selected_materials.is_empty() {
+                            None
+                        } else {
+                            Some(selected_materials)
+                        };
+                    }
+                    app.tag_selection.clear();
+                    app.input_mode = InputMode::EditMaterials;
+                    app.active_pane = ActivePane::Right;
                 }
             }
-            if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
-                product.material = if selected_materials.is_empty() {
-                    None
-                } else {
-                    Some(selected_materials)
-                };
-            }
-            app.tag_selection.clear();
-            app.input_mode = InputMode::EditMaterials;
-            app.active_pane = ActivePane::Right;
         }
         KeyCode::Down => {
             if !app.materials.is_empty() {
