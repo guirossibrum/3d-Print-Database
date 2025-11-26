@@ -72,16 +72,20 @@ pub fn draw(f: &mut Frame, app: &mut App, version: &str) {
     }
 
     // Draw popup if in popup mode (global, works across all tabs)
-    if matches!(
+    let is_popup_active = matches!(
         app.input_mode,
         InputMode::NewCategory | InputMode::EditCategory | InputMode::NewTag | InputMode::NewMaterial |
         InputMode::DeleteConfirm | InputMode::DeleteFileConfirm
-    ) {
+    );
+
+    if is_popup_active {
         draw_popup(f, content_area, app);
     }
 
-    // Draw footer
-    draw_footer(f, chunks[4], app, version);
+    // Draw footer (only when no popup is active)
+    if !is_popup_active {
+        draw_footer(f, chunks[4], app, version);
+    }
 }
 
 fn draw_header(f: &mut Frame, area: Rect) {
