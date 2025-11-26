@@ -12,7 +12,7 @@ const NORMAL_STYLE: Style = Style::new().fg(Color::White);
 const ACTIVE_BORDER_STYLE: Style = Style::new().fg(Color::Yellow).add_modifier(Modifier::BOLD);
 const INACTIVE_BORDER_STYLE: Style = Style::new().fg(Color::White);
 
-use crate::models::{ActivePane, InputMode, Tab};
+use crate::models::{ActivePane, InputMode, ItemType, Tab};
 use crate::state::App;
 
 pub fn draw(f: &mut Frame, app: &mut App, version: &str) {
@@ -74,7 +74,7 @@ pub fn draw(f: &mut Frame, app: &mut App, version: &str) {
     // Draw popup if in popup mode (global, works across all tabs)
     if matches!(
         app.input_mode,
-        InputMode::NewCategory | InputMode::EditCategory | InputMode::NewTag | InputMode::EditTag |
+        InputMode::NewCategory | InputMode::EditCategory | InputMode::NewTag | InputMode::NewMaterial |
         InputMode::DeleteConfirm | InputMode::DeleteFileConfirm
     ) {
         draw_popup(f, content_area, app);
@@ -409,7 +409,27 @@ fn draw_popup(f: &mut Frame, area: Rect, app: &App) {
                 },
             ]));
         }
-        InputMode::NewTag | InputMode::EditTag => {
+        InputMode::NewTag | InputMode::NewMaterial => {
+            let item_type_name = match app.item_type {
+                ItemType::Tag => "Tag",
+                ItemType::Material => "Material",
+                _ => "Item",
+            };
+
+            content.push(Line::from(vec![
+                Span::styled(format!("{} Name: ", item_type_name),
+                             Style::default().fg(Color::Yellow).bold()),
+                Span::raw(&app.tag_form.name),
+                Span::styled("_", Style::default().fg(Color::White)),
+            ]));
+
+            content.push(Line::from(vec![
+                Span::styled(format!("[Enter] Save     [ESC] Cancel    (Tip: Use commas for multiple {})",
+                                     item_type_name.to_lowercase()),
+                             Style::default().fg(Color::Gray)),
+            ]));
+        }
+        InputMode::EditTag => {
             content.push(Line::from(vec![
                 Span::styled("Tag Name: ", Style::default().fg(Color::Yellow).bold()),
                 Span::raw(&app.tag_form.name),
@@ -1040,7 +1060,8 @@ Tab::Create => match app.input_mode {
             InputMode::NewCategory | InputMode::EditCategory => {
                 "[Enter] name     [Enter] save     [Esc] cancel"
             }
-            InputMode::NewTag | InputMode::EditTag => "[Enter] name     [Enter] save     [Esc] cancel",
+            InputMode::NewTag | InputMode::NewMaterial => "[Enter] name     [Enter] save     [Esc] cancel",
+            InputMode::EditTag => "[Enter] name     [Enter] save     [Esc] cancel",
             _ => "[←/→] switch tabs",
         },
         Tab::Search => match app.input_mode {
