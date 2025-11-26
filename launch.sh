@@ -9,33 +9,19 @@ if [ ! -t 0 ]; then
     exit 1
 fi
 
-# Check if the Rust binary exists (prefer release, fallback to debug)
-RUST_BINARY_RELEASE="$HOME/Work/3d_print/Code/frontend/target/release/frontend_tui_rust"
-RUST_BINARY_DEBUG="$HOME/Work/3d_print/Code/frontend/target/debug/frontend_tui_rust"
+# Check if the Rust binary exists in ~/.local/bin
+RUST_BINARY="$HOME/.local/bin/3D_Print_Database"
 
-if [ -f "$RUST_BINARY_RELEASE" ]; then
-    RUST_BINARY="$RUST_BINARY_RELEASE"
-    BINARY_TYPE="release"
-elif [ -f "$RUST_BINARY_DEBUG" ]; then
-    RUST_BINARY="$RUST_BINARY_DEBUG"
-    BINARY_TYPE="debug"
-else
-    echo "Error: Rust TUI binary not found"
-    echo "Please build it first with:"
-    echo "  cd Code/frontend && cargo build --release  (recommended)"
-    echo "  or: cd Code/frontend && cargo build        (debug)"
+if [ ! -f "$RUST_BINARY" ]; then
+    echo "Error: Rust TUI binary not found at $RUST_BINARY"
+    echo "Please run the install script first:"
+    echo "  ./install_desktop_app_tui_rust.sh"
     exit 1
 fi
 
-echo "Using $BINARY_TYPE binary: $RUST_BINARY"
+echo "Using binary: $RUST_BINARY"
 
 echo "Launching 3D Print Database TUI (Rust)..."
-
-# Change to the project directory and run the binary
-cd "$HOME/Work/3d_print/Code/frontend" || {
-    echo "Error: Could not change to frontend directory"
-    exit 1
-}
 
 # Run the Rust TUI
 "$RUST_BINARY"
