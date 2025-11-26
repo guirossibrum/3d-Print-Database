@@ -510,13 +510,16 @@ fn draw_popup(f: &mut Frame, area: Rect, app: &App) {
     let help_text = match app.input_mode {
         InputMode::DeleteConfirm => "[ENTER] Confirm     [ESC] Cancel     [1/2] Select option",
         InputMode::DeleteFileConfirm => "[y] Confirm deletion     [n] Cancel     [ESC] Back",
-        _ => "[ENTER] Save     [ESC] Cancel     (Tip: Use commas for multiple tags)",
+        _ => "", // No generic fallback - specific cases handle their own help
     };
-    
-    content.push(Line::from(vec![Span::styled(
-        help_text,
-        Style::default().fg(Color::Gray),
-    )]));
+
+    // Only add help text if it's not empty
+    if !help_text.is_empty() {
+        content.push(Line::from(vec![Span::styled(
+            help_text,
+            Style::default().fg(Color::Gray),
+        )]));
+    }
 
     let title = match app.input_mode {
         InputMode::NewCategory => "New Category",
