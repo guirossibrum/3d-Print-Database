@@ -64,7 +64,6 @@ pub enum InputMode {
     EditDescription,
     EditProduction,
     EditCategories,
-    EditCategorySelect,
     EditTags,
     EditTagSelect,
     EditMaterials,

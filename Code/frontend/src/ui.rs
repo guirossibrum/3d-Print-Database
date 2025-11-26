@@ -567,6 +567,7 @@ fn build_tag_selection_content<'a>(app: &'a App, header: &'a str, help: &'a str)
     content
 }
 
+#[allow(dead_code)]
 fn build_category_selection_content<'a>(app: &'a App, header: &'a str, help: &'a str) -> Vec<Line<'a>> {
     let mut content = vec![];
     content.push(Line::from(vec![
@@ -659,6 +660,7 @@ fn draw_search_tab(f: &mut Frame, area: Rect, app: &App) {
 }
 
 /// Generic searchable pane component that can be reused across different tabs
+#[allow(clippy::too_many_arguments)]
 fn draw_searchable_pane_with_styles<F>(
     f: &mut Frame,
     area: Rect,
@@ -860,23 +862,7 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
         INACTIVE_BORDER_STYLE
     };
 
-    if matches!(app.input_mode, InputMode::EditCategorySelect) {
-        // Draw category selection
-        let content = build_category_selection_content(
-            app,
-            "Available Categories:",
-            "[↑↓: Navigate] [Space: Select] [ENTER: Apply Selected] [ESC: Back]",
-        );
-        let paragraph = Paragraph::new(content)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title("Category Selection")
-                    .border_style(border_style),
-            )
-            .wrap(Wrap { trim: true });
-        f.render_widget(paragraph, area);
-    } else if matches!(app.input_mode, InputMode::EditTagSelect) {
+    if matches!(app.input_mode, InputMode::EditTagSelect) {
         // Draw tag selection
         let content = build_tag_selection_content(
             app,

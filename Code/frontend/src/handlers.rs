@@ -20,7 +20,6 @@ pub fn handle_key_dispatch(app: &mut super::App, key: crossterm::event::KeyEvent
         InputMode::EditDescription => handle_edit_description_mode(app, key),
         InputMode::EditProduction => handle_edit_production_mode(app, key),
         InputMode::EditCategories => handle_edit_categories_mode(app, key),
-        InputMode::EditCategorySelect => handle_category_select_mode(app, key),
         InputMode::EditTags => handle_edit_tags_mode(app, key),
         InputMode::EditTagSelect => handle_tag_select_mode(app, key),
         InputMode::EditMaterials => handle_edit_materials_mode(app, key),
@@ -98,27 +97,25 @@ fn handle_normal_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> 
         // Ctrl+d for delete (only with control modifier)
         KeyCode::Char('d') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => {
             // Delete functionality for Search tab
-            if matches!(app.current_tab, Tab::Search) && !app.products.is_empty() {
-                if let Some(product) = app.get_selected_product() {
-                    app.selected_product_for_delete = Some(product.clone());
-                    app.delete_option = 0;
-                    app.popup_field = 0;
-                    app.input_mode = InputMode::DeleteConfirm;
-                }
+            if matches!(app.current_tab, Tab::Search) && !app.products.is_empty()
+                && let Some(product) = app.get_selected_product() {
+                app.selected_product_for_delete = Some(product.clone());
+                app.delete_option = 0;
+                app.popup_field = 0;
+                app.input_mode = InputMode::DeleteConfirm;
             }
         }
         // Ctrl+o for open (only with control modifier)
         KeyCode::Char('o') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => {
             // Open product folder functionality for Search tab
-            if matches!(app.current_tab, Tab::Search) && !app.products.is_empty() {
-                if let Some(product) = app.get_selected_product() {
-                    match open_product_folder(&product.sku) {
-                        Ok(_) => {
-                            app.set_status_message(format!("Opened folder for product {}", product.sku));
-                        }
-                        Err(e) => {
-                            app.set_status_message(format!("Error opening folder: {}", e));
-                        }
+            if matches!(app.current_tab, Tab::Search) && !app.products.is_empty()
+                && let Some(product) = app.get_selected_product() {
+                match open_product_folder(&product.sku) {
+                    Ok(_) => {
+                        app.set_status_message(format!("Opened folder for product {}", product.sku));
+                    }
+                    Err(e) => {
+                        app.set_status_message(format!("Error opening folder: {}", e));
                     }
                 }
             }
@@ -768,6 +765,7 @@ fn handle_edit_categories_mode(app: &mut super::App, key: crossterm::event::KeyE
     Ok(())
 }
 
+#[allow(dead_code)]
 fn handle_category_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
     match key.code {
         KeyCode::Esc => {
@@ -779,10 +777,9 @@ fn handle_category_select_mode(app: &mut super::App, key: crossterm::event::KeyE
             // Apply selected category to product
             for (i, &selected) in app.category_selection.iter().enumerate() {
                 if selected {
-                    if let Some(category) = app.categories.get(i) {
-                        if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
-                            product.category_id = category.id;
-                        }
+                    if let Some(category) = app.categories.get(i)
+                        && let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
+                        product.category_id = category.id;
                     }
                     break; // Only one category can be selected
                 }
@@ -890,10 +887,9 @@ fn handle_material_select_mode(app: &mut super::App, key: crossterm::event::KeyE
             // Auto-apply current selections before exiting
             let mut selected_materials = Vec::new();
             for (i, &selected) in app.tag_selection.iter().enumerate() {
-                if selected {
-                    if let Some(material) = app.materials.get(i) {
-                        selected_materials.push(material.to_string());
-                    }
+                if selected
+                    && let Some(material) = app.materials.get(i) {
+                    selected_materials.push(material.to_string());
                 }
             }
             if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
@@ -908,13 +904,12 @@ fn handle_material_select_mode(app: &mut super::App, key: crossterm::event::KeyE
             app.active_pane = ActivePane::Left;
         }
         KeyCode::Enter => {
-            // Apply selected materials to product and save immediately
+            // Apply selected materials to product
             let mut selected_materials = Vec::new();
             for (i, &selected) in app.tag_selection.iter().enumerate() {
-                if selected {
-                    if let Some(material) = app.materials.get(i) {
-                        selected_materials.push(material.to_string());
-                    }
+                if selected
+                    && let Some(material) = app.materials.get(i) {
+                    selected_materials.push(material.to_string());
                 }
             }
             if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
@@ -923,33 +918,10 @@ fn handle_material_select_mode(app: &mut super::App, key: crossterm::event::KeyE
                 } else {
                     Some(selected_materials)
                 };
-                // Save the product immediately
-                let update = crate::api::ProductUpdate {
-                    name: Some(product.name.clone()),
-                    description: product.description.clone(),
-                    tags: Some(product.tags.clone()),
-                    production: Some(product.production),
-                    material: Some(product.material.clone().unwrap_or_default()),
-                    color: product.color.clone(),
-                    print_time: product.print_time,
-                    weight: product.weight,
-                    stock_quantity: product.stock_quantity,
-                    reorder_point: product.reorder_point,
-                    unit_cost: product.unit_cost,
-                    selling_price: product.selling_price,
-                };
-                match app.api_client.update_product(&product.sku, &update) {
-                    Ok(_) => {
-                        app.set_status_message("Product updated successfully".to_string());
-                        app.refresh_data();
-                    }
-                    Err(e) => app.set_status_message(format!("Error updating product: {:?}", e)),
-                }
             }
-            app.edit_backup = None; // Clear backup since we're saving
             app.tag_selection.clear();
-            app.input_mode = InputMode::Normal;
-            app.active_pane = ActivePane::Left;
+            app.input_mode = InputMode::EditMaterials;
+            app.active_pane = ActivePane::Right;
         }
         KeyCode::Down => {
             if !app.materials.is_empty() {
@@ -987,7 +959,7 @@ fn handle_material_select_mode(app: &mut super::App, key: crossterm::event::KeyE
                 // Check if material is in use by any product
                 let material_in_use = app.products.iter().any(|p| {
                     p.material.as_ref()
-                        .map_or(false, |materials| materials.contains(&material_to_delete))
+                        .is_some_and(|materials| materials.contains(&material_to_delete))
                 });
 
                 if material_in_use {
@@ -1158,12 +1130,28 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                         }
                         
                         if created_count > 0 {
+                            // Remember currently selected tags before sorting
+                            let mut previously_selected = Vec::new();
+                            for (i, &selected) in app.tag_selection.iter().enumerate() {
+                                if selected && i < app.tags.len()
+                                    && let Some(tag) = app.tags.get(i) {
+                                    previously_selected.push(tag.clone());
+                                }
+                            }
+
                             app.tags.sort();
                             app.refresh_data();
-                            
+
                             // Update tag selection array to match new tags length
                             app.tag_selection.resize(app.tags.len(), false);
-                            
+
+                            // Re-select previously selected tags
+                            for tag in &previously_selected {
+                                if let Some(index) = app.tags.iter().position(|t| t == tag) {
+                                    app.tag_selection[index] = true;
+                                }
+                            }
+
                             // Pre-select all newly created tags
                             let mut first_new_index = None;
                             for created_tag_name in &created_tag_names {
@@ -1240,16 +1228,16 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                             .map(|s| s.trim().to_string())
                             .filter(|s| !s.is_empty())
                             .collect();
-                        
+
                         let mut created_count = 0;
                         let mut created_material_names = Vec::new();
-                        
+
                         for material_name in material_names {
                             // Skip if material already exists
                             if app.materials.contains(&material_name) {
                                 continue;
                             }
-                            
+
                             let material = crate::api::Material {
                                 name: material_name.clone(),
                                 usage_count: 0,
@@ -1265,14 +1253,30 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                                 }
                             }
                         }
-                        
+
                         if created_count > 0 {
+                            // Remember currently selected materials before sorting
+                            let mut previously_selected = Vec::new();
+                            for (i, &selected) in app.tag_selection.iter().enumerate() {
+                                if selected && i < app.materials.len()
+                                    && let Some(material) = app.materials.get(i) {
+                                    previously_selected.push(material.clone());
+                                }
+                            }
+
                             app.materials.sort();
                             app.refresh_data();
-                            
+
                             // Update tag selection array to match new materials length
                             app.tag_selection.resize(app.materials.len(), false);
-                            
+
+                            // Re-select previously selected materials
+                            for material in &previously_selected {
+                                if let Some(index) = app.materials.iter().position(|m| m == material) {
+                                    app.tag_selection[index] = true;
+                                }
+                            }
+
                             // Pre-select all newly created materials
                             let mut first_new_index = None;
                             for created_material_name in &created_material_names {
@@ -1283,12 +1287,12 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                                     }
                                 }
                             }
-                            
+
                             // Set selection index to first new material if available
                             if let Some(first_index) = first_new_index {
                                 app.create_form.material_selected_index = first_index;
                             }
-                            
+
                             let message = if created_count == 1 {
                                 format!("Material '{}' created", created_material_names.first().unwrap_or(&String::new()))
                             } else {
@@ -1300,7 +1304,7 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                         app.set_status_message("Error: Material name required".to_string());
                     }
                     app.tag_form = TagForm::default();
-                    app.input_mode = InputMode::CreateMaterialSelect;
+                    app.input_mode = app.previous_input_mode.unwrap_or(InputMode::CreateMaterialSelect);
                 }
             }
         }
@@ -1476,7 +1480,7 @@ fn build_file_tree(sku: &str) -> Result<Vec<String>> {
             content.push(format!("├── 📁 {}/", subdir));
             match scan_directory(&subdir_path, "    │   ") {
                 Ok(files) => content.extend(files),
-                Err(_) => content.push(format!("    │       └── (Error reading directory)")),
+                Err(_) => content.push("    │       └── (Error reading directory)".to_string()),
             }
         } else {
             content.push(format!("├── 📁 {}/ (empty)", subdir));
@@ -1501,10 +1505,10 @@ fn scan_directory(dir_path: &std::path::Path, prefix: &str) -> Result<Vec<String
     
     let mut file_entries: Vec<_> = entries
         .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.file_type().map_or(false, |ft| ft.is_file()))
+        .filter(|entry| entry.file_type().is_ok_and(|ft| ft.is_file()))
         .collect();
     
-    file_entries.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
+    file_entries.sort_by_key(|a| a.file_name());
     
     for (i, entry) in file_entries.iter().enumerate() {
         let file_name = entry.file_name().to_string_lossy().to_string();
@@ -1730,7 +1734,7 @@ fn handle_edit_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
                         app.set_status_message("Error: Material name required".to_string());
                     }
                     app.tag_form = TagForm::default();
-                    app.input_mode = InputMode::CreateMaterialSelect;
+                    app.input_mode = app.previous_input_mode.unwrap_or(InputMode::CreateMaterialSelect);
                 }
             }
         }

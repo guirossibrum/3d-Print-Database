@@ -49,9 +49,10 @@ pub struct App {
     pub tag_form: TagForm,
     pub popup_field: usize,
     pub tag_selection: Vec<bool>,
+    #[allow(dead_code)]
     pub category_selection: Vec<bool>,
+    #[allow(dead_code)]
     pub selected_category_index: usize,
-    pub material_selection: Vec<bool>,
     pub edit_tags_string: String,
 
     // Delete state
@@ -107,7 +108,6 @@ impl App {
             tag_selection: Vec::new(),
             category_selection: Vec::new(),
             selected_category_index: 0,
-            material_selection: Vec::new(),
             edit_tags_string: String::new(),
 
             // Delete state
