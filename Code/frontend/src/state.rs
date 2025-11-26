@@ -52,7 +52,6 @@ pub struct App {
     pub category_selection: Vec<bool>,
     pub selected_category_index: usize,
     pub material_selection: Vec<bool>,
-    pub selected_material_index: usize,
     pub edit_tags_string: String,
 
     // Delete state
@@ -109,7 +108,6 @@ impl App {
             category_selection: Vec::new(),
             selected_category_index: 0,
             material_selection: Vec::new(),
-            selected_material_index: 0,
             edit_tags_string: String::new(),
 
             // Delete state

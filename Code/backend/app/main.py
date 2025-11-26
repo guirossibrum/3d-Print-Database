@@ -862,7 +862,14 @@ def get_inventory_status():
 def list_products():
     db: Session = SessionLocal()
     try:
-        products = db.query(crud.models.Product).all()
+        products = (
+            db.query(crud.models.Product)
+            .options(
+                joinedload(crud.models.Product.tags),
+                joinedload(crud.models.Product.materials),
+            )
+            .all()
+        )
         result = []
         for p in products:
             if p.materials:
