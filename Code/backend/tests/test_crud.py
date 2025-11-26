@@ -1,7 +1,7 @@
 # tests/test_crud.py
 import pytest
-from ..app import crud, schemas
-from ..app.models import Product
+from app import crud, schemas
+from app.models import Product
 
 
 def test_generate_sku_new_category(db_session, sample_category):

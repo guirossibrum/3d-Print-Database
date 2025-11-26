@@ -14,6 +14,38 @@ product_tags = Table(
     Column("tag_id", Integer, ForeignKey("tags.id"), primary_key=True, index=True),
 )
 
+# Association table for many-to-many product-materials relationship
+product_materials = Table(
+    "product_materials",
+    Base.metadata,
+    Column(
+        "product_id", Integer, ForeignKey("products.id"), primary_key=True, index=True
+    ),
+    Column(
+        "material_id", Integer, ForeignKey("materials.id"), primary_key=True, index=True
+    ),
+)
+
+
+class Material(Base):
+    __tablename__ = "materials"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(Text, unique=True, nullable=False, index=True)  # Added index
+
+    products = relationship(
+        "Product", secondary=product_materials, back_populates="materials"
+    )
+
+
+class Tag(Base):
+    __tablename__ = "tags"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(Text, unique=True, nullable=False, index=True)  # Added index
+
+    products = relationship("Product", secondary=product_tags, back_populates="tags")
+
 
 class Product(Base):
     __tablename__ = "products"
@@ -28,8 +60,7 @@ class Product(Base):
     category_id = Column(Integer, ForeignKey("categories.id"))
 
     # New optional fields
-    material = Column(Text)  # Material used (PLA, ABS, etc.)
-    color = Column(Text)  # Color of the print
+    color = Column(Text)  # Color of print
     print_time = Column(Text)  # Print time (HH:MM or HH:MM:SS format)
     weight = Column(Integer)  # Weight in grams
 
@@ -41,16 +72,10 @@ class Product(Base):
 
     # Relationships
     tags = relationship("Tag", secondary=product_tags, back_populates="products")
+    materials = relationship(
+        "Material", secondary=product_materials, back_populates="products"
+    )
     category = relationship("Category", back_populates="products")
-
-
-class Tag(Base):
-    __tablename__ = "tags"
-
-    id = Column(Integer, primary_key=True)
-    name = Column(Text, unique=True, nullable=False, index=True)  # Added index
-
-    products = relationship("Product", secondary=product_tags, back_populates="tags")
 
 
 class Category(Base):

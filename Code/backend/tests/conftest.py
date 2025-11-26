@@ -2,8 +2,8 @@
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from ..app.database import Base
-from ..app import models
+from app.database import Base
+from app import models
 
 
 # Test database URL (SQLite in-memory)

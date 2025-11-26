@@ -125,7 +125,7 @@ def list_products():
                     "production": p.production,
                     "tags": [t.name for t in p.tags],
                     "category_id": p.category_id,
-                    "material": p.material,
+                    "material": [m.name for m in p.materials] if p.materials else None,
                     "color": p.color,
                     "print_time": p.print_time,
                     "weight": p.weight,
