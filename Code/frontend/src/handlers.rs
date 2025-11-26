@@ -374,9 +374,6 @@ fn handle_create_tags_mode(app: &mut super::App, key: crossterm::event::KeyEvent
         KeyCode::Down => {
             app.input_mode = InputMode::CreateMaterials;
         }
-        KeyCode::Down => {
-            app.input_mode = InputMode::CreateMaterials;
-        }
         _ => {}
     }
     Ok(())
