@@ -200,7 +200,9 @@ fn handle_create_name_mode(app: &mut super::App, key: crossterm::event::KeyEvent
 fn handle_create_description_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
     match key.code {
         KeyCode::Esc => {
-            app.input_mode = InputMode::CreateName;
+            app.input_mode = InputMode::Normal;
+            app.create_form.production = true; // Reset to default
+            app.active_pane = ActivePane::Left;
         }
         KeyCode::Down => {
             app.input_mode = InputMode::CreateCategory;
@@ -228,7 +230,8 @@ fn handle_create_description_mode(app: &mut super::App, key: crossterm::event::K
 fn handle_create_category_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
     match key.code {
         KeyCode::Esc => {
-            app.input_mode = InputMode::CreateDescription;
+            app.input_mode = InputMode::Normal;
+            app.create_form.description.clear();
         }
         KeyCode::Tab => {
             app.input_mode = InputMode::CreateCategorySelect;
@@ -254,7 +257,9 @@ fn handle_create_category_mode(app: &mut super::App, key: crossterm::event::KeyE
 fn handle_create_category_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
     match key.code {
         KeyCode::Esc => {
-            app.input_mode = InputMode::CreateCategory;
+            app.input_mode = InputMode::Normal;
+            app.create_form.category_id = None;
+            app.create_form.category_selected_index = 0;
             app.active_pane = ActivePane::Left;
         }
         KeyCode::Enter => {
@@ -300,7 +305,8 @@ fn handle_create_category_select_mode(app: &mut super::App, key: crossterm::even
 fn handle_create_production_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
     match key.code {
         KeyCode::Esc => {
-            app.input_mode = InputMode::CreateCategory;
+            app.input_mode = InputMode::Normal;
+            app.create_form.description.clear();
         }
         KeyCode::Down => {
             app.input_mode = InputMode::CreateTags;
@@ -334,7 +340,13 @@ fn handle_create_production_mode(app: &mut super::App, key: crossterm::event::Ke
 fn handle_create_tags_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
     match key.code {
         KeyCode::Esc => {
-            app.input_mode = InputMode::CreateProduction;
+            app.input_mode = InputMode::Normal;
+            app.create_form.tags.clear();
+            app.create_form = CreateForm {
+                production: true, // Reset to default
+                ..Default::default()
+            };
+            app.active_pane = ActivePane::Left;
         }
         KeyCode::Enter => {
             // Save the product
@@ -369,7 +381,8 @@ fn handle_tag_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent)
                 TagSelectMode::Create => InputMode::CreateTags,
                 TagSelectMode::Edit => InputMode::EditTags,
             };
-            app.active_pane = ActivePane::Right; // Return to Product Details pane (right)
+            app.tag_selection.clear();
+            app.active_pane = ActivePane::Left; // Return to left pane
         }
         KeyCode::Enter => {
             // Handle based on context (Create vs Edit)
