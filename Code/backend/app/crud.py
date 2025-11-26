@@ -70,7 +70,6 @@ def create_product_db(
         folder_path=folder_path,
         production=product.production,
         category_id=product.category_id,
-        material=product.material,
         color=product.color,
         print_time=product.print_time,
         weight=product.weight,
@@ -85,6 +84,9 @@ def create_product_db(
 
     # 3️⃣ Associate tags with product
     associate_tags_with_product(db, db_product, product.tags)
+
+    # 4️⃣ Associate materials with product
+    associate_materials_with_product(db, db_product, product.materials or [])
     db.commit()
 
     return sku
@@ -122,6 +124,43 @@ def associate_tags_with_product(
         product_db.tags.append(tag_obj)
 
 
+def associate_materials_with_product(
+    db: Session, product_db: models.Product, materials: List[str]
+):
+    """
+    Associate materials with a product.
+    Materials are simpler than tags - no special normalization/validation needed.
+    """
+    for material_name in materials:
+        if not material_name.strip():
+            continue  # Skip empty materials
+
+        # Check if material already exists (case-insensitive)
+        material_obj = (
+            db.query(models.Material)
+            .filter(func.lower(models.Material.name) == material_name.lower())
+            .first()
+        )
+
+        if not material_obj:
+            material_obj = models.Material(name=material_name.strip())
+            db.add(material_obj)
+            db.commit()
+            db.refresh(material_obj)
+
+        product_db.materials.append(material_obj)
+
+
+def update_product_materials(
+    db: Session, product: models.Product, new_materials: List[str]
+):
+    """
+    Update the materials for a product by clearing existing and adding new ones.
+    """
+    product.materials.clear()
+    associate_materials_with_product(db, product, new_materials)
+
+
 def update_product_tags(db: Session, product: models.Product, new_tags: List[str]):
     """
     Update the tags for a product by clearing existing and adding new ones.
@@ -144,8 +183,6 @@ def update_product_db(db: Session, sku: str, update: schemas.ProductUpdate):
         product.description = update.description
     if update.production is not None:
         product.production = update.production
-    if update.material is not None:
-        product.material = update.material
     if update.color is not None:
         product.color = update.color
     if update.print_time is not None:
@@ -163,6 +200,9 @@ def update_product_db(db: Session, sku: str, update: schemas.ProductUpdate):
 
     if update.tags is not None:
         update_product_tags(db, product, update.tags)
+
+    if update.materials is not None:
+        update_product_materials(db, product, update.materials)
 
     db.commit()
     db.refresh(product)

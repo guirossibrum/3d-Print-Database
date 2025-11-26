@@ -1,6 +1,6 @@
 # backend/app/main.py
 from fastapi import FastAPI, HTTPException, Path, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import OperationalError
 from typing import List, Dict, Any
 from . import crud, schemas, models
@@ -33,7 +33,7 @@ def handle_product_creation_side_effects(sku: str, product: schemas.ProductCreat
     # Update metadata with additional fields
     update_metadata(
         sku=sku,
-        material=product.material,
+        material=product.materials[0] if product.materials else None,
         color=product.color,
         print_time=product.print_time,
         weight=product.weight,
@@ -54,7 +54,7 @@ def handle_product_update_side_effects(sku: str, update: schemas.ProductUpdate):
         description=update.description,
         tags=update.tags,
         production=update.production,
-        material=update.material,
+        material=update.materials[0] if update.materials else None,
         color=update.color,
         print_time=update.print_time,
         weight=update.weight,
@@ -108,36 +108,13 @@ def update_product(update: schemas.ProductUpdate, sku: str = Path(...)):
 
     return {"sku": sku, "message": "Product updated successfully"}
 
+    # Temporarily removed decorator to debug
+    # @app.get("/testproducts/")
+    def get_products():
+        return [{"test": "data"}]
 
-@app.get("/products/")
-def list_products():
-    db: Session = SessionLocal()
-    try:
-        products = db.query(crud.models.Product).all()
-        result = []
-        for p in products:
-            result.append(
-                {
-                    "id": p.id,
-                    "sku": p.sku,
-                    "name": p.name,
-                    "description": p.description,
-                    "production": p.production,
-                    "tags": [t.name for t in p.tags],
-                    "category_id": p.category_id,
-                    "material": [m.name for m in p.materials] if p.materials else None,
-                    "color": p.color,
-                    "print_time": p.print_time,
-                    "weight": p.weight,
-                    "stock_quantity": p.stock_quantity,
-                    "reorder_point": p.reorder_point,
-                    "unit_cost": p.unit_cost,
-                    "selling_price": p.selling_price,
-                }
-            )
-    finally:
-        db.close()
-    return result
+    # Manually register the route
+    app.add_api_route("/testproducts/", get_products, methods=["GET"])
 
 
 @app.get("/tags/suggest")

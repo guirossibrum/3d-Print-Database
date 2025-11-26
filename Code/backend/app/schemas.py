@@ -71,7 +71,7 @@ class ProductBase(BaseModel):
     tags: List[str] = []
     production: bool = False  # default = prototype / not production
     category_id: Optional[int] = None
-    material: Optional[str] = None
+    materials: Optional[List[str]] = []
     color: Optional[str] = None
     print_time: Optional[str] = None
     weight: Optional[int] = None
@@ -93,7 +93,7 @@ class ProductUpdate(BaseModel):
     description: Optional[str] = None
     tags: Optional[List[str]] = None
     production: Optional[bool] = None  # optional for updates
-    material: Optional[str] = None
+    materials: Optional[List[str]] = None
     color: Optional[str] = None
     print_time: Optional[str] = None
     weight: Optional[int] = None
