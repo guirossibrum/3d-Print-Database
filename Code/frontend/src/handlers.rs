@@ -754,54 +754,14 @@ fn handle_edit_categories_mode(app: &mut super::App, key: crossterm::event::KeyE
             app.active_pane = ActivePane::Left;
         }
         KeyCode::Enter => {
-            // Save changes and return to normal mode
-            app.edit_backup = None; // Clear backup since we're saving
-            if let Some(product) = app.products.iter().find(|p| p.id == app.selected_product_id) {
-                let update = crate::api::ProductUpdate {
-                    name: Some(product.name.clone()),
-                    description: product.description.clone(),
-                    tags: Some(product.tags.clone()),
-                    production: Some(product.production),
-                    material: Some(product.material.clone().unwrap_or_default()),
-                    color: product.color.clone(),
-                    print_time: product.print_time,
-                    weight: product.weight,
-                    stock_quantity: product.stock_quantity,
-                    reorder_point: product.reorder_point,
-                    unit_cost: product.unit_cost,
-                    selling_price: product.selling_price,
-                };
-                match app.api_client.update_product(&product.sku, &update) {
-                    Ok(_) => {
-                        app.set_status_message("Product updated successfully".to_string());
-                        app.refresh_data();
-                    }
-                    Err(e) => app.set_status_message(format!("Error updating product: {:?}", e)),
-                }
-            }
-            app.input_mode = InputMode::Normal;
-            app.active_pane = ActivePane::Left;
-        }
-        KeyCode::Tab => {
-            // Open category selection
-            app.category_selection = vec![false; app.categories.len()];
-            // Pre-select the current category
-            if let Some(product) = app.products.iter().find(|p| p.id == app.selected_product_id) {
-                for (i, category) in app.categories.iter().enumerate() {
-                    if category.id == product.category_id {
-                        app.category_selection[i] = true;
-                        break;
-                    }
-                }
-            }
-            app.input_mode = InputMode::EditCategorySelect;
-            app.active_pane = ActivePane::Right;
+            // Category is read-only, navigate to next field
+            app.input_mode = InputMode::EditTags;
         }
         KeyCode::Up => {
             app.input_mode = InputMode::EditProduction;
         }
         KeyCode::Down => {
-            app.input_mode = InputMode::EditMaterials;
+            app.input_mode = InputMode::EditTags;
         }
         _ => {}
     }
@@ -927,12 +887,7 @@ fn handle_edit_materials_mode(app: &mut super::App, key: crossterm::event::KeyEv
 fn handle_material_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
     match key.code {
         KeyCode::Esc => {
-            app.input_mode = InputMode::EditMaterials;
-            app.material_selection.clear();
-            app.active_pane = ActivePane::Left;
-        }
-        KeyCode::Enter => {
-            // Apply selected materials to product
+            // Auto-apply current selections before exiting
             let mut selected_materials = Vec::new();
             for (i, &selected) in app.tag_selection.iter().enumerate() {
                 if selected {
@@ -950,6 +905,50 @@ fn handle_material_select_mode(app: &mut super::App, key: crossterm::event::KeyE
             }
             app.tag_selection.clear();
             app.input_mode = InputMode::EditMaterials;
+            app.active_pane = ActivePane::Left;
+        }
+        KeyCode::Enter => {
+            // Apply selected materials to product and save immediately
+            let mut selected_materials = Vec::new();
+            for (i, &selected) in app.tag_selection.iter().enumerate() {
+                if selected {
+                    if let Some(material) = app.materials.get(i) {
+                        selected_materials.push(material.to_string());
+                    }
+                }
+            }
+            if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
+                product.material = if selected_materials.is_empty() {
+                    None
+                } else {
+                    Some(selected_materials)
+                };
+                // Save the product immediately
+                let update = crate::api::ProductUpdate {
+                    name: Some(product.name.clone()),
+                    description: product.description.clone(),
+                    tags: Some(product.tags.clone()),
+                    production: Some(product.production),
+                    material: Some(product.material.clone().unwrap_or_default()),
+                    color: product.color.clone(),
+                    print_time: product.print_time,
+                    weight: product.weight,
+                    stock_quantity: product.stock_quantity,
+                    reorder_point: product.reorder_point,
+                    unit_cost: product.unit_cost,
+                    selling_price: product.selling_price,
+                };
+                match app.api_client.update_product(&product.sku, &update) {
+                    Ok(_) => {
+                        app.set_status_message("Product updated successfully".to_string());
+                        app.refresh_data();
+                    }
+                    Err(e) => app.set_status_message(format!("Error updating product: {:?}", e)),
+                }
+            }
+            app.edit_backup = None; // Clear backup since we're saving
+            app.tag_selection.clear();
+            app.input_mode = InputMode::Normal;
             app.active_pane = ActivePane::Left;
         }
         KeyCode::Down => {
@@ -1094,6 +1093,9 @@ fn handle_edit_tags_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
         }
         KeyCode::Up => {
             app.input_mode = InputMode::EditCategories;
+        }
+        KeyCode::Down => {
+            app.input_mode = InputMode::EditMaterials;
         }
         _ => {}
     }
