@@ -552,23 +552,14 @@ fn handle_edit_name_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
         KeyCode::Enter => {
             // Save changes and return to normal mode
             app.edit_backup = None; // Clear backup since we're saving
-            if let Some(product) = app.products.iter().find(|p| p.id == app.selected_product_id) {
-                let update = crate::api::ProductUpdate {
-                    name: Some(product.name.clone()),
-                    description: None,
-                    tags: None,
-                    production: None,
-                    material: None,
-                    color: None,
-                    print_time: None,
-                    weight: None,
-                    stock_quantity: None,
-                    reorder_point: None,
-                    unit_cost: None,
-                    selling_price: None,
-                };
-                app.perform_update(&product.sku, update)?;
-            }
+            let (sku, product) = if let Some(data) = app.get_selected_product_data() {
+                data
+            } else {
+                return Ok(());
+            };
+            let mut update = crate::api::ProductUpdate::default();
+            update.name = Some(product.name);
+            app.perform_update(&sku, update)?;
             app.input_mode = InputMode::Normal;
             app.active_pane = ActivePane::Left;
         }
@@ -609,23 +600,14 @@ fn handle_edit_description_mode(app: &mut super::App, key: crossterm::event::Key
         KeyCode::Enter => {
             // Save changes and return to normal mode
             app.edit_backup = None; // Clear backup since we're saving
-            if let Some(product) = app.products.iter().find(|p| p.id == app.selected_product_id) {
-                let update = crate::api::ProductUpdate {
-                    name: None,
-                    description: product.description.clone(),
-                    tags: None,
-                    production: None,
-                    material: None,
-                    color: None,
-                    print_time: None,
-                    weight: None,
-                    stock_quantity: None,
-                    reorder_point: None,
-                    unit_cost: None,
-                    selling_price: None,
-                };
-                app.perform_update(&product.sku, update)?;
-            }
+            let (sku, product) = if let Some(data) = app.get_selected_product_data() {
+                data
+            } else {
+                return Ok(());
+            };
+            let mut update = crate::api::ProductUpdate::default();
+            update.description = product.description;
+            app.perform_update(&sku, update)?;
             app.input_mode = InputMode::Normal;
             app.active_pane = ActivePane::Left;
         }
@@ -668,23 +650,14 @@ fn handle_edit_production_mode(app: &mut super::App, key: crossterm::event::KeyE
         KeyCode::Enter => {
             // Save changes and return to normal mode
             app.edit_backup = None; // Clear backup since we're saving
-            if let Some(product) = app.products.iter().find(|p| p.id == app.selected_product_id) {
-                let update = crate::api::ProductUpdate {
-                    name: None,
-                    description: None,
-                    tags: None,
-                    production: Some(product.production),
-                    material: None,
-                    color: None,
-                    print_time: None,
-                    weight: None,
-                    stock_quantity: None,
-                    reorder_point: None,
-                    unit_cost: None,
-                    selling_price: None,
-                };
-                app.perform_update(&product.sku, update)?;
-            }
+            let (sku, product) = if let Some(data) = app.get_selected_product_data() {
+                data
+            } else {
+                return Ok(());
+            };
+            let mut update = crate::api::ProductUpdate::default();
+            update.production = Some(product.production);
+            app.perform_update(&sku, update)?;
             app.input_mode = InputMode::Normal;
             app.active_pane = ActivePane::Left;
         }
@@ -812,23 +785,25 @@ fn handle_edit_materials_mode(app: &mut super::App, key: crossterm::event::KeyEv
         KeyCode::Enter => {
             // Save changes and return to normal mode
             app.edit_backup = None; // Clear backup since we're saving
-            if let Some(product) = app.products.iter().find(|p| p.id == app.selected_product_id) {
-                let update = crate::api::ProductUpdate {
-                    name: Some(product.name.clone()),
-                    description: product.description.clone(),
-                    tags: Some(product.tags.clone()),
-                    production: Some(product.production),
-                    material: Some(product.material.clone().unwrap_or_default()),
-                    color: product.color.clone(),
-                    print_time: product.print_time,
-                    weight: product.weight,
-                    stock_quantity: product.stock_quantity,
-                    reorder_point: product.reorder_point,
-                    unit_cost: product.unit_cost,
-                    selling_price: product.selling_price,
-                };
-                app.perform_update(&product.sku, update)?;
-            }
+            let (sku, product) = if let Some(data) = app.get_selected_product_data() {
+                data
+            } else {
+                return Ok(());
+            };
+            let mut update = crate::api::ProductUpdate::default();
+            update.name = Some(product.name);
+            update.description = product.description;
+            update.tags = Some(product.tags);
+            update.production = Some(product.production);
+            update.material = Some(product.material.unwrap_or_default());
+            update.color = product.color;
+            update.print_time = product.print_time;
+            update.weight = product.weight;
+            update.stock_quantity = product.stock_quantity;
+            update.reorder_point = product.reorder_point;
+            update.unit_cost = product.unit_cost;
+            update.selling_price = product.selling_price;
+            app.perform_update(&product_data.sku, update)?;
             app.input_mode = InputMode::Normal;
             app.active_pane = ActivePane::Left;
         }
@@ -990,23 +965,17 @@ fn handle_edit_tags_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
                     .collect();
             }
             app.edit_backup = None;
-            if let Some(product) = app.products.iter().find(|p| p.id == app.selected_product_id) {
-                let update = crate::api::ProductUpdate {
-                    name: Some(product.name.clone()),
-                    description: product.description.clone(),
-                    tags: Some(product.tags.clone()),
-                    production: Some(product.production),
-                    material: None,
-                    color: None,
-                    print_time: None,
-                    weight: None,
-                    stock_quantity: None,
-                    reorder_point: None,
-                    unit_cost: None,
-                    selling_price: None,
-                };
-                app.perform_update(&product.sku, update)?;
-            }
+            let (sku, product) = if let Some(data) = app.get_selected_product_data() {
+                data
+            } else {
+                return Ok(());
+            };
+            let mut update = crate::api::ProductUpdate::default();
+            update.name = Some(product.name);
+            update.description = product.description;
+            update.tags = Some(product.tags);
+            update.production = Some(product.production);
+            app.perform_update(&sku, update)?;
             app.input_mode = InputMode::Normal;
             app.active_pane = ActivePane::Left;
         }

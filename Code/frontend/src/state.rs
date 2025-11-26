@@ -331,6 +331,11 @@ impl App {
         Ok(())
     }
 
+    pub fn get_selected_product_data(&self) -> Option<(String, crate::api::Product)> {
+        self.products.iter().find(|p| p.id == self.selected_product_id)
+            .map(|p| (p.sku.clone(), p.clone()))
+    }
+
     // Status message management with 20-second persistence
     pub fn set_status_message(&mut self, message: String) {
         self.status_message = message;

@@ -22,7 +22,7 @@ pub struct Product {
     pub selling_price: Option<f64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ProductUpdate {
     pub name: Option<String>,
     pub description: Option<String>,
