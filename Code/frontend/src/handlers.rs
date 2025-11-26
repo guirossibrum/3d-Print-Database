@@ -567,13 +567,7 @@ fn handle_edit_name_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
                     unit_cost: None,
                     selling_price: None,
                 };
-                match app.api_client.update_product(&product.sku, &update) {
-                    Ok(_) => {
-                        app.set_status_message("Product updated successfully".to_string());
-                        app.refresh_data();
-                    }
-                    Err(e) => app.status_message = format!("Error updating product: {:?}", e),
-                }
+                app.perform_update(&product.sku, update)?;
             }
             app.input_mode = InputMode::Normal;
             app.active_pane = ActivePane::Left;
@@ -630,13 +624,7 @@ fn handle_edit_description_mode(app: &mut super::App, key: crossterm::event::Key
                     unit_cost: None,
                     selling_price: None,
                 };
-                match app.api_client.update_product(&product.sku, &update) {
-                    Ok(_) => {
-                        app.set_status_message("Product updated successfully".to_string());
-                        app.refresh_data();
-                    }
-                    Err(e) => app.status_message = format!("Error updating product: {:?}", e),
-                }
+                app.perform_update(&product.sku, update)?;
             }
             app.input_mode = InputMode::Normal;
             app.active_pane = ActivePane::Left;
@@ -695,13 +683,7 @@ fn handle_edit_production_mode(app: &mut super::App, key: crossterm::event::KeyE
                     unit_cost: None,
                     selling_price: None,
                 };
-                match app.api_client.update_product(&product.sku, &update) {
-                    Ok(_) => {
-                        app.set_status_message("Product updated successfully".to_string());
-                        app.refresh_data();
-                    }
-                    Err(e) => app.status_message = format!("Error updating product: {:?}", e),
-                }
+                app.perform_update(&product.sku, update)?;
             }
             app.input_mode = InputMode::Normal;
             app.active_pane = ActivePane::Left;
@@ -845,13 +827,7 @@ fn handle_edit_materials_mode(app: &mut super::App, key: crossterm::event::KeyEv
                     unit_cost: product.unit_cost,
                     selling_price: product.selling_price,
                 };
-                match app.api_client.update_product(&product.sku, &update) {
-                    Ok(_) => {
-                        app.set_status_message("Product updated successfully".to_string());
-                        app.refresh_data();
-                    }
-                    Err(e) => app.set_status_message(format!("Error updating product: {:?}", e)),
-                }
+                app.perform_update(&product.sku, update)?;
             }
             app.input_mode = InputMode::Normal;
             app.active_pane = ActivePane::Left;
@@ -1029,13 +1005,7 @@ fn handle_edit_tags_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
                     unit_cost: None,
                     selling_price: None,
                 };
-                match app.api_client.update_product(&product.sku, &update) {
-                    Ok(_) => {
-                        app.set_status_message("Product updated successfully".to_string());
-                        app.refresh_data();
-                    }
-                    Err(e) => app.status_message = format!("Error updating product: {:?}", e),
-                }
+                app.perform_update(&product.sku, update)?;
             }
             app.input_mode = InputMode::Normal;
             app.active_pane = ActivePane::Left;

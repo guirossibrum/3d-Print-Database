@@ -320,6 +320,17 @@ impl App {
         Ok(())
     }
 
+    pub fn perform_update(&mut self, sku: &str, update: crate::api::ProductUpdate) -> Result<()> {
+        match self.api_client.update_product(sku, &update) {
+            Ok(_) => {
+                self.set_status_message("Product updated successfully".to_string());
+                self.refresh_data();
+            }
+            Err(e) => self.set_status_message(format!("Error updating product: {:?}", e)),
+        }
+        Ok(())
+    }
+
     // Status message management with 20-second persistence
     pub fn set_status_message(&mut self, message: String) {
         self.status_message = message;
