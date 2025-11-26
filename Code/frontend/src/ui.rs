@@ -240,7 +240,7 @@ fn draw_create_left_pane(f: &mut Frame, area: Rect, app: &App, border_style: Sty
     ) {
         Style::default().fg(Color::Yellow).bold()
     } else {
-        NORMAL_STYLE
+        Style::default().fg(Color::Cyan)
     };
     content.push(Line::from(vec![
         Span::styled("Tags: ", tags_style),
@@ -258,7 +258,7 @@ fn draw_create_left_pane(f: &mut Frame, area: Rect, app: &App, border_style: Sty
     ) {
         Style::default().fg(Color::Yellow).bold()
     } else {
-        NORMAL_STYLE
+        Style::default().fg(Color::Cyan)
     };
     content.push(Line::from(vec![
         Span::styled("Materials: ", materials_style),
