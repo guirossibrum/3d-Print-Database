@@ -32,7 +32,7 @@ This document provides coding guidelines and requirements for AI agents working 
 After each change in the code:
 - increase version count
 - git commit
-- recompile
+- run the build script in the project folder: `./build_new.sh`
 - verify that there is only one compiled binary - omarchy launcher must run latest compiled version
 - current version number must be informed in final response
 - update test_routine.txt if any functionality changes (add new test cases, modify existing ones, or remove obsolete tests)
