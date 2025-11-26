@@ -429,6 +429,42 @@ fn handle_tag_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent)
                     !app.tag_selection[app.create_form.tag_selected_index];
             }
         }
+        KeyCode::Char('d') => {
+            // Delete selected tag
+            if app.create_form.tag_selected_index < app.tags.len() {
+                let tag_to_delete = app.tags[app.create_form.tag_selected_index].clone();
+                
+                // Normalize tag name to match backend behavior
+                let normalized_tag = normalize_tag_name(&tag_to_delete);
+                
+                // Check if tag is in use by any product (checking normalized names)
+                let tag_in_use = app.products.iter().any(|p| {
+                    p.tags.iter().any(|t| normalize_tag_name(t) == normalized_tag)
+                });
+                
+                if tag_in_use {
+                    app.status_message = format!("Cannot delete tag '{}' - it is in use by products", tag_to_delete);
+                } else {
+                    // Delete tag from backend (use normalized name)
+                    match app.api_client.delete_tag(&normalized_tag) {
+                        Ok(_) => {
+                            // Remove tag from local list
+                            app.tags.retain(|t| t != &tag_to_delete);
+                            
+                            // Adjust selected index if needed
+                            if app.create_form.tag_selected_index >= app.tags.len() && !app.tags.is_empty() {
+                                app.create_form.tag_selected_index = app.tags.len() - 1;
+                            }
+                            
+                            app.status_message = format!("Tag '{}' deleted successfully", tag_to_delete);
+                        }
+                        Err(e) => {
+                            app.status_message = format!("Error deleting tag '{}': {}", tag_to_delete, e);
+                        }
+                    }
+                }
+            }
+        }
         KeyCode::Char('n') => {
             // Create new tag
             app.item_type = ItemType::Tag;
@@ -1055,6 +1091,48 @@ fn scan_directory(dir_path: &std::path::Path, prefix: &str) -> Result<Vec<String
     }
     
     Ok(content)
+}
+
+fn normalize_tag_name(tag: &str) -> String {
+    // Normalize tag: lowercase, strip whitespace, replace spaces with hyphens
+    // This matches the backend normalize_tag function in tag_utils.py
+    use std::collections::HashMap;
+    
+    let mut normalized = tag.to_lowercase();
+    normalized = normalized.trim().to_string();
+    
+    // Replace spaces and underscores with hyphens
+    let replacements: HashMap<char, char> = [
+        (' ', '-'), ('_', '-')
+    ].iter().cloned().collect();
+    
+    let mut result = String::new();
+    for c in normalized.chars() {
+        if let Some(&replacement) = replacements.get(&c) {
+            result.push(replacement);
+        } else if c.is_ascii_alphanumeric() || c == '-' {
+            result.push(c);
+        }
+        // Remove other special characters
+    }
+    
+    // Remove multiple consecutive hyphens
+    let mut final_result = String::new();
+    let mut prev_was_hyphen = false;
+    for c in result.chars() {
+        if c == '-' {
+            if !prev_was_hyphen {
+                final_result.push(c);
+                prev_was_hyphen = true;
+            }
+        } else {
+            final_result.push(c);
+            prev_was_hyphen = false;
+        }
+    }
+    
+    // Remove leading/trailing hyphens
+    final_result.trim_matches('-').to_string()
 }
 
 fn open_product_folder(sku: &str) -> Result<()> {
