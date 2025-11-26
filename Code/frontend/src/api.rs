@@ -12,7 +12,7 @@ pub struct Product {
     pub production: bool,
     pub tags: Vec<String>,
     pub category_id: Option<i32>,
-    pub material: Option<String>,
+    pub material: Option<Vec<String>>, // Changed to support multiple materials
     pub color: Option<String>,
     pub print_time: Option<i32>,
     pub weight: Option<f64>,
@@ -28,7 +28,7 @@ pub struct ProductUpdate {
     pub description: Option<String>,
     pub tags: Option<Vec<String>>,
     pub production: Option<bool>,
-    pub material: Option<String>,
+    pub material: Option<Vec<String>>, // Changed to support multiple materials
     pub color: Option<String>,
     pub print_time: Option<i32>,
     pub weight: Option<f64>,
@@ -40,6 +40,12 @@ pub struct ProductUpdate {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Tag {
+    pub name: String,
+    pub usage_count: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Material {
     pub name: String,
     pub usage_count: i32,
 }
@@ -143,6 +149,33 @@ impl ApiClient {
 
     pub fn delete_tag(&self, tag_name: &str) -> Result<()> {
         let url = format!("{}/tags/{}", self.base_url, tag_name);
+        self.client.delete(&url).send()?;
+        Ok(())
+    }
+
+    pub fn get_materials(&self) -> Result<Vec<Material>> {
+        let url = format!("{}/materials", self.base_url);
+        let response = self.client.get(&url).send()?;
+        let materials = response.json()?;
+        Ok(materials)
+    }
+
+    pub fn create_material(&self, material: &Material) -> Result<Material> {
+        let url = format!("{}/materials/", self.base_url);
+        let response = self.client.post(&url).json(material).send()?;
+        let created_material = response.json()?;
+        Ok(created_material)
+    }
+
+    pub fn update_material(&self, material: &Material) -> Result<Material> {
+        let url = format!("{}/materials/{}", self.base_url, material.name);
+        let response = self.client.put(&url).json(material).send()?;
+        let updated_material = response.json()?;
+        Ok(updated_material)
+    }
+
+    pub fn delete_material(&self, material_name: &str) -> Result<()> {
+        let url = format!("{}/materials/{}", self.base_url, material_name);
         self.client.delete(&url).send()?;
         Ok(())
     }

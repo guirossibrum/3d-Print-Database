@@ -18,6 +18,7 @@ pub enum TagSelectMode {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ItemType {
     Tag,
+    Material,
     #[allow(dead_code)]
     Category,
 }
@@ -57,6 +58,8 @@ pub enum InputMode {
     CreateProduction,
     CreateTags,
     CreateTagSelect,
+    CreateMaterials,
+    CreateMaterialSelect,
     EditName,
     EditDescription,
     EditProduction,
@@ -70,6 +73,10 @@ pub enum InputMode {
     NewTag,
     #[allow(dead_code)]
     EditTag,
+    #[allow(dead_code)]
+    NewMaterial,
+    #[allow(dead_code)]
+    EditMaterial,
     DeleteConfirm,
     DeleteFileConfirm,
 }
@@ -83,6 +90,8 @@ pub struct CreateForm {
     pub production: bool,
     pub tags: Vec<String>,
     pub tag_selected_index: usize,
+    pub materials: Vec<String>,
+    pub material_selected_index: usize,
 }
 
 #[derive(Debug, Default)]

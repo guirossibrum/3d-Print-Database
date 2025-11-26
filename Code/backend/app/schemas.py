@@ -22,6 +22,25 @@ class Tag(TagBase):
         from_attributes = True
 
 
+class MaterialBase(BaseModel):
+    name: str
+
+
+class MaterialCreate(MaterialBase):
+    pass
+
+
+class MaterialUpdate(BaseModel):
+    name: Optional[str] = None
+
+
+class Material(MaterialBase):
+    usage_count: int
+
+    class Config:
+        from_attributes = True
+
+
 class CategoryBase(BaseModel):
     name: str
     sku_initials: str

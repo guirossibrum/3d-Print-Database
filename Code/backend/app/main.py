@@ -292,6 +292,154 @@ def delete_tag(tag_name: str):
         db.close()
 
 
+@app.get("/materials")
+def list_all_materials():
+    """
+    Get all unique materials with their usage counts
+    Returns: [{"name": "material_name", "usage_count": 5}, ...]
+    """
+    db: Session = SessionLocal()
+    try:
+        # Get all materials from materials table, even if not used
+        all_materials = db.query(models.Material).all()
+        material_names = [material.name for material in all_materials]
+
+        # Get usage stats for used materials
+        material_usage = {}
+        products = db.query(models.Product).all()
+        for product in products:
+            if product.materials:
+                for material in product.materials:
+                    material_usage[material.name] = (
+                        material_usage.get(material.name, 0) + 1
+                    )
+
+        # Return all materials with their usage counts (0 if not used)
+        return [
+            {"name": material_name, "usage_count": material_usage.get(material_name, 0)}
+            for material_name in sorted(material_names)
+        ]
+    finally:
+        db.close()
+
+
+@app.post("/materials")
+def create_material(material: schemas.MaterialCreate):
+    """
+    Create a new material
+    """
+    db: Session = SessionLocal()
+    try:
+        # Check if material exists
+        existing = (
+            db.query(models.Material)
+            .filter(models.Material.name == material.name)
+            .first()
+        )
+        if existing:
+            raise HTTPException(status_code=400, detail="Material already exists")
+
+        db_material = models.Material(name=material.name)
+        db.add(db_material)
+        db.commit()
+        db.refresh(db_material)
+
+        return {
+            "name": db_material.name,
+            "usage_count": 0,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@app.put("/materials/{material_name}")
+def update_material(material_name: str, material_update: schemas.MaterialUpdate):
+    """
+    Update an existing material
+    """
+    db: Session = SessionLocal()
+    try:
+        material = (
+            db.query(models.Material)
+            .filter(models.Material.name == material_name)
+            .first()
+        )
+        if not material:
+            raise HTTPException(status_code=404, detail="Material not found")
+
+        if material_update.name:
+            # Check if new name exists
+            existing = (
+                db.query(models.Material)
+                .filter(models.Material.name == material_update.name)
+                .first()
+            )
+            if existing:
+                raise HTTPException(
+                    status_code=400, detail="Material name already exists"
+                )
+
+            material.name = material_update.name
+
+        db.commit()
+        db.refresh(material)
+
+        return {
+            "name": material.name,
+            "usage_count": len(material.products),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@app.delete("/materials/{material_name}")
+def delete_material(material_name: str):
+    """
+    Delete a material if it's not used by any products
+    """
+    db: Session = SessionLocal()
+    try:
+        # Find material
+        material = (
+            db.query(models.Material)
+            .filter(models.Material.name == material_name)
+            .first()
+        )
+        if not material:
+            raise HTTPException(status_code=404, detail="Material not found")
+
+        # Check if material is used by any products
+        usage_count = len(material.products)
+        if usage_count > 0:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Material is used by {usage_count} product(s) and cannot be deleted",
+            )
+
+        # Delete material
+        db.delete(material)
+        db.commit()
+
+        return {"message": "Material deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
 @app.get("/categories")
 def list_categories():
     """

@@ -115,8 +115,10 @@ fn draw_create_tab(f: &mut Frame, area: Rect, app: &App) {
             | InputMode::CreateCategory
             | InputMode::CreateProduction
             | InputMode::CreateTags
+            | InputMode::CreateMaterials
             | InputMode::CreateCategorySelect
             | InputMode::CreateTagSelect
+            | InputMode::CreateMaterialSelect
     );
     let border_style = if is_creating {
         Style::default().fg(Color::Yellow).bold()
@@ -245,6 +247,24 @@ fn draw_create_left_pane(f: &mut Frame, area: Rect, app: &App, border_style: Sty
         }),
     ]));
 
+    // Materials field
+    let materials_style = if matches!(
+        app.input_mode,
+        InputMode::CreateMaterials | InputMode::CreateMaterialSelect
+    ) {
+        Style::default().fg(Color::Yellow).bold()
+    } else {
+        NORMAL_STYLE
+    };
+    content.push(Line::from(vec![
+        Span::styled("Materials: ", materials_style),
+        Span::raw(if app.create_form.materials.is_empty() {
+            "None".to_string()
+        } else {
+            app.create_form.materials.join(", ")
+        }),
+    ]));
+
     content.push(Line::from(""));
     let help_text = match app.input_mode {
         InputMode::CreateName => "[↑/↓] select     [ESC: Cancel]",
@@ -252,7 +272,8 @@ fn draw_create_left_pane(f: &mut Frame, area: Rect, app: &App, border_style: Sty
         InputMode::CreateCategory => "[TAB] Select     [ESC] Cancel",
         InputMode::CreateProduction => "[←/→] Toggle     [↑/↓] select     [ESC] Cancel",
         InputMode::CreateTags => "[TAB] Select Tags     [ENTER] Save     [↑] Prev     [ESC] Cancel",
-        _ => "[ENTER] Create     [ESC] Cancel",
+        InputMode::CreateMaterials => "[TAB] Select Materials     [ENTER] Save     [↑] Prev     [↓] Save     [ESC] Cancel",
+        _ => "[ENTER] Create     [ESC] Cancel]",
     };
     content.push(Line::from(vec![Span::styled(
         help_text,
@@ -312,6 +333,9 @@ fn draw_create_right_pane(f: &mut Frame, area: Rect, app: &App) {
         }
         InputMode::CreateTagSelect => {
             content.extend(build_tag_selection_content(app, "Available Tags:", "[↑/↓] select     [Space] Select     [ENTER] Add Selected     [n] New     [e] Edit     [d] Delete     [ESC] Back"));
+        }
+        InputMode::CreateMaterialSelect => {
+            content.extend(build_material_selection_content(app, "Available Materials:", "[↑/↓] select     [Space] Select     [ENTER] Add Selected     [n] New     [d] Delete     [ESC] Back"));
         }
         _ => {
             content.push(Line::from(vec![Span::styled(
@@ -507,6 +531,35 @@ fn build_tag_selection_content<'a>(app: &'a App, header: &'a str, help: &'a str)
     if app.tags.is_empty() {
         content.push(Line::from(vec![
             Span::styled("No tags available", HELP_STYLE),
+        ]));
+    }
+    content.push(Line::from(""));
+    content.push(Line::from(vec![
+        Span::styled(help, HELP_STYLE),
+    ]));
+    content
+}
+
+fn build_material_selection_content<'a>(app: &'a App, header: &'a str, help: &'a str) -> Vec<Line<'a>> {
+    let mut content = vec![];
+    content.push(Line::from(vec![
+        Span::styled(header, HEADER_STYLE),
+    ]));
+    for (i, material) in app.materials.iter().enumerate() {
+        let is_current = i == app.create_form.material_selected_index;
+        let is_selected = app.tag_selection.get(i).copied().unwrap_or(false);
+        let marker = if is_selected { "[x]" } else { "[ ]" };
+        let line = if is_current {
+            format!("→ {} {}", marker, material)
+        } else {
+            format!("  {} {}", marker, material)
+        };
+        let style = NORMAL_STYLE;
+        content.push(Line::from(Span::styled(line, style)));
+    }
+    if app.materials.is_empty() {
+        content.push(Line::from(vec![
+            Span::styled("No materials available", HELP_STYLE),
         ]));
     }
     content.push(Line::from(""));
