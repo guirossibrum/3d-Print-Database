@@ -63,6 +63,8 @@ pub enum InputMode {
     EditName,
     EditDescription,
     EditProduction,
+    EditCategories,
+    EditCategorySelect,
     EditTags,
     EditTagSelect,
     #[allow(dead_code)]

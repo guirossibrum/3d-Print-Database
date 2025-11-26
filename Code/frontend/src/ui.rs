@@ -567,6 +567,35 @@ fn build_tag_selection_content<'a>(app: &'a App, header: &'a str, help: &'a str)
     content
 }
 
+fn build_category_selection_content<'a>(app: &'a App, header: &'a str, help: &'a str) -> Vec<Line<'a>> {
+    let mut content = vec![];
+    content.push(Line::from(vec![
+        Span::styled(header, HEADER_STYLE),
+    ]));
+    for (i, category) in app.categories.iter().enumerate() {
+        let is_current = i == app.selected_category_index;
+        let is_selected = app.category_selection.get(i).copied().unwrap_or(false);
+        let marker = if is_selected { "[x]" } else { "[ ]" };
+        let line = if is_current {
+            format!("→ {} {} ({})", marker, category.name, category.sku_initials)
+        } else {
+            format!("  {} {} ({})", marker, category.name, category.sku_initials)
+        };
+        let style = NORMAL_STYLE;
+        content.push(Line::from(Span::styled(line, style)));
+    }
+    if app.categories.is_empty() {
+        content.push(Line::from(vec![
+            Span::styled("No categories available", HELP_STYLE),
+        ]));
+    }
+    content.push(Line::from(""));
+    content.push(Line::from(vec![
+        Span::styled(help, HELP_STYLE),
+    ]));
+    content
+}
+
 fn build_material_selection_content<'a>(app: &'a App, header: &'a str, help: &'a str) -> Vec<Line<'a>> {
     let mut content = vec![];
     content.push(Line::from(vec![
@@ -831,7 +860,23 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
         INACTIVE_BORDER_STYLE
     };
 
-    if matches!(app.input_mode, InputMode::EditTagSelect) {
+    if matches!(app.input_mode, InputMode::EditCategorySelect) {
+        // Draw category selection
+        let content = build_category_selection_content(
+            app,
+            "Available Categories:",
+            "[↑↓: Navigate] [Space: Select] [ENTER: Apply Selected] [ESC: Back]",
+        );
+        let paragraph = Paragraph::new(content)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Category Selection")
+                    .border_style(border_style),
+            )
+            .wrap(Wrap { trim: true });
+        f.render_widget(paragraph, area);
+    } else if matches!(app.input_mode, InputMode::EditTagSelect) {
         // Draw tag selection
         let content = build_tag_selection_content(
             app,
@@ -866,11 +911,22 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
             Style::default().fg(Color::Cyan)
         };
 
+        let categories_style = if matches!(app.input_mode, InputMode::EditCategories) {
+            Style::default().fg(Color::Yellow).bold()
+        } else {
+            Style::default().fg(Color::Cyan)
+        };
+
         let tags_style = if matches!(app.input_mode, InputMode::EditTags) {
             Style::default().fg(Color::Yellow).bold()
         } else {
             Style::default().fg(Color::Cyan)
         };
+
+        let category_name = app.categories.iter()
+            .find(|c| c.id == product.category_id)
+            .map(|c| c.name.as_str())
+            .unwrap_or("Unknown");
 
         let tags_text = product.tags.join(", ");
 
@@ -908,6 +964,10 @@ let content = vec![
                 } else {
                     (if product.production { "Yes" } else { "No" }).to_string()
                 }),
+            ]),
+            Line::from(vec![
+                Span::styled("Category: ", categories_style),
+                Span::raw(category_name),
             ]),
             Line::from(vec![
                 Span::styled("Tags: ", tags_style),
@@ -1091,6 +1151,7 @@ Tab::Create => match app.input_mode {
             InputMode::EditName => "[Enter] name     [Tab] cancel     [Enter] save     [↑/↓] select",
             InputMode::EditDescription => "[Enter] desc      [Tab] cancel     [Enter] save     [↑/↓] select",
             InputMode::EditProduction => "[←/→] toggle     [Tab] cancel     [Enter] save     [↑/↓] select",
+            InputMode::EditCategories => "[Tab] select category     [Enter] save     [↑/↓] select",
             _ => "[Tab] switch panes     [↑/↓] navigate",
         },
         Tab::Inventory => match app.input_mode {

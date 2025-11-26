@@ -860,25 +860,39 @@ def get_inventory_status():
 
 # Register the products GET route at the end
 def list_products():
-    return [
-        {
-            "id": 1,
-            "sku": "TEST-0001",
-            "name": "Test Product",
-            "description": "Test product",
-            "production": False,
-            "tags": ["test"],
-            "category_id": 1,
-            "material": ["PLA"],
-            "color": None,
-            "print_time": None,
-            "weight": None,
-            "stock_quantity": 0,
-            "reorder_point": 0,
-            "unit_cost": None,
-            "selling_price": None,
-        }
-    ]
+    db: Session = SessionLocal()
+    try:
+        products = db.query(crud.models.Product).all()
+        result = []
+        for p in products:
+            if p.materials:
+                materials_list = [m.name for m in p.materials]
+            else:
+                materials_list = None
+            result.append(
+                {
+                    "id": p.id,
+                    "sku": p.sku,
+                    "name": p.name,
+                    "description": p.description,
+                    "production": p.production,
+                    "tags": [t.name for t in p.tags],
+                    "category_id": p.category_id,
+                    "material": materials_list,
+                    "color": p.color,
+                    "print_time": p.print_time,
+                    "weight": p.weight,
+                    "stock_quantity": p.stock_quantity,
+                    "reorder_point": p.reorder_point,
+                    "unit_cost": p.unit_cost,
+                    "selling_price": p.selling_price,
+                }
+            )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
 
 
 app.add_api_route("/products/", list_products, methods=["GET"])

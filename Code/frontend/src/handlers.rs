@@ -19,6 +19,8 @@ pub fn handle_key_dispatch(app: &mut super::App, key: crossterm::event::KeyEvent
         InputMode::EditName => handle_edit_name_mode(app, key),
         InputMode::EditDescription => handle_edit_description_mode(app, key),
         InputMode::EditProduction => handle_edit_production_mode(app, key),
+        InputMode::EditCategories => handle_edit_categories_mode(app, key),
+        InputMode::EditCategorySelect => handle_category_select_mode(app, key),
         InputMode::EditTags => handle_edit_tags_mode(app, key),
         InputMode::EditTagSelect => handle_tag_select_mode(app, key),
         InputMode::NewTag | InputMode::NewCategory | InputMode::NewMaterial => handle_new_item_mode(app, key),
@@ -154,6 +156,7 @@ fn handle_normal_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> 
                 InputMode::EditName
                     | InputMode::EditDescription
                     | InputMode::EditProduction
+                    | InputMode::EditCategories
                     | InputMode::EditTags => {
                     // Save changes and return to normal mode
                     app.input_mode = InputMode::Normal;
@@ -801,7 +804,7 @@ fn handle_edit_production_mode(app: &mut super::App, key: crossterm::event::KeyE
             app.input_mode = InputMode::EditDescription;
         }
         KeyCode::Down => {
-            app.input_mode = InputMode::EditTags;
+            app.input_mode = InputMode::EditCategories;
         }
         KeyCode::Left => {
             if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
@@ -821,6 +824,123 @@ fn handle_edit_production_mode(app: &mut super::App, key: crossterm::event::KeyE
         KeyCode::Char('n') | KeyCode::Char('N') => {
             if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
                 product.production = false;
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn handle_edit_categories_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
+    match key.code {
+        KeyCode::Esc => {
+            // Cancel changes and return to normal mode
+            if let Some(original_product) = app.edit_backup.take() {
+                // Restore original product data
+                if let Some(current_product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
+                    *current_product = original_product;
+                }
+            }
+            app.input_mode = InputMode::Normal;
+            app.active_pane = ActivePane::Left;
+        }
+        KeyCode::Enter => {
+            // Save changes and return to normal mode
+            app.edit_backup = None; // Clear backup since we're saving
+            if let Some(product) = app.products.iter().find(|p| p.id == app.selected_product_id) {
+                let update = crate::api::ProductUpdate {
+                    name: Some(product.name.clone()),
+                    description: product.description.clone(),
+                    tags: Some(product.tags.clone()),
+                    production: Some(product.production),
+                    material: Some(product.material.clone().unwrap_or_default()),
+                    color: product.color.clone(),
+                    print_time: product.print_time,
+                    weight: product.weight,
+                    stock_quantity: product.stock_quantity,
+                    reorder_point: product.reorder_point,
+                    unit_cost: product.unit_cost,
+                    selling_price: product.selling_price,
+                };
+                match app.api_client.update_product(&product.sku, &update) {
+                    Ok(_) => {
+                        app.set_status_message("Product updated successfully".to_string());
+                        app.refresh_data();
+                    }
+                    Err(e) => app.set_status_message(format!("Error updating product: {:?}", e)),
+                }
+            }
+            app.input_mode = InputMode::Normal;
+            app.active_pane = ActivePane::Left;
+        }
+        KeyCode::Tab => {
+            // Open category selection
+            app.category_selection = vec![false; app.categories.len()];
+            // Pre-select the current category
+            if let Some(product) = app.products.iter().find(|p| p.id == app.selected_product_id) {
+                for (i, category) in app.categories.iter().enumerate() {
+                    if category.id == product.category_id {
+                        app.category_selection[i] = true;
+                        break;
+                    }
+                }
+            }
+            app.input_mode = InputMode::EditCategorySelect;
+            app.active_pane = ActivePane::Right;
+        }
+        KeyCode::Up => {
+            app.input_mode = InputMode::EditProduction;
+        }
+        KeyCode::Down => {
+            app.input_mode = InputMode::EditTags;
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn handle_category_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
+    match key.code {
+        KeyCode::Esc => {
+            app.input_mode = InputMode::EditCategories;
+            app.category_selection.clear();
+            app.active_pane = ActivePane::Left;
+        }
+        KeyCode::Enter => {
+            // Apply selected category to product
+            for (i, &selected) in app.category_selection.iter().enumerate() {
+                if selected {
+                    if let Some(category) = app.categories.get(i) {
+                        if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
+                            product.category_id = category.id;
+                        }
+                    }
+                    break; // Only one category can be selected
+                }
+            }
+            app.category_selection.clear();
+            app.input_mode = InputMode::EditCategories;
+            app.active_pane = ActivePane::Left;
+        }
+        KeyCode::Down => {
+            if !app.categories.is_empty() {
+                app.selected_category_index = (app.selected_category_index + 1) % app.categories.len();
+            }
+        }
+        KeyCode::Up => {
+            if !app.categories.is_empty() {
+                app.selected_category_index = if app.selected_category_index == 0 {
+                    app.categories.len() - 1
+                } else {
+                    app.selected_category_index - 1
+                };
+            }
+        }
+        KeyCode::Char(' ') => {
+            // Toggle selection (only one category can be selected)
+            app.category_selection = vec![false; app.categories.len()];
+            if app.selected_category_index < app.category_selection.len() {
+                app.category_selection[app.selected_category_index] = true;
             }
         }
         _ => {}
@@ -902,7 +1022,7 @@ fn handle_edit_tags_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
             app.active_pane = ActivePane::Right;
         }
         KeyCode::Up => {
-            app.input_mode = InputMode::EditProduction;
+            app.input_mode = InputMode::EditCategories;
         }
         _ => {}
     }
