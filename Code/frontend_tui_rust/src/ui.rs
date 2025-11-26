@@ -247,12 +247,12 @@ fn draw_create_left_pane(f: &mut Frame, area: Rect, app: &App, border_style: Sty
 
     content.push(Line::from(""));
     let help_text = match app.input_mode {
-        InputMode::CreateName => "[TAB/↓: Next] [↑: Prev] [ESC: Cancel]",
-        InputMode::CreateDescription => "[Enter] desc         [↑/↓] next     [↑] prev     [Esc] cancel",
-        InputMode::CreateCategory => "[TAB: Select] [ESC: Cancel]",
-        InputMode::CreateProduction => "[←→/y/n: Toggle] [TAB/↓: Next] [↑: Prev] [ESC: Cancel]",
-        InputMode::CreateTags => "[TAB: Select Tags] [ENTER: Save] [↑: Prev] [ESC: Cancel]",
-        _ => "[ENTER: Create] [ESC: Cancel]",
+        InputMode::CreateName => "[↑/↓] select     [ESC: Cancel]",
+        InputMode::CreateDescription => "[Enter] desc     [↑/↓] select     [Esc] cancel",
+        InputMode::CreateCategory => "[TAB] Select     [ESC] Cancel",
+        InputMode::CreateProduction => "[←/→] Toggle     [↑/↓] select     [ESC] Cancel",
+        InputMode::CreateTags => "[TAB] Select Tags     [ENTER] Save     [↑] Prev     [ESC] Cancel",
+        _ => "[ENTER] Create     [ESC] Cancel",
     };
     content.push(Line::from(vec![Span::styled(
         help_text,
@@ -306,12 +306,12 @@ fn draw_create_right_pane(f: &mut Frame, area: Rect, app: &App) {
             }
             content.push(Line::from(""));
             content.push(Line::from(vec![Span::styled(
-                "[↑↓: Select] [ENTER: Choose] [n: New] [e: Edit] [ESC: Back]",
+                "[↑↓] Select     [ENTER] Choose     [n] New     [e] Edit     [ESC] Back",
                 Style::default().fg(Color::Gray),
             )]));
         }
         InputMode::CreateTagSelect => {
-            content.extend(build_tag_selection_content(app, "Available Tags:", "[↑↓: Navigate] [Space: Select] [ENTER: Add Selected] [n: New] [e: Edit] [d: Delete] [ESC: Back]"));
+            content.extend(build_tag_selection_content(app, "Available Tags:", "[↑/↓] select     [Space] Select     [ENTER] Add Selected     [n] New     [e] Edit     [d] Delete     [ESC] Back"));
         }
         _ => {
             content.push(Line::from(vec![Span::styled(
@@ -460,9 +460,9 @@ fn draw_popup(f: &mut Frame, area: Rect, app: &App) {
 
     content.push(Line::from(""));
     let help_text = match app.input_mode {
-        InputMode::DeleteConfirm => "[ENTER: Confirm] [ESC: Cancel] [1/2: Select option]",
-        InputMode::DeleteFileConfirm => "[y: Confirm deletion] [n: Cancel] [ESC: Back]",
-        _ => "[ENTER: Save] [ESC: Cancel] (Tip: Use commas for multiple tags)",
+        InputMode::DeleteConfirm => "[ENTER] Confirm     [ESC] Cancel     [1/2] Select option",
+        InputMode::DeleteFileConfirm => "[y] Confirm deletion     [n] Cancel     [ESC] Back",
+        _ => "[ENTER] Save     [ESC] Cancel     (Tip: Use commas for multiple tags)",
     };
     
     content.push(Line::from(vec![Span::styled(
@@ -978,46 +978,46 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App, version: &str) {
     let instructions = match app.current_tab {
 Tab::Create => match app.input_mode {
             InputMode::Normal => "[←/→] switch tabs     [Enter] create product",
-            InputMode::CreateName => "[Enter] name         [↑/↓] next     [↑] prev     [Esc] cancel",
-            InputMode::CreateDescription => "[Enter] desc         [↑/↓] next     [↑] prev     [Esc] cancel",
-            InputMode::CreateCategory => "[Tab] select         [Esc] cancel",
-            InputMode::CreateProduction => "[←/→] toggle        [y/n] toggle     [↑/↓] next     [↑] prev     [Esc] cancel",
-            InputMode::CreateTags => "[Tab] select tags     [Enter] save       [↑] prev     [Esc] cancel",
+            InputMode::CreateName => "[Enter] name     [↑/↓] select     [Esc] cancel",
+            InputMode::CreateDescription => "[Enter] desc     [↑/↓] select     [Esc] cancel",
+            InputMode::CreateCategory => "[Tab] select     [Esc] cancel",
+            InputMode::CreateProduction => "[←/→] toggle     [y/n] toggle     [↑/↓] select     [Esc] cancel",
+            InputMode::CreateTags => "[Tab] select tags     [Enter] save     [↑] prev     [Esc] cancel",
             InputMode::CreateTagSelect => "[↑/↓] select     [Enter] choose     [Ctrl+n] new     [Ctrl+e] edit     [Esc] back",
             InputMode::NewCategory | InputMode::EditCategory => {
-                "[Enter] name         [Enter] save       [Esc] cancel"
+                "[Enter] name     [Enter] save     [Esc] cancel"
             }
-            InputMode::NewTag | InputMode::EditTag => "[Enter] name         [Enter] save       [Esc] cancel",
+            InputMode::NewTag | InputMode::EditTag => "[Enter] name     [Enter] save     [Esc] cancel",
             _ => "[←/→] switch tabs",
         },
         Tab::Search => match app.input_mode {
             InputMode::Normal => {
                 if app.has_multiple_panes() {
                     match app.active_pane {
-                        ActivePane::Left => "[Tab] edit selected     [↑/↓] select     [type] search     [Ctrl+o] open folder      [Ctrl+d] delete",
-                        ActivePane::Right => "[Tab] back to results  [Enter] save       [↑/↓] fields",
+                        ActivePane::Left => "[Tab] edit selected     [↑/↓] select     [type] search     [Ctrl+o] open folder     [Ctrl+d] delete",
+                        ActivePane::Right => "[Tab] back to results     [Enter] save     [↑/↓] select",
                     }
                 } else {
                     "[↑/↓] select product     [Enter] edit       [type] search     [Ctrl+o] open folder      [Ctrl+d] delete"
                 }
             }
-            InputMode::EditName => "[Enter] name         [Tab] cancel     [Enter] save       [↑/↓] fields",
-            InputMode::EditDescription => "[Enter] desc         [Tab] cancel     [Enter] save       [↑/↓] fields",
-            InputMode::EditProduction => "[←/→] toggle        [Tab] cancel     [Enter] save       [↑/↓] fields",
-            _ => "[Tab] switch panes     [j/k] navigate",
+            InputMode::EditName => "[Enter] name     [Tab] cancel     [Enter] save     [↑/↓] select",
+            InputMode::EditDescription => "[Enter] desc      [Tab] cancel     [Enter] save     [↑/↓] select",
+            InputMode::EditProduction => "[←/→] toggle     [Tab] cancel     [Enter] save     [↑/↓] select",
+            _ => "[Tab] switch panes     [↑/↓] navigate",
         },
         Tab::Inventory => match app.input_mode {
             InputMode::Normal => {
                 if app.has_multiple_panes() {
                     match app.active_pane {
                         ActivePane::Left => "[Tab] right pane     [↑/↓] select     [type] search     [Ctrl+d] delete",
-                        ActivePane::Right => "[Tab] left pane      [+/-] adjust stock [Enter] confirm",
+                        ActivePane::Right => "[Tab] left pane     [+/-] adjust stock     [Enter] confirm",
                     }
                 } else {
                     "[↑/↓] select product     [type] search     [Ctrl+d] delete"
                 }
             }
-            _ => "[Tab] switch panes     [j/k] navigate",
+            _ => "[Tab] switch panes     [↑/↓] navigate",
         },
     };
 
