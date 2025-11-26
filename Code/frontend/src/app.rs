@@ -62,6 +62,11 @@ impl App {
             .into_iter()
             .map(|tag| tag.name)
             .collect::<Vec<String>>();
+        let materials = api_client
+            .get_materials()?
+            .into_iter()
+            .map(|material| material.name)
+            .collect::<Vec<String>>();
         let categories = api_client.get_categories()?;
 
         Ok(Self {
@@ -72,6 +77,7 @@ impl App {
             api_client,
             products,
             tags,
+            materials,
             categories,
             selected_product_id: None,
             search_query: String::new(),
@@ -266,6 +272,12 @@ impl App {
         match self.api_client.get_categories() {
             Ok(categories) => self.categories = categories,
             Err(e) => self.status_message = format!("Failed to refresh categories: {:?}", e),
+        }
+        match self.api_client.get_materials() {
+            Ok(materials) => {
+                self.materials = materials.into_iter().map(|material| material.name).collect();
+            }
+            Err(e) => self.status_message = format!("Failed to refresh materials: {:?}", e),
         }
         match self.api_client.get_materials() {
             Ok(materials) => {

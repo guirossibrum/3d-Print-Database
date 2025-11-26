@@ -250,7 +250,7 @@ fn draw_create_left_pane(f: &mut Frame, area: Rect, app: &App, border_style: Sty
     // Materials field
     let materials_style = if matches!(
         app.input_mode,
-        InputMode::CreateMaterials | InputMode::CreateMaterialSelect
+        InputMode::CreateMaterials
     ) {
         Style::default().fg(Color::Yellow).bold()
     } else {

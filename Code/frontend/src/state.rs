@@ -24,6 +24,7 @@ pub struct App {
     // Data
     pub products: Vec<Product>,
     pub tags: Vec<String>,
+    pub materials: Vec<String>,
     pub categories: Vec<Category>,
 
     // UI state
@@ -65,6 +66,11 @@ impl App {
             .into_iter()
             .map(|tag| tag.name)
             .collect::<Vec<String>>();
+        let materials = api_client
+            .get_materials()?
+            .into_iter()
+            .map(|material| material.name)
+            .collect::<Vec<String>>();
         let categories = api_client.get_categories()?;
 
         Ok(Self {
@@ -75,6 +81,7 @@ impl App {
             api_client,
             products,
             tags,
+            materials,
             categories,
             selected_product_id: None,
             search_query: String::new(),
@@ -236,6 +243,12 @@ impl App {
             }
             Err(e) => self.status_message = format!("Failed to refresh tags: {:?}", e),
         }
+        match self.api_client.get_materials() {
+            Ok(materials) => {
+                self.materials = materials.into_iter().map(|material| material.name).collect();
+            }
+            Err(e) => self.status_message = format!("Failed to refresh materials: {:?}", e),
+        }
         match self.api_client.get_categories() {
             Ok(categories) => self.categories = categories,
             Err(e) => self.status_message = format!("Failed to refresh categories: {:?}", e),
@@ -270,7 +283,11 @@ impl App {
             production: self.create_form.production,
             tags: self.create_form.tags.clone(),
             category_id: Some(category_id),
-            material: None,
+            material: if self.create_form.materials.is_empty() {
+                None
+            } else {
+                Some(self.create_form.materials.clone())
+            },
             color: None,
             print_time: None,
             weight: None,
