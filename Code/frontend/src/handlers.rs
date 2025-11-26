@@ -3,6 +3,12 @@ use crossterm::event::KeyCode;
 
 use crate::models::*;
 
+#[derive(Clone, Copy)]
+enum SelectType {
+    Tag,
+    Material,
+}
+
 /// Dispatch key events to appropriate handler functions
 pub fn handle_key_dispatch(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
     match app.input_mode {
@@ -14,16 +20,16 @@ pub fn handle_key_dispatch(app: &mut super::App, key: crossterm::event::KeyEvent
         InputMode::CreateProduction => handle_create_production_mode(app, key),
         InputMode::CreateTags => handle_create_tags_mode(app, key),
         InputMode::CreateMaterials => handle_create_materials_mode(app, key),
-        InputMode::CreateTagSelect => handle_tag_select_mode(app, key),
-        InputMode::CreateMaterialSelect => handle_material_select_mode(app, key),
+        InputMode::CreateTagSelect => handle_select_mode(app, key, SelectType::Tag),
+        InputMode::CreateMaterialSelect => handle_select_mode(app, key, SelectType::Material),
         InputMode::EditName => handle_edit_name_mode(app, key),
         InputMode::EditDescription => handle_edit_description_mode(app, key),
         InputMode::EditProduction => handle_edit_production_mode(app, key),
         InputMode::EditCategories => handle_edit_categories_mode(app, key),
         InputMode::EditTags => handle_edit_tags_mode(app, key),
-        InputMode::EditTagSelect => handle_tag_select_mode(app, key),
+        InputMode::EditTagSelect => handle_select_mode(app, key, SelectType::Tag),
         InputMode::EditMaterials => handle_edit_materials_mode(app, key),
-        InputMode::EditMaterialSelect => handle_material_select_mode(app, key),
+        InputMode::EditMaterialSelect => handle_select_mode(app, key, SelectType::Material),
         InputMode::NewTag | InputMode::NewCategory | InputMode::NewMaterial => handle_new_item_mode(app, key),
         InputMode::EditTag | InputMode::EditCategory | InputMode::EditMaterial => handle_edit_item_mode(app, key),
         InputMode::DeleteConfirm => handle_delete_confirm_mode(app, key),
@@ -420,116 +426,144 @@ fn handle_create_materials_mode(app: &mut super::App, key: crossterm::event::Key
     Ok(())
 }
 
-fn handle_tag_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
+fn handle_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent, select_type: SelectType) -> Result<()> {
+    let (item_list, selected_index, form_field, create_mode, edit_mode, item_type, new_mode, has_normalize, has_edit_string) = match select_type {
+        SelectType::Tag => (
+            &app.tags,
+            &mut app.create_form.tag_selected_index,
+            &mut app.create_form.tags,
+            InputMode::CreateTags,
+            InputMode::EditTags,
+            ItemType::Tag,
+            InputMode::NewTag,
+            true,
+            true,
+        ),
+        SelectType::Material => (
+            &app.materials,
+            &mut app.create_form.material_selected_index,
+            &mut app.create_form.materials,
+            InputMode::CreateMaterials,
+            InputMode::EditMaterials,
+            ItemType::Material,
+            InputMode::NewMaterial,
+            false,
+            false,
+        ),
+    };
+
     match key.code {
         KeyCode::Esc => {
             app.input_mode = match app.tag_select_mode {
-                TagSelectMode::Create => InputMode::CreateTags,
-                TagSelectMode::Edit => InputMode::EditTags,
+                TagSelectMode::Create => create_mode,
+                TagSelectMode::Edit => edit_mode,
             };
             app.tag_selection.clear();
-            app.active_pane = ActivePane::Left; // Return to left pane
+            app.active_pane = ActivePane::Left;
         }
         KeyCode::Enter => {
-            // Handle based on context (Create vs Edit)
             match app.tag_select_mode {
                 TagSelectMode::Create => {
-                    // Add selected tags to create_form.tags
-                    app.create_form.tags.clear();
+                    form_field.clear();
                     for (i, &selected) in app.tag_selection.iter().enumerate() {
-                        if selected
-                            && let Some(tag) = app.tags.get(i) {
-                                app.create_form.tags.push(tag.clone());
-                            }
+                        if selected && let Some(item) = item_list.get(i) {
+                            form_field.push(item.clone());
+                        }
                     }
                     app.tag_selection.clear();
-                    app.input_mode = InputMode::CreateTags;
+                    app.input_mode = create_mode;
                     app.active_pane = ActivePane::Left;
                 }
                 TagSelectMode::Edit => {
-                    // Update product tags with selected tags
-                    if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
-                        product.tags.clear();
-                        for (i, &selected) in app.tag_selection.iter().enumerate() {
-                            if selected
-                                && let Some(tag) = app.tags.get(i) {
-                                    product.tags.push(tag.clone());
-                                }
+                    let mut selected_items = Vec::new();
+                    for (i, &selected) in app.tag_selection.iter().enumerate() {
+                        if selected && let Some(item) = item_list.get(i) {
+                            selected_items.push(item.clone());
                         }
-                        // Update edit_tags_string to reflect changes
-                        app.edit_tags_string = product.tags.join(", ");
+                    }
+                    if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
+                        match select_type {
+                            SelectType::Tag => {
+                                product.tags = selected_items;
+                                if has_edit_string {
+                                    app.edit_tags_string = product.tags.join(", ");
+                                }
+                            }
+                            SelectType::Material => {
+                                product.material = if selected_items.is_empty() { None } else { Some(selected_items) };
+                            }
+                        }
                     }
                     app.tag_selection.clear();
-                    app.input_mode = InputMode::EditTags;
-                    app.active_pane = ActivePane::Right; // Return to Product Details pane (right)
+                    app.input_mode = edit_mode;
+                    app.active_pane = ActivePane::Right;
                 }
             }
         }
         KeyCode::Down => {
-            if !app.tags.is_empty() {
-                app.create_form.tag_selected_index =
-                    (app.create_form.tag_selected_index + 1) % app.tags.len();
+            if !item_list.is_empty() {
+                *selected_index = (*selected_index + 1) % item_list.len();
             }
         }
         KeyCode::Up => {
-            if !app.tags.is_empty() {
-                app.create_form.tag_selected_index =
-                    if app.create_form.tag_selected_index == 0 {
-                        app.tags.len() - 1
-                    } else {
-                        app.create_form.tag_selected_index - 1
-                    };
+            if !item_list.is_empty() {
+                *selected_index = if *selected_index == 0 {
+                    item_list.len() - 1
+                } else {
+                    *selected_index - 1
+                };
             }
         }
         KeyCode::Char(' ') => {
-            // Toggle selection
-            if app.create_form.tag_selected_index < app.tag_selection.len() {
-                app.tag_selection[app.create_form.tag_selected_index] =
-                    !app.tag_selection[app.create_form.tag_selected_index];
+            if *selected_index < app.tag_selection.len() {
+                app.tag_selection[*selected_index] = !app.tag_selection[*selected_index];
             }
         }
         KeyCode::Char('d') => {
-            // Delete selected tag
-            if app.create_form.tag_selected_index < app.tags.len() {
-                let tag_to_delete = app.tags[app.create_form.tag_selected_index].clone();
-                
-                // Normalize tag name to match backend behavior
-                let normalized_tag = normalize_tag_name(&tag_to_delete);
-                
-                // Check if tag is in use by any product (checking normalized names)
-                let tag_in_use = app.products.iter().any(|p| {
-                    p.tags.iter().any(|t| normalize_tag_name(t) == normalized_tag)
-                });
-                
-                if tag_in_use {
-                    app.set_status_message(format!("Cannot delete tag '{}' - it is in use by products", tag_to_delete));
+            if *selected_index < item_list.len() {
+                let item_to_delete = item_list[*selected_index].clone();
+                let normalized_name = if has_normalize {
+                    normalize_tag_name(&item_to_delete)
                 } else {
-                    // Delete tag from backend (use normalized name)
-                    match app.api_client.delete_tag(&normalized_tag) {
+                    item_to_delete.clone()
+                };
+                let in_use = match select_type {
+                    SelectType::Tag => app.products.iter().any(|p| p.tags.iter().any(|t| normalize_tag_name(t) == normalized_name)),
+                    SelectType::Material => app.products.iter().any(|p| p.material.as_ref().is_some_and(|m| m.contains(&item_to_delete))),
+                };
+                if in_use {
+                    let item_name = match select_type { SelectType::Tag => "tag", SelectType::Material => "material" };
+                    app.set_status_message(format!("Cannot delete {} '{}' - it is in use by products", item_name, item_to_delete));
+                } else {
+                    let result = match select_type {
+                        SelectType::Tag => app.api_client.delete_tag(&normalized_name),
+                        SelectType::Material => app.api_client.delete_material(&item_to_delete),
+                    };
+                    match result {
                         Ok(_) => {
-                            // Remove tag from local list
-                            app.tags.retain(|t| t != &tag_to_delete);
-                            
-                            // Adjust selected index if needed
-                            if app.create_form.tag_selected_index >= app.tags.len() && !app.tags.is_empty() {
-                                app.create_form.tag_selected_index = app.tags.len() - 1;
+                            match select_type {
+                                SelectType::Tag => app.tags.retain(|t| t != &item_to_delete),
+                                SelectType::Material => app.materials.retain(|m| m != &item_to_delete),
+                            };
+                            if *selected_index >= item_list.len() && !item_list.is_empty() {
+                                *selected_index = item_list.len() - 1;
                             }
-                            
-                            app.set_status_message(format!("Tag '{}' deleted successfully", tag_to_delete));
+                            let item_cap = match select_type { SelectType::Tag => "Tag", SelectType::Material => "Material" };
+                            app.set_status_message(format!("{} '{}' deleted successfully", item_cap, item_to_delete));
                         }
                         Err(e) => {
-                            app.set_status_message(format!("Error deleting tag '{}': {}", tag_to_delete, e));
+                            let item_name = match select_type { SelectType::Tag => "tag", SelectType::Material => "material" };
+                            app.set_status_message(format!("Error deleting {} '{}': {}", item_name, item_to_delete, e));
                         }
                     }
                 }
             }
         }
         KeyCode::Char('n') => {
-            // Create new tag
-            app.item_type = ItemType::Tag;
+            app.item_type = item_type;
             app.tag_form = TagForm::default();
             app.previous_input_mode = Some(app.input_mode);
-            app.input_mode = InputMode::NewTag;
+            app.input_mode = new_mode;
         }
         _ => {}
     }
@@ -834,140 +868,7 @@ fn handle_edit_materials_mode(app: &mut super::App, key: crossterm::event::KeyEv
     Ok(())
 }
 
-fn handle_material_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
-    match key.code {
-        KeyCode::Esc => {
-            match app.tag_select_mode {
-                TagSelectMode::Create => {
-                    app.input_mode = InputMode::CreateMaterials;
-                    app.tag_selection.clear();
-                    app.active_pane = ActivePane::Left;
-                }
-                TagSelectMode::Edit => {
-                    // Auto-apply current selections before exiting
-                    let mut selected_materials = Vec::new();
-                    for (i, &selected) in app.tag_selection.iter().enumerate() {
-                        if selected
-                            && let Some(material) = app.materials.get(i) {
-                            selected_materials.push(material.to_string());
-                        }
-                    }
-                    if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
-                        product.material = if selected_materials.is_empty() {
-                            None
-                        } else {
-                            Some(selected_materials)
-                        };
-                    }
-                    app.tag_selection.clear();
-                    app.input_mode = InputMode::EditMaterials;
-                    app.active_pane = ActivePane::Left;
-                }
-            }
-        }
-        KeyCode::Enter => {
-            match app.tag_select_mode {
-                TagSelectMode::Create => {
-                    // Add selected materials to create_form.materials
-                    app.create_form.materials.clear();
-                    for (i, &selected) in app.tag_selection.iter().enumerate() {
-                        if selected
-                            && let Some(material) = app.materials.get(i) {
-                            app.create_form.materials.push(material.clone());
-                        }
-                    }
-                    app.tag_selection.clear();
-                    app.input_mode = InputMode::CreateMaterials;
-                    app.active_pane = ActivePane::Left;
-                }
-                TagSelectMode::Edit => {
-                    // Apply selected materials to product
-                    let mut selected_materials = Vec::new();
-                    for (i, &selected) in app.tag_selection.iter().enumerate() {
-                        if selected
-                            && let Some(material) = app.materials.get(i) {
-                            selected_materials.push(material.to_string());
-                        }
-                    }
-                    if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
-                        product.material = if selected_materials.is_empty() {
-                            None
-                        } else {
-                            Some(selected_materials)
-                        };
-                    }
-                    app.tag_selection.clear();
-                    app.input_mode = InputMode::EditMaterials;
-                    app.active_pane = ActivePane::Right;
-                }
-            }
-        }
-        KeyCode::Down => {
-            if !app.materials.is_empty() {
-                app.create_form.material_selected_index = (app.create_form.material_selected_index + 1) % app.materials.len();
-            }
-        }
-        KeyCode::Up => {
-            if !app.materials.is_empty() {
-                app.create_form.material_selected_index = if app.create_form.material_selected_index == 0 {
-                    app.materials.len() - 1
-                } else {
-                    app.create_form.material_selected_index - 1
-                };
-            }
-        }
-        KeyCode::Char(' ') => {
-            // Toggle selection
-            if app.create_form.material_selected_index < app.tag_selection.len() {
-                app.tag_selection[app.create_form.material_selected_index] =
-                    !app.tag_selection[app.create_form.material_selected_index];
-            }
-        }
-        KeyCode::Char('n') => {
-            // Create new material
-            app.item_type = ItemType::Material;
-            app.tag_form = TagForm::default(); // Reuse TagForm for Material
-            app.previous_input_mode = Some(app.input_mode);
-            app.input_mode = InputMode::NewMaterial;
-        }
-        KeyCode::Char('d') => {
-            // Delete selected material
-            if app.create_form.material_selected_index < app.materials.len() {
-                let material_to_delete = app.materials[app.create_form.material_selected_index].clone();
 
-                // Check if material is in use by any product
-                let material_in_use = app.products.iter().any(|p| {
-                    p.material.as_ref()
-                        .is_some_and(|materials| materials.contains(&material_to_delete))
-                });
-
-                if material_in_use {
-                    app.status_message = format!("Cannot delete material '{}' - it is in use by products", material_to_delete);
-                } else {
-                    // Delete material from backend
-                    match app.api_client.delete_material(&material_to_delete) {
-                        Ok(_) => {
-                            // Remove material from local list
-                            app.materials.retain(|m| m != &material_to_delete);
-
-                            // Adjust selected index if needed
-                   if app.create_form.material_selected_index >= app.materials.len() && !app.materials.is_empty() {
-                        app.create_form.material_selected_index = app.materials.len() - 1;
-                            }
-
-                            app.set_status_message(format!("Material '{}' deleted successfully", material_to_delete));
-                        }
-                        Err(e) => {
-                            app.set_status_message(format!("Error deleting material '{}': {}", material_to_delete, e));
-                        }
-                    }
-                }
-            }
-        }
-        _ => {}
-    }
-    Ok(())
-}
 
 fn handle_edit_tags_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
     match key.code {
