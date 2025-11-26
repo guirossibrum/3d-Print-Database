@@ -48,7 +48,7 @@ pub struct App {
     pub category_form: CategoryForm,
     pub tag_form: TagForm,
     pub popup_field: usize,
-    pub tag_selection: Vec<bool>,
+    pub tag_selection: Vec<bool>, // Temporary for create modes
     pub edit_tags_string: String,
 }
 

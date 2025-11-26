@@ -48,10 +48,8 @@ pub struct App {
     pub category_form: CategoryForm,
     pub tag_form: TagForm,
     pub popup_field: usize,
-    pub tag_selection: Vec<bool>,
-    #[allow(dead_code)]
+    pub tag_selection: Vec<bool>, // Selection state for tags and materials
     pub category_selection: Vec<bool>,
-    #[allow(dead_code)]
     pub selected_category_index: usize,
     pub edit_tags_string: String,
 
