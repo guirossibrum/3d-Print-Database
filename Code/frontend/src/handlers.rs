@@ -110,10 +110,10 @@ fn handle_normal_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> 
                 if let Some(product) = app.get_selected_product() {
                     match open_product_folder(&product.sku) {
                         Ok(_) => {
-                            app.status_message = format!("Opened folder for product {}", product.sku);
+                            app.set_status_message(format!("Opened folder for product {}", product.sku));
                         }
                         Err(e) => {
-                            app.status_message = format!("Error opening folder: {}", e);
+                            app.set_status_message(format!("Error opening folder: {}", e));
                         }
                     }
                 }
@@ -504,7 +504,7 @@ fn handle_tag_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent)
                 });
                 
                 if tag_in_use {
-                    app.status_message = format!("Cannot delete tag '{}' - it is in use by products", tag_to_delete);
+                    app.set_status_message(format!("Cannot delete tag '{}' - it is in use by products", tag_to_delete));
                 } else {
                     // Delete tag from backend (use normalized name)
                     match app.api_client.delete_tag(&normalized_tag) {
@@ -517,10 +517,10 @@ fn handle_tag_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent)
                                 app.create_form.tag_selected_index = app.tags.len() - 1;
                             }
                             
-                            app.status_message = format!("Tag '{}' deleted successfully", tag_to_delete);
+                            app.set_status_message(format!("Tag '{}' deleted successfully", tag_to_delete));
                         }
                         Err(e) => {
-                            app.status_message = format!("Error deleting tag '{}': {}", tag_to_delete, e);
+                            app.set_status_message(format!("Error deleting tag '{}': {}", tag_to_delete, e));
                         }
                     }
                 }
@@ -593,7 +593,7 @@ fn handle_material_select_mode(app: &mut super::App, key: crossterm::event::KeyE
                 });
                 
                 if material_in_use {
-                    app.status_message = format!("Cannot delete material '{}' - it is in use by products", material_to_delete);
+                    app.set_status_message(format!("Cannot delete material '{}' - it is in use by products", material_to_delete));
                 } else {
                     // Delete material from backend
                     match app.api_client.delete_material(&material_to_delete) {
@@ -606,10 +606,10 @@ fn handle_material_select_mode(app: &mut super::App, key: crossterm::event::KeyE
                                 app.create_form.material_selected_index = app.materials.len() - 1;
                             }
                             
-                            app.status_message = format!("Material '{}' deleted successfully", material_to_delete);
+                            app.set_status_message(format!("Material '{}' deleted successfully", material_to_delete));
                         }
                         Err(e) => {
-                            app.status_message = format!("Error deleting material '{}': {}", material_to_delete, e);
+                            app.set_status_message(format!("Error deleting material '{}': {}", material_to_delete, e));
                         }
                     }
                 }
@@ -660,7 +660,7 @@ fn handle_edit_name_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
                 };
                 match app.api_client.update_product(&product.sku, &update) {
                     Ok(_) => {
-                        app.status_message = "Product updated successfully".to_string();
+                        app.set_status_message("Product updated successfully".to_string());
                         app.refresh_data();
                     }
                     Err(e) => app.status_message = format!("Error updating product: {:?}", e),
@@ -723,7 +723,7 @@ fn handle_edit_description_mode(app: &mut super::App, key: crossterm::event::Key
                 };
                 match app.api_client.update_product(&product.sku, &update) {
                     Ok(_) => {
-                        app.status_message = "Product updated successfully".to_string();
+                        app.set_status_message("Product updated successfully".to_string());
                         app.refresh_data();
                     }
                     Err(e) => app.status_message = format!("Error updating product: {:?}", e),
@@ -788,7 +788,7 @@ fn handle_edit_production_mode(app: &mut super::App, key: crossterm::event::KeyE
                 };
                 match app.api_client.update_product(&product.sku, &update) {
                     Ok(_) => {
-                        app.status_message = "Product updated successfully".to_string();
+                        app.set_status_message("Product updated successfully".to_string());
                         app.refresh_data();
                     }
                     Err(e) => app.status_message = format!("Error updating product: {:?}", e),
@@ -869,7 +869,7 @@ fn handle_edit_tags_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
                 };
                 match app.api_client.update_product(&product.sku, &update) {
                     Ok(_) => {
-                        app.status_message = "Product updated successfully".to_string();
+                        app.set_status_message("Product updated successfully".to_string());
                         app.refresh_data();
                     }
                     Err(e) => app.status_message = format!("Error updating product: {:?}", e),
@@ -959,7 +959,7 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                                     created_count += 1;
                                 }
                                 Err(e) => {
-                                    app.status_message = format!("Error creating tag '{}': {:?}", tag_name, e);
+                                    app.set_status_message(format!("Error creating tag '{}': {:?}", tag_name, e));
                                 }
                             }
                         }
@@ -992,10 +992,10 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                             } else {
                                 format!("{} tags created", created_count)
                             };
-                            app.status_message = message;
+                            app.set_status_message(message);
                         }
                     } else {
-                        app.status_message = "Error: Tag name required".to_string();
+                        app.set_status_message("Error: Tag name required".to_string());
                     }
                     app.tag_form = TagForm::default();
                     app.input_mode = match app.tag_select_mode {
@@ -1029,11 +1029,11 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                                     .unwrap_or(0);
                             }
                             Err(e) => {
-                                app.status_message = format!("Error creating category: {:?}", e);
+                                app.set_status_message(format!("Error creating category: {:?}", e));
                             }
                         }
                     } else {
-                        app.status_message = "Error: Name required, SKU must be 3 letters".to_string();
+                        app.set_status_message("Error: Name required, SKU must be 3 letters".to_string());
                     }
                     app.category_form = CategoryForm::default();
                     app.popup_field = 0;
@@ -1068,7 +1068,7 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                                     created_count += 1;
                                 }
                                 Err(e) => {
-                                    app.status_message = format!("Error creating material '{}': {:?}", material_name, e);
+                                    app.set_status_message(format!("Error creating material '{}': {:?}", material_name, e));
                                 }
                             }
                         }
@@ -1101,10 +1101,10 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                             } else {
                                 format!("{} materials created", created_count)
                             };
-                            app.status_message = message;
+                            app.set_status_message(message);
                         }
                     } else {
-                        app.status_message = "Error: Material name required".to_string();
+                        app.set_status_message("Error: Material name required".to_string());
                     }
                     app.tag_form = TagForm::default();
                     app.input_mode = InputMode::CreateMaterialSelect;
@@ -1193,12 +1193,12 @@ fn handle_delete_confirm_mode(app: &mut super::App, key: crossterm::event::KeyEv
                 if let Some(product) = &app.selected_product_for_delete {
                     match app.api_client.delete_product(&product.sku, false) {
                         Ok(_) => {
-                            app.status_message = format!("Product {} deleted from database", product.sku);
+                            app.set_status_message(format!("Product {} deleted from database", product.sku));
                             app.refresh_data();
                             app.clear_selection();
                         }
                         Err(e) => {
-                            app.status_message = format!("Error deleting product: {}", e);
+                            app.set_status_message(format!("Error deleting product: {}", e));
                         }
                     }
                 }
@@ -1213,7 +1213,7 @@ fn handle_delete_confirm_mode(app: &mut super::App, key: crossterm::event::KeyEv
                             app.input_mode = InputMode::DeleteFileConfirm;
                         }
                         Err(e) => {
-                            app.status_message = format!("Error scanning files: {}", e);
+                            app.set_status_message(format!("Error scanning files: {}", e));
                             app.input_mode = InputMode::Normal;
                             app.selected_product_for_delete = None;
                         }
@@ -1238,12 +1238,12 @@ fn handle_delete_file_confirm_mode(app: &mut super::App, key: crossterm::event::
             if let Some(product) = &app.selected_product_for_delete {
                 match app.api_client.delete_product(&product.sku, true) {
                     Ok(_) => {
-                        app.status_message = format!("Product {} and all files deleted", product.sku);
+                        app.set_status_message(format!("Product {} and all files deleted", product.sku));
                         app.refresh_data();
                         app.clear_selection();
                     }
                     Err(e) => {
-                        app.status_message = format!("Error deleting product: {}", e);
+                        app.set_status_message(format!("Error deleting product: {}", e));
                     }
                 }
             }
@@ -1451,12 +1451,12 @@ fn handle_edit_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
                                     app.refresh_data();
                                 }
                                 Err(e) => {
-                                    app.status_message = format!("Error updating tag: {:?}", e);
+                                    app.set_status_message(format!("Error updating tag: {:?}", e));
                                 }
                             }
                         }
                     } else {
-                        app.status_message = "Error: Tag name required".to_string();
+                        app.set_status_message("Error: Tag name required".to_string());
                     }
                     app.tag_form = TagForm::default();
                     app.input_mode = match app.tag_select_mode {
@@ -1492,12 +1492,12 @@ fn handle_edit_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
                                     app.refresh_data();
                                 }
                                 Err(e) => {
-                                    app.status_message = format!("Error updating category: {:?}", e);
+                                    app.set_status_message(format!("Error updating category: {:?}", e));
                                 }
                             }
                         }
                     } else {
-                        app.status_message = "Error: Name required, SKU must be 3 letters".to_string();
+                        app.set_status_message("Error: Name required, SKU must be 3 letters".to_string());
                     }
                     app.category_form = CategoryForm::default();
                     app.popup_field = 0;
@@ -1529,12 +1529,12 @@ fn handle_edit_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
                                     app.refresh_data();
                                 }
                                 Err(e) => {
-                                    app.status_message = format!("Error updating material: {:?}", e);
+                                    app.set_status_message(format!("Error updating material: {:?}", e));
                                 }
                             }
                         }
                     } else {
-                        app.status_message = "Error: Material name required".to_string();
+                        app.set_status_message("Error: Material name required".to_string());
                     }
                     app.tag_form = TagForm::default();
                     app.input_mode = InputMode::CreateMaterialSelect;

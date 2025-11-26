@@ -644,7 +644,13 @@ fn draw_searchable_pane_with_styles<F>(
 {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(3), Constraint::Min(5)])
+        .constraints([
+            Constraint::Length(3),     // Title
+            Constraint::Min(10),       // Content area
+            Constraint::Length(1),     // Footer helper
+            Constraint::Length(1),     // Status message line
+            Constraint::Length(1),     // Version info
+        ])
         .split(area);
 
     // Search input - always show current query (no mode switching needed)
@@ -1113,15 +1119,40 @@ Tab::Create => match app.input_mode {
         app.status_message.clone()
     };
 
-    let footer_text = format!(
-        "{}     v{}",
-        instructions, version
-    );
+    // Split footer area into helper + status + version
+    let footer_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(1),  // Helper text
+            Constraint::Length(1),  // Status message
+            Constraint::Length(1),  // Version
+        ])
+        .split(area);
 
-    let footer = Paragraph::new(footer_text)
+    // Helper text
+    let helper = Paragraph::new(instructions)
         .style(Style::default().fg(Color::Cyan))
-        .wrap(Wrap { trim: false })
-        .alignment(ratatui::layout::Alignment::Left);
+        .wrap(Wrap { trim: false });
+    f.render_widget(helper, footer_chunks[0]);
 
-    f.render_widget(footer, area);
+    // Status message
+    if app.should_show_status() && !app.status_message.is_empty() {
+        let status_style = if app.status_message.starts_with("Error") {
+            Style::default().fg(Color::Red).bold()
+        } else {
+            Style::default().fg(Color::Green)
+        };
+
+        let status = Paragraph::new(app.status_message.as_str())
+            .style(status_style)
+            .wrap(Wrap { trim: false });
+        f.render_widget(status, footer_chunks[1]);
+    }
+
+    // Version info
+    let version_text = format!("3D Print Database TUI v{}", version);
+    let version_para = Paragraph::new(version_text)
+        .style(Style::default().fg(Color::Gray))
+        .alignment(ratatui::layout::Alignment::Right);
+    f.render_widget(version_para, footer_chunks[2]);
 }

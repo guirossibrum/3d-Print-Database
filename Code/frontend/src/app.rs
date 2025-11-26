@@ -290,14 +290,14 @@ impl App {
     pub fn save_product(&mut self) -> Result<()> {
         // Validate required fields
         if self.create_form.name.trim().is_empty() {
-            self.status_message = "Error: Product name is required".to_string();
+            self.set_status_message("Error: Product name is required".to_string());
             return Ok(());
         }
 
         let category_id = match self.create_form.category_id {
             Some(id) => id,
             None => {
-                self.status_message = "Error: Category must be selected".to_string();
+                self.set_status_message("Error: Category must be selected".to_string());
                 return Ok(());
             }
         };
@@ -332,7 +332,7 @@ impl App {
         // Call API to create product
         match self.api_client.create_product(&product) {
             Ok(response) => {
-                self.status_message = format!("Product {} created successfully", response.sku);
+                self.set_status_message(format!("Product {} created successfully", response.sku));
                 // Clear form
                 self.create_form = CreateForm {
                     production: true,

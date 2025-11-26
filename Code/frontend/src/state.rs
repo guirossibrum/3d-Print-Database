@@ -32,6 +32,7 @@ pub struct App {
     pub search_query: String,
     pub inventory_search_query: String,
     pub status_message: String,
+    pub status_message_timestamp: Option<std::time::Instant>,
 
     // Edit backup (for cancelling changes)
     pub edit_backup: Option<Product>,
@@ -87,6 +88,7 @@ impl App {
             search_query: String::new(),
             inventory_search_query: String::new(),
             status_message: String::new(),
+            status_message_timestamp: None,
             edit_backup: None,
             previous_input_mode: None,
             tag_select_mode: TagSelectMode::Create,
@@ -235,37 +237,37 @@ impl App {
         // Refresh products, tags, and categories from the database
         match self.api_client.get_products() {
             Ok(products) => self.products = products,
-            Err(e) => self.status_message = format!("Failed to refresh products: {:?}", e),
+            Err(e) => self.set_status_message(format!("Failed to refresh products: {:?}", e)),
         }
         match self.api_client.get_tags() {
             Ok(tags) => {
                 self.tags = tags.into_iter().map(|tag| tag.name).collect();
             }
-            Err(e) => self.status_message = format!("Failed to refresh tags: {:?}", e),
+            Err(e) => self.set_status_message(format!("Failed to refresh tags: {:?}", e)),
         }
         match self.api_client.get_materials() {
             Ok(materials) => {
                 self.materials = materials.into_iter().map(|material| material.name).collect();
             }
-            Err(e) => self.status_message = format!("Failed to refresh materials: {:?}", e),
+            Err(e) => self.set_status_message(format!("Failed to refresh materials: {:?}", e)),
         }
         match self.api_client.get_categories() {
             Ok(categories) => self.categories = categories,
-            Err(e) => self.status_message = format!("Failed to refresh categories: {:?}", e),
+            Err(e) => self.set_status_message(format!("Failed to refresh categories: {:?}", e)),
         }
     }
 
     pub fn save_product(&mut self) -> Result<()> {
         // Validate required fields
         if self.create_form.name.trim().is_empty() {
-            self.status_message = "Error: Product name is required".to_string();
+            self.set_status_message("Error: Product name is required".to_string());
             return Ok(());
         }
 
         let category_id = match self.create_form.category_id {
             Some(id) => id,
             None => {
-                self.status_message = "Error: Category must be selected".to_string();
+                self.set_status_message("Error: Category must be selected".to_string());
                 return Ok(());
             }
         };
@@ -300,7 +302,7 @@ impl App {
         // Call API to create product
         match self.api_client.create_product(&product) {
             Ok(_) => {
-                self.status_message = "Product created successfully".to_string();
+                self.set_status_message("Product created successfully".to_string());
                 // Clear form
                 self.create_form = CreateForm {
                     production: true,
@@ -309,9 +311,24 @@ impl App {
                 // Refresh data
                 self.refresh_data();
             }
-            Err(e) => self.status_message = format!("Error creating product: {:?}", e),
+            Err(e) => self.set_status_message(format!("Error creating product: {:?}", e)),
         }
         Ok(())
+    }
+
+    // Status message management with 20-second persistence
+    pub fn set_status_message(&mut self, message: String) {
+        self.status_message = message;
+        self.status_message_timestamp = Some(std::time::Instant::now());
+    }
+
+    // Check if status message should still be shown (20-second timeout)
+    pub fn should_show_status(&self) -> bool {
+        if let Some(timestamp) = self.status_message_timestamp {
+            timestamp.elapsed() < std::time::Duration::from_secs(20)
+        } else {
+            false
+        }
     }
 
     // Basic key handling - delegates to handlers module for complex logic
