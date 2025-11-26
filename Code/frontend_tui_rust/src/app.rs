@@ -302,8 +302,8 @@ impl App {
 
         // Call API to create product
         match self.api_client.create_product(&product) {
-            Ok(_) => {
-                self.status_message = "Product created successfully".to_string();
+            Ok(response) => {
+                self.status_message = format!("Product {} created successfully", response.sku);
                 // Clear form
                 self.create_form = CreateForm {
                     production: true,

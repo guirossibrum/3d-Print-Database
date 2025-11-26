@@ -1000,7 +1000,7 @@ fn build_file_tree(sku: &str) -> Result<Vec<String>> {
     use std::path::Path;
     
     let mut content = Vec::new();
-    let base_path = Path::new("/Products").join(sku);
+    let base_path = Path::new("/home/grbrum/Work/3d_print/Products").join(sku);
     
     if !base_path.exists() {
         content.push("No files found for this product".to_string());
