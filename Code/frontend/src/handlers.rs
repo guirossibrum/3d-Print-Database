@@ -427,9 +427,8 @@ fn handle_create_materials_mode(app: &mut super::App, key: crossterm::event::Key
 }
 
 fn handle_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent, select_type: SelectType) -> Result<()> {
-    let (item_list, selected_index, form_field, create_mode, edit_mode, item_type, new_mode, has_normalize, has_edit_string) = match select_type {
+    let (selected_index, form_field, create_mode, edit_mode, item_type, new_mode, has_normalize, has_edit_string) = match select_type {
         SelectType::Tag => (
-            &app.tags,
             &mut app.create_form.tag_selected_index,
             &mut app.create_form.tags,
             InputMode::CreateTags,
@@ -440,7 +439,6 @@ fn handle_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent, sel
             true,
         ),
         SelectType::Material => (
-            &app.materials,
             &mut app.create_form.material_selected_index,
             &mut app.create_form.materials,
             InputMode::CreateMaterials,
@@ -450,6 +448,10 @@ fn handle_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent, sel
             false,
             false,
         ),
+    };
+    let item_len = match select_type {
+        SelectType::Tag => app.tags.len(),
+        SelectType::Material => app.materials.len(),
     };
 
     match key.code {
@@ -466,8 +468,14 @@ fn handle_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent, sel
                 TagSelectMode::Create => {
                     form_field.clear();
                     for (i, &selected) in app.tag_selection.iter().enumerate() {
-                        if selected && let Some(item) = item_list.get(i) {
-                            form_field.push(item.clone());
+                        if selected {
+                            let item = match select_type {
+                                SelectType::Tag => app.tags.get(i).cloned(),
+                                SelectType::Material => app.materials.get(i).cloned(),
+                            };
+                            if let Some(item) = item {
+                                form_field.push(item);
+                            }
                         }
                     }
                     app.tag_selection.clear();
@@ -477,8 +485,14 @@ fn handle_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent, sel
                 TagSelectMode::Edit => {
                     let mut selected_items = Vec::new();
                     for (i, &selected) in app.tag_selection.iter().enumerate() {
-                        if selected && let Some(item) = item_list.get(i) {
-                            selected_items.push(item.clone());
+                        if selected {
+                            let item = match select_type {
+                                SelectType::Tag => app.tags.get(i).cloned(),
+                                SelectType::Material => app.materials.get(i).cloned(),
+                            };
+                            if let Some(item) = item {
+                                selected_items.push(item);
+                            }
                         }
                     }
                     if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
@@ -501,14 +515,14 @@ fn handle_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent, sel
             }
         }
         KeyCode::Down => {
-            if !item_list.is_empty() {
-                *selected_index = (*selected_index + 1) % item_list.len();
+            if item_len > 0 {
+                *selected_index = (*selected_index + 1) % item_len;
             }
         }
         KeyCode::Up => {
-            if !item_list.is_empty() {
+            if item_len > 0 {
                 *selected_index = if *selected_index == 0 {
-                    item_list.len() - 1
+                    item_len - 1
                 } else {
                     *selected_index - 1
                 };
@@ -520,8 +534,11 @@ fn handle_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent, sel
             }
         }
         KeyCode::Char('d') => {
-            if *selected_index < item_list.len() {
-                let item_to_delete = item_list[*selected_index].clone();
+            if *selected_index < item_len {
+                let item_to_delete = match select_type {
+                    SelectType::Tag => app.tags[*selected_index].clone(),
+                    SelectType::Material => app.materials[*selected_index].clone(),
+                };
                 let normalized_name = if has_normalize {
                     normalize_tag_name(&item_to_delete)
                 } else {
@@ -545,8 +562,12 @@ fn handle_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent, sel
                                 SelectType::Tag => app.tags.retain(|t| t != &item_to_delete),
                                 SelectType::Material => app.materials.retain(|m| m != &item_to_delete),
                             };
-                            if *selected_index >= item_list.len() && !item_list.is_empty() {
-                                *selected_index = item_list.len() - 1;
+                            let new_len = match select_type {
+                                SelectType::Tag => app.tags.len(),
+                                SelectType::Material => app.materials.len(),
+                            };
+                            if *selected_index >= new_len && new_len > 0 {
+                                *selected_index = new_len - 1;
                             }
                             let item_cap = match select_type { SelectType::Tag => "Tag", SelectType::Material => "Material" };
                             app.set_status_message(format!("{} '{}' deleted successfully", item_cap, item_to_delete));
@@ -899,25 +920,33 @@ fn handle_edit_tags_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
             } else {
                 return Ok(());
             };
+            /* Original partial update (commented for approval):
             let mut update = crate::api::ProductUpdate::default();
             update.name = Some(product.name);
             update.description = product.description;
             update.tags = Some(product.tags);
             update.production = Some(product.production);
             app.perform_update(&sku, update)?;
+            */
+            // Full update like materials
+            let mut update = crate::api::ProductUpdate::default();
+            update.name = Some(product.name);
+            update.description = product.description;
+            update.tags = Some(product.tags);
+            update.production = Some(product.production);
+            update.material = Some(product.material.unwrap_or_default());
+            update.color = product.color;
+            update.print_time = product.print_time;
+            update.weight = product.weight;
+            update.stock_quantity = product.stock_quantity;
+            update.reorder_point = product.reorder_point;
+            update.unit_cost = product.unit_cost;
+            update.selling_price = product.selling_price;
+            app.perform_update(&sku, update)?;
             app.input_mode = InputMode::Normal;
             app.active_pane = ActivePane::Left;
         }
         KeyCode::Tab => {
-            // Parse current edit_tags_string to product.tags
-            if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
-                product.tags = app
-                    .edit_tags_string
-                    .split(',')
-                    .map(|s| s.trim().to_string())
-                    .filter(|s| !s.is_empty())
-                    .collect();
-            }
             app.tag_selection = vec![false; app.tags.len()];
             // Pre-select tags that are already in the current product
             if let Some(product) = app.products.iter().find(|p| p.id == app.selected_product_id) {
