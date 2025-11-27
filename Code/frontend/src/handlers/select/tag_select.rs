@@ -38,7 +38,6 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
                             app.active_pane = crate::models::ActivePane::Right;
                         }
                         crate::models::InputMode::EditTagSelect => {
-                            // Apply selection and save immediately
                             if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
                                 product.tags.clear();
                                 for (i, &selected) in app.tag_selection.iter().enumerate() {
@@ -52,8 +51,8 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
                                 app.edit_tags_string = product.tags.join(", ");
                             }
                             app.tag_selection.clear();
-                            // Save immediately instead of returning to edit mode
-                            app.save_current_product()?;
+                            app.input_mode = crate::models::InputMode::EditTags;
+                            app.active_pane = crate::models::ActivePane::Right;
                         }
                         _ => {}
                     }
