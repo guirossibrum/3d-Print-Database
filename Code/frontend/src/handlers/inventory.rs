@@ -2,14 +2,14 @@
 use anyhow::Result;
 use crossterm::event::KeyEvent;
 
-use crate::app::App;
+use crate::App;
 
 pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
     use crossterm::event::KeyCode;
 
     match app.input_mode {
-        crate::state::InputMode::Normal => {
-            if matches!(app.current_tab, crate::state::Tab::Inventory) {
+        crate::models::InputMode::Normal => {
+            if matches!(app.current_tab, crate::models::Tab::Inventory) {
                 match key.code {
                     KeyCode::Char(c) => {
                         app.inventory_search_query.push(c);

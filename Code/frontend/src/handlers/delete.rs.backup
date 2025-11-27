@@ -2,16 +2,16 @@
 use anyhow::Result;
 use crossterm::event::KeyEvent;
 
-use crate::App;
+use crate::models::App;
 
 pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
     use crossterm::event::KeyCode;
 
     match app.input_mode {
-        crate::models::InputMode::DeleteConfirm => {
+        crate::models::InputMode::::DeleteConfirm => {
             match key.code {
                 KeyCode::Esc => {
-                    app.input_mode = crate::models::InputMode::Normal;
+                    app.input_mode = crate::models::InputMode::::Normal;
                     app.selected_product_for_delete = None;
                 }
                 KeyCode::Up | KeyCode::Down => {
@@ -33,18 +33,18 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
                                 }
                             }
                         }
-                        app.input_mode = crate::models::InputMode::Normal;
+                        app.input_mode = crate::models::InputMode::::Normal;
                         app.selected_product_for_delete = None;
                     } else {
                         if let Some(product) = &app.selected_product_for_delete {
                             match crate::handlers::edit::edit_file_ops::build_file_tree(&product.sku) {
                                 Ok(tree) => {
                                     app.file_tree_content = tree;
-                                    app.input_mode = crate::models::InputMode::DeleteFileConfirm;
+                                    app.input_mode = crate::models::InputMode::::DeleteFileConfirm;
                                 }
                                 Err(e) => {
                                     app.set_status_message(format!("Error scanning files: {}", e));
-                                    app.input_mode = crate::models::InputMode::Normal;
+                                    app.input_mode = crate::models::InputMode::::Normal;
                                     app.selected_product_for_delete = None;
                                 }
                             }
@@ -55,10 +55,10 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
             }
             Ok(true)
         }
-        crate::models::InputMode::DeleteFileConfirm => {
+        crate::models::InputMode::::DeleteFileConfirm => {
             match key.code {
                 crossterm::event::KeyCode::Esc => {
-                    app.input_mode = crate::models::InputMode::Normal;
+                    app.input_mode = crate::models::InputMode::::Normal;
                     app.selected_product_for_delete = None;
                     app.file_tree_content.clear();
                 }
@@ -75,12 +75,12 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
                             }
                         }
                     }
-                    app.input_mode = crate::models::InputMode::Normal;
+                    app.input_mode = crate::models::InputMode::::Normal;
                     app.selected_product_for_delete = None;
                     app.file_tree_content.clear();
                 }
                 crossterm::event::KeyCode::Char('n') | crossterm::event::KeyCode::Char('N') => {
-                    app.input_mode = crate::models::InputMode::Normal;
+                    app.input_mode = crate::models::InputMode::::Normal;
                     app.selected_product_for_delete = None;
                     app.file_tree_content.clear();
                 }

@@ -356,11 +356,11 @@ impl App {
         }
     }
 
-    // Basic key handling - delegates to handlers module for complex logic
+// Basic key handling - delegates to handlers module for complex logic
     pub fn handle_key(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
-        // Import and use the handlers module
+        // Import and use handlers module
         use crate::handlers::*;
 
-        handle_key_dispatch(self, key)
+        handle_input(self, key)
     }
 }

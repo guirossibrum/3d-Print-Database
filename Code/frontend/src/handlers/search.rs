@@ -2,15 +2,15 @@
 use anyhow::Result;
 use crossterm::event::KeyEvent;
 
-use crate::app::App;
+use crate::App;
 
 pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
     use crossterm::event::KeyCode;
 
     match app.input_mode {
-        crate::state::InputMode::Normal => {
+        crate::models::InputMode::Normal => {
             // only act here if in search tab and direct typing should affect the search box
-            if matches!(app.current_tab, crate::state::Tab::Search) {
+            if matches!(app.current_tab, crate::models::Tab::Search) {
                 match key.code {
                     KeyCode::Char(c) => {
                         app.search_query.push(c);
@@ -27,7 +27,7 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
                     KeyCode::Enter => {
                         // Direct edit from normal mode (legacy behavior)
                         if !app.products.is_empty() {
-                            app.input_mode = crate::state::InputMode::EditName;
+                            app.input_mode = crate::models::InputMode::EditName;
                             return Ok(true);
                         }
                     }

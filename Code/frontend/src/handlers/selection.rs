@@ -1,5 +1,5 @@
 // src/handlers/selection.rs
-use crate::app::App;
+use crate::App;
 
 /// Build a selection Vec<bool> for `items` where entries matching `selected_items` are true.
 pub fn build_selection_state(items: &[String], selected_items: &[String]) -> Vec<bool> {

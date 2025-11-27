@@ -1,10 +1,10 @@
 // src/handlers/util.rs
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use crossterm::event::KeyEvent;
 use std::path::PathBuf;
 use std::process::Command;
 
-use crate::app::App;
+use crate::App;
 
 /// Normalize a tag name.
 ///
@@ -99,16 +99,12 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
     // Ctrl+o shortcut to open product folder (legacy behavior)
     if let KeyCode::Char('o') = key.code {
         if key.modifiers.contains(KeyModifiers::CONTROL) {
-            if matches!(app.current_tab, crate::state::Tab::Search)
+            if matches!(app.current_tab, crate::models::Tab::Search)
                 && !app.products.is_empty()
                 && let Some(product) = app.get_selected_product()
             {
-                // Use product root from app config (fallback to default if not set)
-                let product_root = app
-                    .config
-                    .as_ref()
-                    .map(|c| c.product_root.clone())
-                    .unwrap_or_else(|| PathBuf::from("/home/grbrum/Work/3d_print/Products"));
+                // Use product root path
+                let product_root = PathBuf::from("/home/grbrum/Work/3d_print/Products");
 
                 match open_product_folder_cmd(&product_root, &product.sku) {
                     Ok(_) => {

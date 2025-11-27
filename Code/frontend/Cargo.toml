@@ -1,6 +1,6 @@
 [package]
 name = "printdb"
-version = "1.10.10"
+version = "1.10.11"
 edition = "2024"
 
 [dependencies]

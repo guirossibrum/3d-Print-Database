@@ -2,49 +2,62 @@
 use anyhow::Result;
 use crossterm::event::KeyEvent;
 
-use crate::app::App;
-use crate::handlers::selection;
-use crate::handlers::util;
+use crate::App;
+
 
 pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
     use crossterm::event::KeyCode;
 
     // We only act if we're in a create/new-item related input mode.
     match app.input_mode {
-        crate::state::InputMode::NewItem
-        | crate::state::InputMode::CreateTagSelect
-        | crate::state::InputMode::CreateMaterialSelect
-        | crate::state::InputMode::CreateCategorySelect
-        | crate::state::InputMode::CreateName
-        | crate::state::InputMode::CreateDescription => {
+        crate::models::InputMode::CreateTagSelect
+        | crate::models::InputMode::CreateMaterialSelect
+        | crate::models::InputMode::CreateCategorySelect
+        | crate::models::InputMode::CreateName
+        | crate::models::InputMode::CreateDescription
+        | crate::models::InputMode::EditTag
+        | crate::models::InputMode::EditCategory
+        | crate::models::InputMode::EditMaterial => {
             match key.code {
                 KeyCode::Esc => {
                     // Reset forms and return to previous mode
                     app.item_form = crate::models::TagForm::default();
-                    app.input_mode = app.previous_input_mode.unwrap_or(crate::state::InputMode::Normal);
+                    app.input_mode = app.previous_input_mode.unwrap_or(crate::models::InputMode::Normal);
                 }
                 KeyCode::Enter => {
                     match app.item_type {
-                        crate::state::ItemType::Tag => {
-                            create_tags_handler(app)?;
+                        crate::models::ItemType::Tag => {
+                            if matches!(app.input_mode, crate::models::InputMode::EditTag) {
+                                edit_tag_handler(app)?;
+                            } else {
+                                create_tags_handler(app)?;
+                            }
                         }
-                        crate::state::ItemType::Material => {
-                            create_materials_handler(app)?;
+                        crate::models::ItemType::Material => {
+                            if matches!(app.input_mode, crate::models::InputMode::EditMaterial) {
+                                edit_material_handler(app)?;
+                            } else {
+                                create_materials_handler(app)?;
+                            }
                         }
-                        crate::state::ItemType::Category => {
-                            create_category_handler(app)?;
+                        crate::models::ItemType::Category => {
+                            if matches!(app.input_mode, crate::models::InputMode::EditCategory) {
+                                edit_category_handler(app)?;
+                            } else {
+                                create_category_handler(app)?;
+                            }
                         }
                     }
                 }
                 KeyCode::Backspace => {
                     match app.item_type {
-                        crate::state::ItemType::Tag => { app.item_form.name.pop(); }
-                        crate::state::ItemType::Material => { app.item_form.name.pop(); }
-                        crate::state::ItemType::Category => {
+                        crate::models::ItemType::Tag => { app.item_form.name.pop(); }
+                        crate::models::ItemType::Material => { app.item_form.name.pop(); }
+                        crate::models::ItemType::Category => {
                             match app.popup_field {
-                                0 => app.category_form.name.pop(),
-                                1 => app.category_form.sku.pop(),
-                                2 => app.category_form.description.pop(),
+                                0 => { app.category_form.name.pop(); }
+                                1 => { app.category_form.sku.pop(); }
+                                2 => { app.category_form.description.pop(); }
                                 _ => {}
                             }
                         }
@@ -52,9 +65,9 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
                 }
                 KeyCode::Char(c) => {
                     match app.item_type {
-                        crate::state::ItemType::Tag => app.item_form.name.push(c),
-                        crate::state::ItemType::Material => app.item_form.name.push(c),
-                        crate::state::ItemType::Category => {
+                        crate::models::ItemType::Tag => app.item_form.name.push(c),
+                        crate::models::ItemType::Material => app.item_form.name.push(c),
+                        crate::models::ItemType::Category => {
                             match app.popup_field {
                                 0 => app.category_form.name.push(c),
                                 1 => if app.category_form.sku.len() < 3 { app.category_form.sku.push(c) },
@@ -110,13 +123,14 @@ fn create_tags_handler(app: &mut App) -> Result<()> {
         app.refresh_data();
         app.tag_selection.resize(app.tags.len(), false);
         // Preselect newly created tags
+        let created_count = created.len();
         for name in created {
             if let Some(index) = app.tags.iter().position(|t| t == &name) {
                 app.tag_selection[index] = true;
                 app.create_form.tag_selected_index = index;
             }
         }
-        app.set_status_message(format!("{} tags created", created.len()));
+        app.set_status_message(format!("{} tags created", created_count));
     }
 
     app.item_form = crate::models::TagForm::default();
@@ -157,13 +171,14 @@ fn create_materials_handler(app: &mut App) -> Result<()> {
         app.materials.sort();
         app.refresh_data();
         app.tag_selection.resize(app.materials.len(), false);
+        let created_count = created.len();
         for name in created {
             if let Some(index) = app.materials.iter().position(|t| t == &name) {
                 app.tag_selection[index] = true;
                 app.create_form.material_selected_index = index;
             }
         }
-        app.set_status_message(format!("{} materials created", created.len()));
+        app.set_status_message(format!("{} materials created", created_count));
     }
 
     app.item_form = crate::models::TagForm::default();
@@ -196,5 +211,121 @@ fn create_category_handler(app: &mut App) -> Result<()> {
 
     app.category_form = crate::models::CategoryForm::default();
     app.popup_field = 0;
+    Ok(())
+}
+
+fn edit_tag_handler(app: &mut App) -> Result<()> {
+    // Save edited tag
+    if !app.item_form.name.trim().is_empty() {
+        if app.create_form.tag_selected_index < app.tags.len() {
+            let old_name = app.tags[app.create_form.tag_selected_index].clone();
+            let tag = crate::api::Tag {
+                name: old_name.clone(),
+                usage_count: 0, // Not used for update
+            };
+            let mut updated_tag = tag.clone();
+            updated_tag.name = app.item_form.name.clone();
+            match app.api_client.update_tag(&updated_tag) {
+                Ok(_) => {
+                    app.tags[app.create_form.tag_selected_index] = app.item_form.name.clone();
+                    app.tags.sort();
+                    app.create_form.tag_selected_index = app
+                        .tags
+                        .iter()
+                        .position(|t| t == &app.item_form.name)
+                        .unwrap_or(app.create_form.tag_selected_index);
+                    app.status_message = format!("Tag '{}' updated", app.item_form.name);
+                    app.refresh_data();
+                }
+                Err(e) => {
+                    app.set_status_message(format!("Error updating tag: {:?}", e));
+                }
+            }
+        }
+    } else {
+        app.set_status_message("Error: Tag name required".to_string());
+    }
+    app.item_form = crate::models::TagForm::default();
+    app.input_mode = match app.tag_select_mode {
+        crate::models::TagSelectMode::Create => crate::models::InputMode::CreateTagSelect,
+        crate::models::TagSelectMode::Edit => crate::models::InputMode::EditTagSelect,
+    };
+    Ok(())
+}
+
+fn edit_material_handler(app: &mut App) -> Result<()> {
+    // Save edited material
+    if !app.item_form.name.trim().is_empty() {
+        if app.create_form.material_selected_index < app.materials.len() {
+            let old_name = app.materials[app.create_form.material_selected_index].clone();
+            let material = crate::api::Material {
+                name: old_name.clone(),
+                usage_count: 0, // Not used for update
+            };
+            let mut updated_material = material.clone();
+            updated_material.name = app.item_form.name.clone();
+            match app.api_client.update_material(&updated_material) {
+                Ok(updated_material) => {
+                    app.materials[app.create_form.material_selected_index] = updated_material.name.clone();
+                    app.materials.sort();
+                    app.create_form.material_selected_index = app
+                        .materials
+                        .iter()
+                        .position(|m| m == &app.item_form.name)
+                        .unwrap_or(app.create_form.material_selected_index);
+                    app.status_message = format!("Material '{}' updated", app.item_form.name);
+                    app.refresh_data();
+                }
+                Err(e) => {
+                    app.set_status_message(format!("Error updating material: {:?}", e));
+                }
+            }
+        }
+    } else {
+        app.set_status_message("Error: Material name required".to_string());
+    }
+    app.item_form = crate::models::TagForm::default();
+    app.input_mode = match app.tag_select_mode {
+        crate::models::TagSelectMode::Create => crate::models::InputMode::CreateMaterialSelect,
+        crate::models::TagSelectMode::Edit => crate::models::InputMode::EditMaterialSelect,
+    };
+    Ok(())
+}
+
+fn edit_category_handler(app: &mut App) -> Result<()> {
+    // Save edited category
+    if !app.category_form.name.trim().is_empty() && app.category_form.sku.len() == 3 {
+        if app.create_form.category_selected_index < app.categories.len() {
+            let mut category = app.categories[app.create_form.category_selected_index].clone();
+            category.name = app.category_form.name.clone();
+            category.sku_initials = app.category_form.sku.clone();
+            category.description = if app.category_form.description.trim().is_empty() {
+                None
+            } else {
+                Some(app.category_form.description.clone())
+            };
+            match app.api_client.update_category(&category) {
+                Ok(updated_category) => {
+                    app.categories[app.create_form.category_selected_index] = updated_category;
+                    app.categories.sort_by(|a, b| a.name.cmp(&b.name));
+                    app.create_form.category_selected_index = app
+                        .categories
+                        .iter()
+                        .position(|c| c.name == app.category_form.name)
+                        .unwrap_or(app.create_form.category_selected_index);
+                    app.status_message = format!("Category '{}' updated", app.category_form.name);
+                    app.refresh_data();
+                }
+                Err(e) => {
+                    app.set_status_message(format!("Error updating category: {:?}", e));
+                }
+            }
+        }
+    } else {
+        app.set_status_message("Error: Name required, SKU must be 3 letters".to_string());
+    }
+    app.category_form = crate::models::CategoryForm::default();
+    app.popup_field = 0;
+    app.input_mode = crate::models::InputMode::CreateCategorySelect;
     Ok(())
 }

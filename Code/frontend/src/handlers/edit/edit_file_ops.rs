@@ -1,12 +1,11 @@
-// src/handlers/edit/edit_file_ops.rs
-use anyhow::{Context, Result};
-use crossterm::event::KeyEvent;
+//! File operations for edit handlers
+//! 
+//! This module contains file system operations used by edit handlers.
+
+use anyhow::Result;
 use std::path::Path;
 
-use crate::app::App;
-
-/// Build a textual file tree for a product SKU.
-/// Behavior preserved from original.
+/// Build a file tree representation for a product SKU
 pub fn build_file_tree(sku: &str) -> Result<Vec<String>> {
     let mut content = Vec::new();
     let base_path = Path::new("/home/grbrum/Work/3d_print/Products").join(sku);
@@ -18,6 +17,7 @@ pub fn build_file_tree(sku: &str) -> Result<Vec<String>> {
 
     content.push(format!("📁 {}/", sku));
 
+    // Scan subdirectories
     let subdirs = ["images", "models", "notes", "print_files"];
     for subdir in &subdirs {
         let subdir_path = base_path.join(subdir);
@@ -32,6 +32,7 @@ pub fn build_file_tree(sku: &str) -> Result<Vec<String>> {
         }
     }
 
+    // Check for metadata.json
     let metadata_path = base_path.join("metadata.json");
     if metadata_path.exists() {
         content.push("└── 📄 metadata.json".to_string());
@@ -40,13 +41,17 @@ pub fn build_file_tree(sku: &str) -> Result<Vec<String>> {
     Ok(content)
 }
 
-pub fn scan_directory(dir_path: &std::path::Path, prefix: &str) -> Result<Vec<String>> {
+/// Scan a directory and return formatted file list
+fn scan_directory(dir_path: &Path, prefix: &str) -> Result<Vec<String>> {
     let mut content = Vec::new();
-    let entries = std::fs::read_dir(dir_path).with_context(|| format!("reading {}", dir_path.display()))?;
+    let entries = match std::fs::read_dir(dir_path) {
+        Ok(entries) => entries,
+        Err(_) => return Ok(content),
+    };
 
     let mut file_entries: Vec<_> = entries
         .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.file_type().map(|ft| ft.is_file()).unwrap_or(false))
+        .filter(|entry| entry.file_type().is_ok_and(|ft| ft.is_file()))
         .collect();
 
     file_entries.sort_by_key(|a| a.file_name());
@@ -59,10 +64,4 @@ pub fn scan_directory(dir_path: &std::path::Path, prefix: &str) -> Result<Vec<St
     }
 
     Ok(content)
-}
-
-/// handle: allow edit_file_ops to respond to DeleteFileConfirm and DeleteConfirm modes etc.
-/// For now we return false; the dispatcher will call specific functions when needed.
-pub fn handle(_app: &mut App, _key: KeyEvent) -> Result<bool> {
-    Ok(false)
 }

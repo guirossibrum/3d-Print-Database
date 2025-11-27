@@ -2,52 +2,60 @@
 use anyhow::Result;
 use crossterm::event::KeyEvent;
 
-use crate::app::App;
+use crate::App;
 
+/// Handle editing product categories UI.
+/// Returns Ok(true) if handled.
 pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
+    use crossterm::event::KeyCode;
+
     match app.input_mode {
-        crate::state::InputMode::EditCategories | crate::state::InputMode::EditCategorySelect => {
-            // Keep the old behavior: Esc cancels, Enter applies selection, Arrow keys navigate.
-            use crossterm::event::KeyCode;
+        crate::models::InputMode::EditCategories => {
             match key.code {
                 KeyCode::Esc => {
-                    app.input_mode = crate::state::InputMode::EditCategories;
-                    app.category_selection.clear();
-                    app.active_pane = crate::state::ActivePane::Left;
-                }
-                KeyCode::Enter => {
-                    for (i, &selected) in app.category_selection.iter().enumerate() {
-                        if selected {
-                            if let Some(category) = app.categories.get(i)
-                                && let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
-                                product.category_id = category.id;
-                            }
-                            break;
+                    // Cancel changes and return to normal mode
+                    if let Some(original) = app.edit_backup.take() {
+                        // Restore original product data
+                        if let Some(current) = app
+                            .products
+                            .iter_mut()
+                            .find(|p| p.id == app.selected_product_id)
+                        {
+                            *current = original;
                         }
                     }
-                    app.category_selection.clear();
-                    app.input_mode = crate::state::InputMode::EditCategories;
-                    app.active_pane = crate::state::ActivePane::Left;
+                    app.input_mode = crate::models::InputMode::Normal;
+                    app.active_pane = crate::models::ActivePane::Left;
+                    return Ok(true);
                 }
-                KeyCode::Down => {
-                    if !app.categories.is_empty() {
-                        app.selected_category_index = (app.selected_category_index + 1) % app.categories.len();
-                    }
+                KeyCode::Enter => {
+                    // Category is read-only, navigate to next field
+                    app.input_mode = crate::models::InputMode::EditTags;
+                    return Ok(true);
                 }
                 KeyCode::Up => {
-                    if !app.categories.is_empty() {
-                        app.selected_category_index = if app.selected_category_index == 0 { app.categories.len() - 1 } else { app.selected_category_index - 1 };
-                    }
+                    app.input_mode = crate::models::InputMode::EditDescription;
+                    return Ok(true);
                 }
-                KeyCode::Char(' ') => {
-                    app.category_selection = vec![false; app.categories.len()];
-                    if app.selected_category_index < app.category_selection.len() {
-                        app.category_selection[app.selected_category_index] = true;
-                    }
+                KeyCode::Down => {
+                    app.input_mode = crate::models::InputMode::EditMaterials;
+                    return Ok(true);
                 }
-                _ => {}
+                KeyCode::Left => {
+                    // Already at first field, do nothing
+                    return Ok(true);
+                }
+                KeyCode::Right => {
+                    // Already at last field, do nothing
+                    return Ok(true);
+                }
+                KeyCode::Backspace => {
+                    // Go back to previous field
+                    app.input_mode = crate::models::InputMode::EditName;
+                    return Ok(true);
+                }
+                _ => return Ok(true),
             }
-            Ok(true)
         }
         _ => Ok(false),
     }

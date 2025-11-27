@@ -1,22 +1,75 @@
-// src/handlers/edit/mod.rs
-pub mod edit_name;
-pub mod edit_description;
-pub mod edit_tags;
-pub mod edit_materials;
-pub mod edit_categories;
-pub mod edit_file_ops;
+// src/handlers/mod.rs
+//! Main handlers module exports
 
 use anyhow::Result;
 use crossterm::event::KeyEvent;
 
-/// Combined entry point for edit-related handlers.
-/// Returns Ok(true) if edit subsystem handled the key.
-pub fn handle(app: &mut crate::app::App, key: KeyEvent) -> Result<bool> {
-    if edit_name::handle(app, key)? { return Ok(true); }
-    if edit_description::handle(app, key)? { return Ok(true); }
-    if edit_tags::handle(app, key)? { return Ok(true); }
-    if edit_materials::handle(app, key)? { return Ok(true); }
-    if edit_categories::handle(app, key)? { return Ok(true); }
-    if edit_file_ops::handle(app, key)? { return Ok(true); }
-    Ok(false)
+pub mod delete;
+pub mod edit;
+pub mod inventory;
+pub mod navigation;
+pub mod new_item;
+pub mod search;
+pub mod selection;
+pub mod util;
+
+// New modules
+pub mod create;
+pub mod select;
+pub mod normal;
+
+/// Main handler dispatcher - delegates to appropriate subsystems
+pub fn handle_input(app: &mut crate::App, key: KeyEvent) -> Result<()> {
+    // Priority order: specific modes first, then general navigation
+    
+    // Edit modes (highest priority)
+    if edit::handle(app, key)? {
+        return Ok(());
+    }
+    
+    // Create modes
+    if create::handle(app, key)? {
+        return Ok(());
+    }
+    
+    // Selection modes
+    if select::handle(app, key)? {
+        return Ok(());
+    }
+    
+    // Delete modes
+    if delete::handle(app, key)? {
+        return Ok(());
+    }
+    
+    // New item creation (tag/material/category)
+    if new_item::handle(app, key)? {
+        return Ok(());
+    }
+    
+    // Normal mode navigation
+    if normal::handle(app, key)? {
+        return Ok(());
+    }
+    
+    // Search and inventory (fallback)
+    if search::handle(app, key)? {
+        return Ok(());
+    }
+    if inventory::handle(app, key)? {
+        return Ok(());
+    }
+    
+    // Global navigation (Esc, etc.)
+    if navigation::handle(app, key)? {
+        return Ok(());
+    }
+    
+    // Utilities (Ctrl+o folder open)
+    if util::handle(app, key)? {
+        return Ok(());
+    }
+    
+    // Not handled here.
+    Ok(())
 }
