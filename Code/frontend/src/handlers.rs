@@ -1631,10 +1631,7 @@ fn handle_edit_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
                         app.set_status_message("Error: Material name required".to_string());
                     }
                     app.tag_form = TagForm::default();
-                    app.input_mode = match app.tag_select_mode {
-                        TagSelectMode::Create => InputMode::CreateMaterialSelect,
-                        TagSelectMode::Edit => InputMode::EditMaterialSelect,
-                    };
+                    app.input_mode = app.previous_input_mode.unwrap_or(InputMode::CreateMaterialSelect);
                 }
             }
         }
