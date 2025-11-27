@@ -1,0 +1,89 @@
+1. Write code for humans first, computers second
+
+Your code will be read far more times than it’s written.
+Prioritize clarity and readability over cleverness.
+“Any fool can write code that a computer can understand. Good programmers write code that humans can understand.” – Martin Fowler
+
+2. KISS (Keep It Simple, Stupid)
+
+The simplest solution that works is usually the best.
+Complexity is the enemy of maintainability and correctness.
+Avoid over-engineering or premature optimization.
+
+3. DRY (Don’t Repeat Yourself)
+
+Every piece of knowledge should have a single, unambiguous representation.
+Duplicated code = duplicated bugs and twice the maintenance.
+
+4. YAGNI (You Aren’t Gonna Need It)
+
+Don’t add functionality until it’s actually necessary.
+Most “flexible” or “future-proof” code never gets used and just adds complexity.
+
+5. SOLID principles (especially important in object-oriented code)
+
+Single Responsibility – A class/module should have one reason to change
+Open/Closed – Open for extension, closed for modification
+Liskov Substitution – Subtypes must be substitutable for their base types
+Interface Segregation – Many small interfaces > one fat interface
+Dependency Inversion – Depend on abstractions, not concretions
+
+6. Name things well
+
+The hardest thing in programming is naming variables, functions, and classes meaningfully.
+Good names reduce the need for comments.
+user.count > user.ncalculateTotalPrice() > calc()
+
+7. Write tests (and write them first when possible)
+
+Tests are the only reliable way to know your code still works after changes.
+TDD (Test-Driven Development) forces better design.
+Untested code is legacy code the moment it’s written.
+
+8. Fail fast and loudly
+
+Validate inputs early.
+Throw meaningful errors instead of silently doing the wrong thing.
+Never return null or magic values when something goes wrong if you can avoid it.
+
+9. Separate concerns (Separation of Concerns / Layering)
+
+UI, business logic, data access should be distinct.
+Makes testing, reuse, and reasoning easier.
+
+10. Automate everything repetitive
+
+Linting, formatting, testing, deployment, etc.
+If you did something twice manually, automate it.
+
+11. Write good commit messages and documentation
+
+Future you (and your teammates) will thank you.
+Explain why, not just what changed.
+
+12. Boy Scout Rule
+
+“Leave the campground cleaner than you found it.”
+Every time you touch code, make it a little better (refactor small things, improve names, delete dead code).
+
+13. Prefer composition over inheritance
+
+Modern consensus: inheritance hierarchies get brittle fast.
+Favor building small, reusable objects that work together.
+
+14. Handle errors gracefully (but explicitly)
+
+Don’t swallow exceptions.
+Log useful context.
+In most languages today: prefer explicit error returns (Go, Rust) or proper exception handling over silent failures.
+
+15. Performance: Measure, don’t guess
+
+Premature optimization is the root of all evil (Knuth).
+Profile first, then optimize the hot paths.
+
+Bonus mindset principles:
+
+Code is a liability, not an asset – the less code you write to solve the problem, the better.
+You will be wrong – design systems that are easy to change.
+Review every line of code (code reviews are one of the highest-ROI activities in software).

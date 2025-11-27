@@ -1,0 +1,74 @@
+.
+├── 3dPrintDB.sh
+├── AGENTS.md
+├── build_new.sh
+├── Code
+│   ├── AGENTS.md
+│   ├── backend
+│   │   ├── app
+│   │   │   ├── crud.py
+│   │   │   ├── database.py
+│   │   │   ├── __init__.py
+│   │   │   ├── main.py
+│   │   │   ├── models.py
+│   │   │   ├── __pycache__
+│   │   │   │   ├── crud.cpython-311.pyc
+│   │   │   │   ├── crud.cpython-314.pyc
+│   │   │   │   ├── database.cpython-311.pyc
+│   │   │   │   ├── database.cpython-314.pyc
+│   │   │   │   ├── __init__.cpython-311.pyc
+│   │   │   │   ├── __init__.cpython-314.pyc
+│   │   │   │   ├── main.cpython-311.pyc
+│   │   │   │   ├── main.cpython-314.pyc
+│   │   │   │   ├── models.cpython-311.pyc
+│   │   │   │   ├── models.cpython-314.pyc
+│   │   │   │   ├── schemas.cpython-311.pyc
+│   │   │   │   ├── schemas.cpython-314.pyc
+│   │   │   │   ├── tag_utils.cpython-311.pyc
+│   │   │   │   └── tag_utils.cpython-314.pyc
+│   │   │   ├── schemas.py
+│   │   │   └── tag_utils.py
+│   │   ├── Dockerfile
+│   │   ├── ensure_file_structure.py
+│   │   ├── index_products.py
+│   │   ├── __pycache__
+│   │   │   ├── ensure_file_structure.cpython-311.pyc
+│   │   │   └── ensure_file_structure.cpython-314.pyc
+│   │   ├── pyproject.toml
+│   │   ├── requirements.txt
+│   │   ├── reset_database.py
+│   │   ├── test.db
+│   │   └── tests
+│   │       ├── conftest.py
+│   │       ├── __pycache__
+│   │       │   ├── conftest.cpython-314-pytest-8.3.4.pyc
+│   │       │   ├── test_api.cpython-314-pytest-8.3.4.pyc
+│   │       │   └── test_crud.cpython-314-pytest-8.3.4.pyc
+│   │       ├── test_api.py
+│   │       └── test_crud.py
+│   ├── fix_permissions.sh
+│   ├── frontend
+│   │   ├── Cargo.lock
+│   │   ├── Cargo.toml
+│   │   ├── codeguidelines.txt
+│   │   ├── src
+│   │   │   ├── api.rs
+│   │   │   ├── app.rs
+│   │   │   ├── handlers_broken.rs
+│   │   │   ├── handlers.rs
+│   │   │   ├── main.rs
+│   │   │   ├── models.rs
+│   │   │   ├── state.rs
+│   │   │   └── ui.rs
+│   │   └── target
+│   │       └── too large to show - hidden
+│   └── infra
+│       └── docker-compose.yml
+├── db-admin.html
+├── install_desktop_app.sh
+├── launch.sh
+├── README.md
+└── test_routine.txt
+
+
+180 directories, 2178 files
