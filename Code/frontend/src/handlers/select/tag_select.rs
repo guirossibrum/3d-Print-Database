@@ -45,6 +45,8 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
                                         }
                                     }
                                 }
+                                // Update edit_tags_string to reflect the new selection
+                                app.edit_tags_string = product.tags.join(", ");
                             }
                             crate::models::InputMode::EditTags
                         }

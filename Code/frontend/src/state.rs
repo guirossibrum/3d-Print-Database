@@ -355,6 +355,8 @@ impl App {
                     .collect()
             );
         }
+        // Handle materials - use the product's material field directly
+        update.material = product.material.clone();
         update.print_time = product.print_time;
         update.weight = product.weight;
         update.stock_quantity = product.stock_quantity;
