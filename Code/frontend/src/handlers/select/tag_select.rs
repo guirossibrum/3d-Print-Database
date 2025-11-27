@@ -23,7 +23,7 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
                     app.active_pane = crate::models::ActivePane::Left;
                 }
                 KeyCode::Enter => {
-                    let target_mode = match app.input_mode {
+                    match app.input_mode {
                         crate::models::InputMode::CreateTagSelect => {
                             app.create_form.tags.clear();
                             for (i, &selected) in app.tag_selection.iter().enumerate() {
@@ -33,9 +33,12 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
                                     }
                                 }
                             }
-                            crate::models::InputMode::CreateTags
+                            app.tag_selection.clear();
+                            app.input_mode = crate::models::InputMode::CreateTags;
+                            app.active_pane = crate::models::ActivePane::Right;
                         }
                         crate::models::InputMode::EditTagSelect => {
+                            // Apply selection and save immediately
                             if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
                                 product.tags.clear();
                                 for (i, &selected) in app.tag_selection.iter().enumerate() {
@@ -48,15 +51,12 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
                                 // Update edit_tags_string to reflect the new selection
                                 app.edit_tags_string = product.tags.join(", ");
                             }
-                            crate::models::InputMode::EditTags
+                            app.tag_selection.clear();
+                            // Save immediately instead of returning to edit mode
+                            app.save_current_product()?;
                         }
-                        _ => crate::models::InputMode::Normal,
-                    };
-
-                    // Common actions after the match
-                    app.tag_selection.clear();
-                    app.input_mode = target_mode;
-                    app.active_pane = crate::models::ActivePane::Right;
+                        _ => {}
+                    }
                 }
                 KeyCode::Down => {
                     if !app.tags.is_empty() {

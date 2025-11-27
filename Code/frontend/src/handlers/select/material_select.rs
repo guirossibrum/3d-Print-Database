@@ -23,8 +23,7 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
                     app.active_pane = crate::models::ActivePane::Left;
                 }
                 KeyCode::Enter => {
-                    // Apply selected materials
-                    let target_mode = match app.input_mode {
+                    match app.input_mode {
                         crate::models::InputMode::CreateMaterialSelect => {
                             app.create_form.materials.clear();
                             for (i, &selected) in app.tag_selection.iter().enumerate() {
@@ -34,9 +33,12 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
                                     }
                                 }
                             }
-                            crate::models::InputMode::CreateMaterials
+                            app.tag_selection.clear();
+                            app.input_mode = crate::models::InputMode::CreateMaterials;
+                            app.active_pane = crate::models::ActivePane::Left;
                         }
                         crate::models::InputMode::EditMaterialSelect => {
+                            // Apply selection and save immediately
                             if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
                                 let selected_materials: Vec<String> = app.tag_selection.iter()
                                     .enumerate()
@@ -49,14 +51,12 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
                                     Some(selected_materials)
                                 };
                             }
-                            crate::models::InputMode::EditMaterials
+                            app.tag_selection.clear();
+                            // Save immediately instead of returning to edit mode
+                            app.save_current_product()?;
                         }
-                        _ => crate::models::InputMode::Normal,
-                    };
-                    
-                    app.tag_selection.clear();
-                    app.input_mode = target_mode;
-                    app.active_pane = crate::models::ActivePane::Left;
+                        _ => {}
+                    }
                 }
                 KeyCode::Down => {
                     if !app.materials.is_empty() {
