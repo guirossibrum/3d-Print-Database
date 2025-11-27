@@ -81,6 +81,55 @@ pub enum InputMode {
     DeleteFileConfirm,
 }
 
+impl InputMode {
+    /// Check if this mode is a create-related mode
+    pub fn is_create_mode(&self) -> bool {
+        matches!(
+            self,
+            InputMode::CreateName
+                | InputMode::CreateDescription
+                | InputMode::CreateCategory
+                | InputMode::CreateCategorySelect
+                | InputMode::CreateProduction
+                | InputMode::CreateTags
+                | InputMode::CreateTagSelect
+                | InputMode::CreateMaterials
+                | InputMode::CreateMaterialSelect
+        )
+    }
+
+    /// Check if this mode is an edit-related mode
+    pub fn is_edit_mode(&self) -> bool {
+        matches!(
+            self,
+            InputMode::EditName
+                | InputMode::EditDescription
+                | InputMode::EditProduction
+                | InputMode::EditTags
+                | InputMode::EditTagSelect
+                | InputMode::EditMaterials
+                | InputMode::EditMaterialSelect
+        )
+    }
+
+    /// Check if this mode is a selection mode
+    pub fn is_select_mode(&self) -> bool {
+        matches!(
+            self,
+            InputMode::CreateCategorySelect
+                | InputMode::CreateTagSelect
+                | InputMode::CreateMaterialSelect
+                | InputMode::EditTagSelect
+                | InputMode::EditMaterialSelect
+        )
+    }
+
+    /// Check if this mode is a delete confirmation mode
+    pub fn is_delete_mode(&self) -> bool {
+        matches!(self, InputMode::DeleteConfirm | InputMode::DeleteFileConfirm)
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct CreateForm {
     pub name: String,

@@ -60,10 +60,11 @@ This document outlines the comprehensive test routine for verifying the function
 - [ ] Search exit: ENTER confirms search, ESC clears search
 - [ ] Product selection: Up/down arrows work in normal mode
 - [ ] Product editing: TAB switches to right pane for editing
-- [ ] Edit modes: Name, Description, Production, Tags all editable
+- [ ] Edit modes: Name, Description, Production, Tags, Materials all editable
 - [ ] Edit navigation: Up/down arrows move between edit fields
 - [ ] Edit save: ENTER saves changes to backend
-- [ ] Edit cancel: TAB/ESC discards changes
+- [ ] Edit cancel: ESC discards changes
+- [ ] Edit Tab behavior: Opens selection UI for Tags/Materials, does nothing for text/toggle fields
 - [ ] Right pane displays correct product details
 - [ ] Tag editing in product view works correctly
 

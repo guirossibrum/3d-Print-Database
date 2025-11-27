@@ -18,58 +18,81 @@ pub mod create;
 pub mod select;
 pub mod normal;
 
-/// Main handler dispatcher - delegates to appropriate subsystems
+/// Main handler dispatcher - routes based on current input mode
 pub fn handle_input(app: &mut crate::App, key: KeyEvent) -> Result<()> {
-    // Priority order: specific modes first, then general navigation
-    
-    // Edit modes (highest priority)
-    if edit::handle(app, key)? {
-        return Ok(());
+    use crate::models::InputMode;
+
+    // Global keys that work in any mode (highest priority)
+    use crossterm::event::KeyCode;
+    match key.code {
+        KeyCode::Char('q') => {
+            app.running = false;
+            return Ok(());
+        }
+        _ => {}
     }
-    
-    // Create modes
-    if create::handle(app, key)? {
-        return Ok(());
+
+    // Route to appropriate handler based on current input mode
+    match app.input_mode {
+        InputMode::Normal => {
+            // Normal mode: navigation, search, inventory
+            if normal::handle(app, key)? {
+                return Ok(());
+            }
+            if inventory::handle(app, key)? {
+                return Ok(());
+            }
+            if search::handle(app, key)? {
+                return Ok(());
+            }
+            if navigation::handle(app, key)? {
+                return Ok(());
+            }
+        }
+        mode if mode.is_create_mode() => {
+            // Create modes: form input, selection
+            if create::handle(app, key)? {
+                return Ok(());
+            }
+            if select::handle(app, key)? {
+                return Ok(());
+            }
+            if new_item::handle(app, key)? {
+                return Ok(());
+            }
+        }
+        mode if mode.is_edit_mode() => {
+            // Edit modes: field editing, selection
+            if edit::handle(app, key)? {
+                return Ok(());
+            }
+            if select::handle(app, key)? {
+                return Ok(());
+            }
+        }
+        mode if mode.is_select_mode() => {
+            // Selection modes: tag/material/category selection
+            if select::handle(app, key)? {
+                return Ok(());
+            }
+        }
+        mode if mode.is_delete_mode() => {
+            // Delete confirmation modes
+            if delete::handle(app, key)? {
+                return Ok(());
+            }
+        }
+        _ => {
+            // Fallback for any unhandled modes
+            // This should not happen in normal operation
+        }
     }
-    
-    // Selection modes
-    if select::handle(app, key)? {
-        return Ok(());
-    }
-    
-    // Delete modes
-    if delete::handle(app, key)? {
-        return Ok(());
-    }
-    
-    // New item creation (tag/material/category)
-    if new_item::handle(app, key)? {
-        return Ok(());
-    }
-    
-    // Normal mode navigation
-    if normal::handle(app, key)? {
-        return Ok(());
-    }
-    
-    // Search and inventory (fallback)
-    if search::handle(app, key)? {
-        return Ok(());
-    }
-    if inventory::handle(app, key)? {
-        return Ok(());
-    }
-    
-    // Global navigation (Esc, etc.)
-    if navigation::handle(app, key)? {
-        return Ok(());
-    }
-    
-    // Utilities (Ctrl+o folder open)
+
+    // Utilities (Ctrl+o folder open) - work in any mode
     if util::handle(app, key)? {
         return Ok(());
     }
-    
-    // Not handled here.
+
+    // Key not handled
     Ok(())
 }
