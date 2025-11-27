@@ -881,9 +881,9 @@ fn handle_edit_materials_mode(app: &mut super::App, key: crossterm::event::KeyEv
             app.input_mode = InputMode::EditMaterialSelect;
             app.active_pane = ActivePane::Right;
         }
-        KeyCode::Up => {
+        /* KeyCode::Up => {
             app.input_mode = InputMode::EditTags;
-        }
+        } */
         _ => {}
     }
     Ok(())
@@ -960,12 +960,12 @@ fn handle_edit_tags_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
             app.input_mode = InputMode::EditTagSelect;
             app.active_pane = ActivePane::Right;
         }
-        KeyCode::Up => {
+        /* KeyCode::Up => {
             app.input_mode = InputMode::EditCategories;
         }
         KeyCode::Down => {
             app.input_mode = InputMode::EditMaterials;
-        }
+        } */
         _ => {}
     }
     Ok(())
