@@ -75,6 +75,49 @@ ls -la ~/.local/share/omarchy/bin/omarchy-launch-*3d-print*
 cd Code/frontend && ./target/release/frontend_tui_rust --version
 ```
 
+## Key Behavior Specification
+
+### Enter
+- **Always confirms and saves record**
+- Save a new record (Create tab)
+- Save an edit record (Search tab edit modes)
+
+### Esc
+- **Always cancels and returns to previous state/mode**
+- Never closes the app
+- Edit mode → returns to normal mode
+- Tag/Material edit mode → returns to edit mode
+- Popups → do nothing (handled with y/n keys)
+- Create tab → cancels creation, returns to normal mode
+
+### Tab
+- **Always advances to next level**
+- Currently valid only in Search tab
+- Normal mode → edit mode → tag/material edit mode
+- Backtab not implemented
+
+### Up/Down Arrows
+- **Always navigate item lists**
+- Search tab: navigates items in normal/edit/tag/material modes
+- Create tab: navigates items in create mode
+
+### Right/Left Arrows
+- **Change tabs in normal mode**
+- **Toggle selection in other contexts**
+
+### n Key
+- **Always create new record**
+- Creates new Tag, Material, or Category
+
+### d Key
+- **Always delete selected record**
+- Only if not used by any product (backend validation)
+- Deletes Tag, Material, or Category
+
+### Space Key
+- **Always toggle [x] selection**
+- Used in Tag and Material selection lists
+
 ## Project Focus
 - **Project focus**: 3d print database TUI (Rust)
 - **Objective**: mimic the python front end that is already working
