@@ -12,25 +12,7 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
     match app.input_mode {
         crate::models::InputMode::EditDescription => {
             match key.code {
-                KeyCode::Esc | KeyCode::Tab => {
-                    // Cancel changes (discard) and return to normal mode
-                    if let Some(original) = app.edit_backup.take() {
-                        // Restore original product data
-                        if let Some(current) = app
-                            .products
-                            .iter_mut()
-                            .find(|p| p.id == app.selected_product_id)
-                        {
-                            *current = original;
-                        }
-                    }
-                    app.input_mode = crate::models::InputMode::Normal;
-                    app.active_pane = crate::models::ActivePane::Left;
-                }
-                KeyCode::Enter => {
-                    // Save changes and return to normal mode
-                    app.save_current_product()?;
-                }
+
                 KeyCode::Down => {
                     app.input_mode = crate::models::InputMode::EditProduction;
                 }

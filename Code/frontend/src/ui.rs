@@ -929,11 +929,7 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
             Style::default().fg(Color::Cyan)
         };
 
-        let categories_style = if matches!(app.input_mode, InputMode::EditCategories) {
-            Style::default().fg(Color::Yellow).bold()
-        } else {
-            Style::default().fg(Color::Cyan)
-        };
+        let categories_style = Style::default().fg(Color::Cyan);
 
         let tags_style = if matches!(app.input_mode, InputMode::EditTags) {
             Style::default().fg(Color::Yellow).bold()
@@ -1204,7 +1200,7 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App, version: &str) {
             InputMode::EditProduction => {
                 "[←/→] toggle     [Tab] cancel     [Enter] save     [↑/↓] select"
             }
-            InputMode::EditCategories => "[Tab] select category     [Enter] save     [↑/↓] select",
+
             InputMode::EditMaterials => "[Tab] select materials     [Enter] save     [↑/↓] select",
             _ => "[Tab] switch panes     [↑/↓] navigate",
         },
