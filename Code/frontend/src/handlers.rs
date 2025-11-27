@@ -582,7 +582,7 @@ fn handle_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent, sel
         }
         KeyCode::Char('n') => {
             app.item_type = item_type;
-            app.tag_form = TagForm::default();
+            app.item_form = TagForm::default();
             app.previous_input_mode = Some(app.input_mode);
             app.input_mode = new_mode;
         }
@@ -976,7 +976,7 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
         KeyCode::Esc => {
             match app.item_type {
                 ItemType::Tag => {
-                    app.tag_form = TagForm::default();
+                    app.item_form = TagForm::default();
                     app.input_mode = app.previous_input_mode.unwrap_or(InputMode::CreateTagSelect);
                 }
                 ItemType::Category => {
@@ -985,7 +985,7 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                     app.input_mode = InputMode::CreateCategorySelect;
                 }
                 ItemType::Material => {
-                    app.tag_form = TagForm::default(); // Reuse TagForm for Material
+                    app.item_form = TagForm::default(); // Reuse TagForm for Material
                     app.input_mode = app.previous_input_mode.unwrap_or(InputMode::CreateMaterialSelect);
                 }
             }
@@ -994,8 +994,8 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
             match app.item_type {
                 ItemType::Tag => {
                     // Save new tag(s) - support comma-separated
-                    if !app.tag_form.name.trim().is_empty() {
-                        let tag_names: Vec<String> = app.tag_form.name
+                    if !app.item_form.name.trim().is_empty() {
+                        let tag_names: Vec<String> = app.item_form.name
                             .split(',')
                             .map(|s| s.trim().to_string())
                             .filter(|s| !s.is_empty())
@@ -1075,7 +1075,7 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                     } else {
                         app.set_status_message("Error: Tag name required".to_string());
                     }
-                    app.tag_form = TagForm::default();
+                    app.item_form = TagForm::default();
                     app.input_mode = match app.tag_select_mode {
                         TagSelectMode::Create => InputMode::CreateTagSelect,
                         TagSelectMode::Edit => InputMode::EditTagSelect,
@@ -1119,8 +1119,8 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                 }
                 ItemType::Material => {
                     // Save new material
-                    if !app.tag_form.name.trim().is_empty() {
-                        let material_names: Vec<String> = app.tag_form.name
+                    if !app.item_form.name.trim().is_empty() {
+                        let material_names: Vec<String> = app.item_form.name
                             .split(',')
                             .map(|s| s.trim().to_string())
                             .filter(|s| !s.is_empty())
@@ -1200,7 +1200,7 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                     } else {
                         app.set_status_message("Error: Material name required".to_string());
                     }
-                    app.tag_form = TagForm::default();
+                    app.item_form = TagForm::default();
                     app.input_mode = app.previous_input_mode.unwrap_or(InputMode::CreateMaterialSelect);
                 }
             }
@@ -1208,7 +1208,7 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
         KeyCode::Backspace => {
             match app.item_type {
                 ItemType::Tag => {
-                    app.tag_form.name.pop();
+                    app.item_form.name.pop();
                 }
                 ItemType::Category => match app.popup_field {
                     0 => {
@@ -1223,7 +1223,7 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                     _ => {}
                 },
                 ItemType::Material => {
-                    app.tag_form.name.pop();
+                    app.item_form.name.pop();
                 },
             }
         }
@@ -1240,7 +1240,7 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
         KeyCode::Char(c) => {
             match app.item_type {
                 ItemType::Tag => {
-                    app.tag_form.name.push(c);
+                    app.item_form.name.push(c);
                 }
                 ItemType::Category => match app.popup_field {
                     0 => {
@@ -1257,7 +1257,7 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                     _ => {}
                 },
                 ItemType::Material => {
-                    app.tag_form.name.push(c);
+                    app.item_form.name.push(c);
                 },
             }
         }
@@ -1500,7 +1500,7 @@ fn handle_edit_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
         KeyCode::Esc => {
             match app.edit_item_type {
                 ItemType::Tag => {
-                    app.tag_form = TagForm::default();
+                    app.item_form = TagForm::default();
                     app.input_mode = match app.tag_select_mode {
                         TagSelectMode::Create => InputMode::CreateTagSelect,
                         TagSelectMode::Edit => InputMode::EditTagSelect,
@@ -1512,7 +1512,7 @@ fn handle_edit_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
                     app.input_mode = InputMode::CreateCategorySelect;
                 }
                 ItemType::Material => {
-                    app.tag_form = TagForm::default();
+                    app.item_form = TagForm::default();
                     app.input_mode = InputMode::CreateMaterialSelect;
                 }
             }
@@ -1521,7 +1521,7 @@ fn handle_edit_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
             match app.edit_item_type {
                 ItemType::Tag => {
                     // Save edited tag
-                    if !app.tag_form.name.trim().is_empty() {
+                    if !app.item_form.name.trim().is_empty() {
                         if app.create_form.tag_selected_index < app.tags.len() {
                             let old_name = app.tags[app.create_form.tag_selected_index].clone();
                             let tag = crate::api::Tag {
@@ -1529,19 +1529,19 @@ fn handle_edit_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
                                 usage_count: 0, // Not used for update
                             };
                             let mut updated_tag = tag.clone();
-                            updated_tag.name = app.tag_form.name.clone();
+                            updated_tag.name = app.item_form.name.clone();
                             match app.api_client.update_tag(&updated_tag) {
                                 Ok(_) => {
                                     app.tags[app.create_form.tag_selected_index] =
-                                        app.tag_form.name.clone();
+                                        app.item_form.name.clone();
                                     app.tags.sort();
                                     app.create_form.tag_selected_index = app
                                         .tags
                                         .iter()
-                                        .position(|t| t == &app.tag_form.name)
+                                        .position(|t| t == &app.item_form.name)
                                         .unwrap_or(app.create_form.tag_selected_index);
                                     app.status_message =
-                                        format!("Tag '{}' updated", app.tag_form.name);
+                                        format!("Tag '{}' updated", app.item_form.name);
                                     app.refresh_data();
                                 }
                                 Err(e) => {
@@ -1552,7 +1552,7 @@ fn handle_edit_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
                     } else {
                         app.set_status_message("Error: Tag name required".to_string());
                     }
-                    app.tag_form = TagForm::default();
+                    app.item_form = TagForm::default();
                     app.input_mode = match app.tag_select_mode {
                         TagSelectMode::Create => InputMode::CreateTagSelect,
                         TagSelectMode::Edit => InputMode::EditTagSelect,
@@ -1599,7 +1599,7 @@ fn handle_edit_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
                 }
                 ItemType::Material => {
                     // Save edited material
-                    if !app.tag_form.name.trim().is_empty() {
+                    if !app.item_form.name.trim().is_empty() {
                         if app.create_form.material_selected_index < app.materials.len() {
                             let old_name = app.materials[app.create_form.material_selected_index].clone();
                             let material = crate::api::Material {
@@ -1607,7 +1607,7 @@ fn handle_edit_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
                                 usage_count: 0, // Not used for update
                             };
                             let mut updated_material = material.clone();
-                            updated_material.name = app.tag_form.name.clone();
+                            updated_material.name = app.item_form.name.clone();
                             match app.api_client.update_material(&updated_material) {
                                 Ok(updated_material) => {
                                     app.materials[app.create_form.material_selected_index] =
@@ -1616,10 +1616,10 @@ fn handle_edit_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
                                     app.create_form.material_selected_index = app
                                         .materials
                                         .iter()
-                                        .position(|m| m == &app.tag_form.name)
+                                        .position(|m| m == &app.item_form.name)
                                         .unwrap_or(app.create_form.material_selected_index);
                                     app.status_message =
-                                        format!("Material '{}' updated", app.tag_form.name);
+                                        format!("Material '{}' updated", app.item_form.name);
                                     app.refresh_data();
                                 }
                                 Err(e) => {
@@ -1630,7 +1630,7 @@ fn handle_edit_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
                     } else {
                         app.set_status_message("Error: Material name required".to_string());
                     }
-                    app.tag_form = TagForm::default();
+                    app.item_form = TagForm::default();
                     app.input_mode = match app.tag_select_mode {
                         TagSelectMode::Create => InputMode::CreateMaterialSelect,
                         TagSelectMode::Edit => InputMode::EditMaterialSelect,
@@ -1639,10 +1639,10 @@ fn handle_edit_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
             }
         }
         KeyCode::Backspace => {
-            app.tag_form.name.pop();
+            app.item_form.name.pop();
         }
         KeyCode::Char(c) => {
-            app.tag_form.name.push(c);
+            app.item_form.name.push(c);
         }
         _ => {}
     }

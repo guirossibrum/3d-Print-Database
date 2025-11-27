@@ -46,7 +46,7 @@ pub struct App {
     // Create form
     pub create_form: CreateForm,
     pub category_form: CategoryForm,
-    pub tag_form: TagForm,
+    pub item_form: TagForm,
     pub popup_field: usize,
     pub tag_selection: Vec<bool>, // Selection state for tags and materials
     pub category_selection: Vec<bool>,
@@ -101,7 +101,7 @@ impl App {
                 ..Default::default()
             },
             category_form: CategoryForm::default(),
-            tag_form: TagForm::default(),
+            item_form: TagForm::default(),
             popup_field: 0,
             tag_selection: Vec::new(),
             category_selection: Vec::new(),

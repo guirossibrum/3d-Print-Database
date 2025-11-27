@@ -423,7 +423,7 @@ fn draw_popup(f: &mut Frame, area: Rect, app: &App) {
             content.push(Line::from(vec![
                 Span::styled(format!("{} Name: ", item_type_name),
                              Style::default().fg(Color::Yellow).bold()),
-                Span::raw(&app.tag_form.name),
+                Span::raw(&app.item_form.name),
                 Span::styled("_", Style::default().fg(Color::White)),
             ]));
 
@@ -436,7 +436,7 @@ fn draw_popup(f: &mut Frame, area: Rect, app: &App) {
         InputMode::EditTag => {
             content.push(Line::from(vec![
                 Span::styled("Tag Name: ", Style::default().fg(Color::Yellow).bold()),
-                Span::raw(&app.tag_form.name),
+                Span::raw(&app.item_form.name),
                 Span::styled("_", Style::default().fg(Color::White)),
             ]));
         }
