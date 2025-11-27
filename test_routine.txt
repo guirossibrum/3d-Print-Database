@@ -64,6 +64,7 @@ This document outlines the comprehensive test routine for verifying the function
 - [ ] Edit navigation: Up/down arrows move between edit fields
 - [ ] Edit save: ENTER saves changes to backend
 - [ ] Edit cancel: ESC discards changes
+- [ ] **CRITICAL**: Tab navigation works in normal mode (enters edit mode)
 - [ ] Edit Tab behavior: Opens selection UI for Tags/Materials, does nothing for text/toggle fields
 - [ ] Right pane displays correct product details
 - [ ] Tag editing in product view works correctly

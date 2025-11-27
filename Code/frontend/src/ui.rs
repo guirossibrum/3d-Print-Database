@@ -911,12 +911,6 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
             .wrap(Wrap { trim: true });
         f.render_widget(paragraph, area);
     } else if let Some(product) = app.get_selected_product() {
-        let name_style = if matches!(app.input_mode, InputMode::EditName) {
-            Style::default().fg(Color::Yellow).bold()
-        } else {
-            Style::default().fg(Color::Cyan)
-        };
-
         let desc_style = if matches!(app.input_mode, InputMode::EditDescription) {
             Style::default().fg(Color::Yellow).bold()
         } else {
@@ -928,8 +922,6 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
         } else {
             Style::default().fg(Color::Cyan)
         };
-
-        let categories_style = Style::default().fg(Color::Cyan);
 
         let tags_style = if matches!(app.input_mode, InputMode::EditTags) {
             Style::default().fg(Color::Yellow).bold()
@@ -959,17 +951,12 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
 
         let content = vec![
             Line::from(vec![
-                Span::styled("SKU: ", Style::default().fg(Color::Cyan)),
+                Span::styled("SKU: ", Style::default().fg(Color::White)),
                 Span::raw(&product.sku),
             ]),
             Line::from(vec![
-                Span::styled("Name: ", name_style),
-                Span::raw(&product.name),
-                if matches!(app.input_mode, InputMode::EditName) {
-                    Span::styled("_", Style::default().fg(Color::White))
-                } else {
-                    Span::raw("")
-                },
+                Span::styled("Category: ", Style::default().fg(Color::White)),
+                Span::raw(category_name),
             ]),
             Line::from(vec![
                 Span::styled("Description: ", desc_style),
@@ -991,10 +978,6 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
                 } else {
                     (if product.production { "Yes" } else { "No" }).to_string()
                 }),
-            ]),
-            Line::from(vec![
-                Span::styled("Category: ", categories_style),
-                Span::raw(category_name),
             ]),
             Line::from(vec![
                 Span::styled("Tags: ", tags_style),
