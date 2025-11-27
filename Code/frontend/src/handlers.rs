@@ -30,8 +30,12 @@ pub fn handle_key_dispatch(app: &mut super::App, key: crossterm::event::KeyEvent
         InputMode::EditTagSelect => handle_select_mode(app, key, SelectType::Tag),
         InputMode::EditMaterials => handle_edit_materials_mode(app, key),
         InputMode::EditMaterialSelect => handle_select_mode(app, key, SelectType::Material),
-        InputMode::NewTag | InputMode::NewCategory | InputMode::NewMaterial => handle_new_item_mode(app, key),
-        InputMode::EditTag | InputMode::EditCategory | InputMode::EditMaterial => handle_edit_item_mode(app, key),
+        InputMode::NewTag | InputMode::NewCategory | InputMode::NewMaterial => {
+            handle_new_item_mode(app, key)
+        }
+        InputMode::EditTag | InputMode::EditCategory | InputMode::EditMaterial => {
+            handle_edit_item_mode(app, key)
+        }
         InputMode::DeleteConfirm => handle_delete_confirm_mode(app, key),
         InputMode::DeleteFileConfirm => handle_delete_file_confirm_mode(app, key),
     }
@@ -44,7 +48,10 @@ fn handle_normal_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> 
         }
         // q or Ctrl+q for quit
         KeyCode::Char('q') => {
-            if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
+            if key
+                .modifiers
+                .contains(crossterm::event::KeyModifiers::CONTROL)
+            {
                 app.running = false;
             }
             // If not Ctrl+q, let it fall through to search input
@@ -101,10 +108,16 @@ fn handle_normal_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> 
             app.refresh_data();
         }
         // Ctrl+d for delete (only with control modifier)
-        KeyCode::Char('d') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => {
+        KeyCode::Char('d')
+            if key
+                .modifiers
+                .contains(crossterm::event::KeyModifiers::CONTROL) =>
+        {
             // Delete functionality for Search tab
-            if matches!(app.current_tab, Tab::Search) && !app.products.is_empty()
-                && let Some(product) = app.get_selected_product() {
+            if matches!(app.current_tab, Tab::Search)
+                && !app.products.is_empty()
+                && let Some(product) = app.get_selected_product()
+            {
                 app.selected_product_for_delete = Some(product.clone());
                 app.delete_option = 0;
                 app.popup_field = 0;
@@ -112,13 +125,22 @@ fn handle_normal_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> 
             }
         }
         // Ctrl+o for open (only with control modifier)
-        KeyCode::Char('o') if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => {
+        KeyCode::Char('o')
+            if key
+                .modifiers
+                .contains(crossterm::event::KeyModifiers::CONTROL) =>
+        {
             // Open product folder functionality for Search tab
-            if matches!(app.current_tab, Tab::Search) && !app.products.is_empty()
-                && let Some(product) = app.get_selected_product() {
+            if matches!(app.current_tab, Tab::Search)
+                && !app.products.is_empty()
+                && let Some(product) = app.get_selected_product()
+            {
                 match open_product_folder(&product.sku) {
                     Ok(_) => {
-                        app.set_status_message(format!("Opened folder for product {}", product.sku));
+                        app.set_status_message(format!(
+                            "Opened folder for product {}",
+                            product.sku
+                        ));
                     }
                     Err(e) => {
                         app.set_status_message(format!("Error opening folder: {}", e));
@@ -141,7 +163,9 @@ fn handle_normal_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> 
             if matches!(app.current_tab, Tab::Search) && !app.search_query.is_empty() {
                 app.search_query.pop();
                 app.clear_selection(); // Reset selection when typing
-            } else if matches!(app.current_tab, Tab::Inventory) && !app.inventory_search_query.is_empty() {
+            } else if matches!(app.current_tab, Tab::Inventory)
+                && !app.inventory_search_query.is_empty()
+            {
                 app.inventory_search_query.pop();
                 app.clear_selection(); // Reset selection when typing
             }
@@ -151,19 +175,17 @@ fn handle_normal_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> 
                 InputMode::Normal => {
                     if matches!(app.current_tab, Tab::Create) {
                         app.input_mode = InputMode::CreateName;
-                    } else if matches!(app.current_tab, Tab::Search)
-                        && !app.products.is_empty()
-                    {
+                    } else if matches!(app.current_tab, Tab::Search) && !app.products.is_empty() {
                         // Direct edit from normal mode (legacy behavior)
                         app.input_mode = InputMode::EditName;
                     }
                 }
                 InputMode::EditName
-                    | InputMode::EditDescription
-                    | InputMode::EditProduction
-                    | InputMode::EditCategories
-                    | InputMode::EditTags
-                    | InputMode::EditMaterials => {
+                | InputMode::EditDescription
+                | InputMode::EditProduction
+                | InputMode::EditCategories
+                | InputMode::EditTags
+                | InputMode::EditMaterials => {
                     // Save changes and return to normal mode
                     app.input_mode = InputMode::Normal;
                     app.active_pane = ActivePane::Left;
@@ -176,8 +198,6 @@ fn handle_normal_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> 
     }
     Ok(())
 }
-
-
 
 fn handle_create_name_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
     match key.code {
@@ -209,7 +229,10 @@ fn handle_create_name_mode(app: &mut super::App, key: crossterm::event::KeyEvent
     Ok(())
 }
 
-fn handle_create_description_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
+fn handle_create_description_mode(
+    app: &mut super::App,
+    key: crossterm::event::KeyEvent,
+) -> Result<()> {
     match key.code {
         KeyCode::Esc => {
             app.input_mode = InputMode::Normal;
@@ -237,7 +260,10 @@ fn handle_create_description_mode(app: &mut super::App, key: crossterm::event::K
     Ok(())
 }
 
-fn handle_create_category_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
+fn handle_create_category_mode(
+    app: &mut super::App,
+    key: crossterm::event::KeyEvent,
+) -> Result<()> {
     match key.code {
         KeyCode::Esc => {
             app.input_mode = InputMode::Normal;
@@ -262,7 +288,10 @@ fn handle_create_category_mode(app: &mut super::App, key: crossterm::event::KeyE
     Ok(())
 }
 
-fn handle_create_category_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
+fn handle_create_category_select_mode(
+    app: &mut super::App,
+    key: crossterm::event::KeyEvent,
+) -> Result<()> {
     match key.code {
         KeyCode::Esc => {
             app.input_mode = InputMode::Normal;
@@ -272,10 +301,7 @@ fn handle_create_category_select_mode(app: &mut super::App, key: crossterm::even
         }
         KeyCode::Enter => {
             // Select the current category
-            if let Some(category) = app
-                .categories
-                .get(app.create_form.category_selected_index)
-            {
+            if let Some(category) = app.categories.get(app.create_form.category_selected_index) {
                 app.create_form.category_id = category.id;
             }
             app.input_mode = InputMode::CreateCategory;
@@ -297,20 +323,15 @@ fn handle_create_category_select_mode(app: &mut super::App, key: crossterm::even
                     };
             }
         }
-        KeyCode::Char('n') => {
-            // Create new category
-            app.item_type = ItemType::Category;
-            app.category_form = CategoryForm::default();
-            app.popup_field = 0;
-            app.previous_input_mode = Some(InputMode::CreateCategorySelect);
-            app.input_mode = InputMode::NewCategory;
-        }
         _ => {}
     }
     Ok(())
 }
 
-fn handle_create_production_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
+fn handle_create_production_mode(
+    app: &mut super::App,
+    key: crossterm::event::KeyEvent,
+) -> Result<()> {
     match key.code {
         KeyCode::Esc => {
             app.input_mode = InputMode::Normal;
@@ -383,7 +404,10 @@ fn handle_create_tags_mode(app: &mut super::App, key: crossterm::event::KeyEvent
     Ok(())
 }
 
-fn handle_create_materials_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
+fn handle_create_materials_mode(
+    app: &mut super::App,
+    key: crossterm::event::KeyEvent,
+) -> Result<()> {
     match key.code {
         KeyCode::Esc => {
             app.input_mode = InputMode::Normal;
@@ -426,15 +450,28 @@ fn handle_create_materials_mode(app: &mut super::App, key: crossterm::event::Key
     Ok(())
 }
 
-fn handle_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent, select_type: SelectType) -> Result<()> {
-    let (selected_index, form_field, create_mode, edit_mode, item_type, new_mode, has_normalize, has_edit_string) = match select_type {
+fn handle_select_mode(
+    app: &mut super::App,
+    key: crossterm::event::KeyEvent,
+    select_type: SelectType,
+) -> Result<()> {
+    let (
+        selected_index,
+        items,
+        create_mode,
+        _edit_mode,
+        _item_type,
+        _new_mode,
+        has_normalize,
+        _has_edit_string,
+    ) = match select_type {
         SelectType::Tag => (
             &mut app.create_form.tag_selected_index,
             &mut app.create_form.tags,
             InputMode::CreateTags,
             InputMode::EditTags,
             ItemType::Tag,
-            InputMode::NewTag,
+            InputMode::Normal,
             true,
             true,
         ),
@@ -444,7 +481,7 @@ fn handle_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent, sel
             InputMode::CreateMaterials,
             InputMode::EditMaterials,
             ItemType::Material,
-            InputMode::NewMaterial,
+            InputMode::Normal,
             false,
             false,
         ),
@@ -456,64 +493,27 @@ fn handle_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent, sel
 
     match key.code {
         KeyCode::Esc => {
-            app.input_mode = match app.tag_select_mode {
-                TagSelectMode::Create => create_mode,
-                TagSelectMode::Edit => edit_mode,
-            };
+            app.input_mode = create_mode;
             app.tag_selection.clear();
             app.active_pane = ActivePane::Left;
         }
         KeyCode::Enter => {
-            match app.tag_select_mode {
-                TagSelectMode::Create => {
-                    form_field.clear();
-                    for (i, &selected) in app.tag_selection.iter().enumerate() {
-                        if selected {
-                            let item = match select_type {
-                                SelectType::Tag => app.tags.get(i).cloned(),
-                                SelectType::Material => app.materials.get(i).cloned(),
-                            };
-                            if let Some(item) = item {
-                                form_field.push(item);
-                            }
-                        }
+            items.clear();
+            for (i, &selected) in app.tag_selection.iter().enumerate() {
+                if selected {
+                    let item = match select_type {
+                        SelectType::Tag => app.tags.get(i).cloned(),
+                        SelectType::Material => app.materials.get(i).cloned(),
+                    };
+                    if let Some(item) = item {
+                        items.push(item);
                     }
-                    app.tag_selection.clear();
-                    app.input_mode = create_mode;
-                    app.active_pane = ActivePane::Left;
-                }
-                TagSelectMode::Edit => {
-                    let mut selected_items = Vec::new();
-                    for (i, &selected) in app.tag_selection.iter().enumerate() {
-                        if selected {
-                            let item = match select_type {
-                                SelectType::Tag => app.tags.get(i).cloned(),
-                                SelectType::Material => app.materials.get(i).cloned(),
-                            };
-                            if let Some(item) = item {
-                                selected_items.push(item);
-                            }
-                        }
-                    }
-                    if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
-                        match select_type {
-                            SelectType::Tag => {
-                                product.tags = selected_items;
-                                if has_edit_string {
-                                    app.edit_tags_string = product.tags.join(", ");
-                                }
-                            }
-                            SelectType::Material => {
-                                product.material = if selected_items.is_empty() { None } else { Some(selected_items) };
-                            }
-                        }
-                    }
-                    app.tag_selection.clear();
-                    app.input_mode = edit_mode;
-                    app.active_pane = ActivePane::Right;
                 }
             }
-        }
+            app.tag_selection.clear();
+            app.input_mode = create_mode;
+            app.active_pane = ActivePane::Left;
+        },
         KeyCode::Down => {
             if item_len > 0 {
                 *selected_index = (*selected_index + 1) % item_len;
@@ -545,12 +545,26 @@ fn handle_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent, sel
                     item_to_delete.clone()
                 };
                 let in_use = match select_type {
-                    SelectType::Tag => app.products.iter().any(|p| p.tags.iter().any(|t| normalize_tag_name(t) == normalized_name)),
-                    SelectType::Material => app.products.iter().any(|p| p.material.as_ref().is_some_and(|m| m.contains(&item_to_delete))),
+                    SelectType::Tag => app.products.iter().any(|p| {
+                        p.tags
+                            .iter()
+                            .any(|t| normalize_tag_name(t) == normalized_name)
+                    }),
+                    SelectType::Material => app.products.iter().any(|p| {
+                        p.material
+                            .as_ref()
+                            .is_some_and(|m| m.contains(&item_to_delete))
+                    }),
                 };
                 if in_use {
-                    let item_name = match select_type { SelectType::Tag => "tag", SelectType::Material => "material" };
-                    app.set_status_message(format!("Cannot delete {} '{}' - it is in use by products", item_name, item_to_delete));
+                    let item_name = match select_type {
+                        SelectType::Tag => "tag",
+                        SelectType::Material => "material",
+                    };
+                    app.set_status_message(format!(
+                        "Cannot delete {} '{}' - it is in use by products",
+                        item_name, item_to_delete
+                    ));
                 } else {
                     let result = match select_type {
                         SelectType::Tag => app.api_client.delete_tag(&normalized_name),
@@ -560,7 +574,9 @@ fn handle_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent, sel
                         Ok(_) => {
                             match select_type {
                                 SelectType::Tag => app.tags.retain(|t| t != &item_to_delete),
-                                SelectType::Material => app.materials.retain(|m| m != &item_to_delete),
+                                SelectType::Material => {
+                                    app.materials.retain(|m| m != &item_to_delete)
+                                }
                             };
                             let new_len = match select_type {
                                 SelectType::Tag => app.tags.len(),
@@ -569,28 +585,33 @@ fn handle_select_mode(app: &mut super::App, key: crossterm::event::KeyEvent, sel
                             if *selected_index >= new_len && new_len > 0 {
                                 *selected_index = new_len - 1;
                             }
-                            let item_cap = match select_type { SelectType::Tag => "Tag", SelectType::Material => "Material" };
-                            app.set_status_message(format!("{} '{}' deleted successfully", item_cap, item_to_delete));
+                            let item_cap = match select_type {
+                                SelectType::Tag => "Tag",
+                                SelectType::Material => "Material",
+                            };
+                            app.set_status_message(format!(
+                                "{} '{}' deleted successfully",
+                                item_cap, item_to_delete
+                            ));
                         }
                         Err(e) => {
-                            let item_name = match select_type { SelectType::Tag => "tag", SelectType::Material => "material" };
-                            app.set_status_message(format!("Error deleting {} '{}': {}", item_name, item_to_delete, e));
+                            let item_name = match select_type {
+                                SelectType::Tag => "tag",
+                                SelectType::Material => "material",
+                            };
+                            app.set_status_message(format!(
+                                "Error deleting {} '{}': {}",
+                                item_name, item_to_delete, e
+                            ));
                         }
                     }
                 }
             }
         }
-        KeyCode::Char('n') => {
-            app.item_type = item_type;
-            app.item_form = TagForm::default();
-            app.previous_input_mode = Some(app.input_mode);
-            app.input_mode = new_mode;
-        }
         _ => {}
     }
     Ok(())
 }
-
 
 fn handle_edit_name_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
     match key.code {
@@ -598,7 +619,11 @@ fn handle_edit_name_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
             // Cancel changes (discard) and return to normal mode
             if let Some(original_product) = app.edit_backup.take() {
                 // Restore original product data
-                if let Some(current_product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
+                if let Some(current_product) = app
+                    .products
+                    .iter_mut()
+                    .find(|p| p.id == app.selected_product_id)
+                {
                     *current_product = original_product;
                 }
             }
@@ -626,12 +651,20 @@ fn handle_edit_name_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
             // Already at first field, do nothing
         }
         KeyCode::Backspace => {
-            if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
+            if let Some(product) = app
+                .products
+                .iter_mut()
+                .find(|p| p.id == app.selected_product_id)
+            {
                 product.name.pop();
             }
         }
         KeyCode::Char(c) => {
-            if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
+            if let Some(product) = app
+                .products
+                .iter_mut()
+                .find(|p| p.id == app.selected_product_id)
+            {
                 product.name.push(c);
             }
         }
@@ -640,13 +673,20 @@ fn handle_edit_name_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
     Ok(())
 }
 
-fn handle_edit_description_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
+fn handle_edit_description_mode(
+    app: &mut super::App,
+    key: crossterm::event::KeyEvent,
+) -> Result<()> {
     match key.code {
         KeyCode::Esc | KeyCode::Tab => {
             // Cancel changes (discard) and return to normal mode
             if let Some(original_product) = app.edit_backup.take() {
                 // Restore original product data
-                if let Some(current_product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
+                if let Some(current_product) = app
+                    .products
+                    .iter_mut()
+                    .find(|p| p.id == app.selected_product_id)
+                {
                     *current_product = original_product;
                 }
             }
@@ -674,14 +714,21 @@ fn handle_edit_description_mode(app: &mut super::App, key: crossterm::event::Key
             app.input_mode = InputMode::EditName;
         }
         KeyCode::Backspace => {
-            if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id)
+            if let Some(product) = app
+                .products
+                .iter_mut()
+                .find(|p| p.id == app.selected_product_id)
                 && let Some(ref mut desc) = product.description
             {
                 desc.pop();
             }
         }
         KeyCode::Char(c) => {
-            if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
+            if let Some(product) = app
+                .products
+                .iter_mut()
+                .find(|p| p.id == app.selected_product_id)
+            {
                 product.description.get_or_insert_with(String::new).push(c);
             }
         }
@@ -690,13 +737,134 @@ fn handle_edit_description_mode(app: &mut super::App, key: crossterm::event::Key
     Ok(())
 }
 
-fn handle_edit_production_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
+fn handle_edit_production_mode(
+    app: &mut super::App,
+    key: crossterm::event::KeyEvent,
+) -> Result<()> {
     match key.code {
         KeyCode::Esc | KeyCode::Tab => {
             // Cancel changes (discard) and return to normal mode
             if let Some(original_product) = app.edit_backup.take() {
                 // Restore original product data
-                if let Some(current_product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
+                if let Some(current_product) = app
+                    .products
+                    .iter_mut()
+                    .find(|p| p.id == app.selected_product_id)
+                {
+                    *current_product = original_product;
+                }
+            }
+            app.input_mode = InputMode::Normal;
+            app.active_pane = ActivePane::Left;
+        }
+        KeyCode::Enter => {
+            // Save changes and return to normal mode
+            app.edit_backup = None; // Clear backup since we're saving
+            let (sku, product) = if let Some(data) = app.get_selected_product_data() {
+                data
+            } else {
+                return Ok(());
+            };
+            #[allow(clippy::field_reassign_with_default)]
+            let mut update = crate::api::ProductUpdate::default();
+            update.production = Some(product.production);
+            app.perform_update(&sku, update)?;
+            app.input_mode = InputMode::Normal;
+            app.active_pane = ActivePane::Left;
+        }
+        KeyCode::Up => {
+            app.input_mode = InputMode::EditDescription;
+        }
+        KeyCode::Down => {
+            app.input_mode = InputMode::EditCategories;
+        }
+        KeyCode::Left => {
+            if let Some(product) = app
+                .products
+                .iter_mut()
+                .find(|p| p.id == app.selected_product_id)
+            {
+                product.production = true;
+            }
+        }
+        KeyCode::Right => {
+            if let Some(product) = app
+                .products
+                .iter_mut()
+                .find(|p| p.id == app.selected_product_id)
+            {
+                product.production = false;
+            }
+        }
+        KeyCode::Char('y') | KeyCode::Char('Y') => {
+            if let Some(product) = app
+                .products
+                .iter_mut()
+                .find(|p| p.id == app.selected_product_id)
+            {
+                product.production = true;
+            }
+        }
+        KeyCode::Char('n') | KeyCode::Char('N') => {
+            if let Some(product) = app
+                .products
+                .iter_mut()
+                .find(|p| p.id == app.selected_product_id)
+            {
+                product.production = false;
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn handle_edit_categories_mode(
+    app: &mut super::App,
+    key: crossterm::event::KeyEvent,
+) -> Result<()> {
+    match key.code {
+        KeyCode::Esc => {
+            // Cancel changes and return to normal mode
+            if let Some(original_product) = app.edit_backup.take() {
+                // Restore original product data
+                if let Some(current_product) = app
+                    .products
+                    .iter_mut()
+                    .find(|p| p.id == app.selected_product_id)
+                {
+                    *current_product = original_product;
+                }
+            }
+            app.input_mode = InputMode::Normal;
+            app.active_pane = ActivePane::Left;
+        }
+        KeyCode::Enter => {
+            // Category is read-only, navigate to next field
+            app.input_mode = InputMode::EditTags;
+        }
+        KeyCode::Up => {
+            app.input_mode = InputMode::EditProduction;
+        }
+        KeyCode::Down => {
+            app.input_mode = InputMode::EditTags;
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn handle_edit_materials_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
+    match key.code {
+        KeyCode::Esc => {
+            // Cancel changes and return to normal mode
+            if let Some(original_product) = app.edit_backup.take() {
+                // Restore original product data
+                if let Some(current_product) = app
+                    .products
+                    .iter_mut()
+                    .find(|p| p.id == app.selected_product_id)
+                {
                     *current_product = original_product;
                 }
             }
@@ -712,63 +880,48 @@ fn handle_edit_production_mode(app: &mut super::App, key: crossterm::event::KeyE
                 return Ok(());
             };
             let mut update = crate::api::ProductUpdate::default();
+            update.name = Some(product.name);
+            update.description = product.description;
+            update.tags = Some(product.tags);
             update.production = Some(product.production);
+            update.material = Some(product.material.unwrap_or_default());
+            update.color = product.color;
+            update.print_time = product.print_time;
+            update.weight = product.weight;
+            update.stock_quantity = product.stock_quantity;
+            update.reorder_point = product.reorder_point;
+            update.unit_cost = product.unit_cost;
+            update.selling_price = product.selling_price;
             app.perform_update(&sku, update)?;
             app.input_mode = InputMode::Normal;
             app.active_pane = ActivePane::Left;
         }
-        KeyCode::Up => {
-            app.input_mode = InputMode::EditDescription;
-        }
-        KeyCode::Down => {
-            app.input_mode = InputMode::EditCategories;
-        }
-        KeyCode::Left => {
-            if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
-                product.production = true;
-            }
-        }
-        KeyCode::Right => {
-            if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
-                product.production = false;
-            }
-        }
-        KeyCode::Char('y') | KeyCode::Char('Y') => {
-            if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
-                product.production = true;
-            }
-        }
-        KeyCode::Char('n') | KeyCode::Char('N') => {
-            if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
-                product.production = false;
-            }
-        }
-        _ => {}
-    }
-    Ok(())
-}
-
-fn handle_edit_categories_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
-    match key.code {
-        KeyCode::Esc => {
-            // Cancel changes and return to normal mode
-            if let Some(original_product) = app.edit_backup.take() {
-                // Restore original product data
-                if let Some(current_product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
-                    *current_product = original_product;
+        KeyCode::Tab => {
+            // Open material selection
+            app.tag_selection = vec![false; app.materials.len()];
+            // Pre-select materials that are already in the current product
+            if let Some(product) = app
+                .products
+                .iter()
+                .find(|p| p.id == app.selected_product_id)
+            {
+                for (i, material) in app.materials.iter().enumerate() {
+                    if product
+                        .material
+                        .as_ref()
+                        .map(|m| m.contains(material))
+                        .unwrap_or(false)
+                    {
+                        app.tag_selection[i] = true;
+                    }
                 }
             }
-            app.input_mode = InputMode::Normal;
-            app.active_pane = ActivePane::Left;
-        }
-        KeyCode::Enter => {
-            // Category is read-only, navigate to next field
-            app.input_mode = InputMode::EditTags;
+            app.create_form.material_selected_index = 0; // Initialize selection index
+            app.tag_select_mode = TagSelectMode::Edit;
+            app.input_mode = InputMode::EditMaterialSelect;
+            app.active_pane = ActivePane::Right;
         }
         KeyCode::Up => {
-            app.input_mode = InputMode::EditProduction;
-        }
-        KeyCode::Down => {
             app.input_mode = InputMode::EditTags;
         }
         _ => {}
@@ -825,79 +978,17 @@ fn handle_category_select_mode(app: &mut super::App, key: crossterm::event::KeyE
     Ok(())
 }
 
-fn handle_edit_materials_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
-    match key.code {
-        KeyCode::Esc => {
-            // Cancel changes and return to normal mode
-            if let Some(original_product) = app.edit_backup.take() {
-                // Restore original product data
-                if let Some(current_product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
-                    *current_product = original_product;
-                }
-            }
-            app.input_mode = InputMode::Normal;
-            app.active_pane = ActivePane::Left;
-        }
-        KeyCode::Enter => {
-            // Save changes and return to normal mode
-            app.edit_backup = None; // Clear backup since we're saving
-            let (sku, product) = if let Some(data) = app.get_selected_product_data() {
-                data
-            } else {
-                return Ok(());
-            };
-            let mut update = crate::api::ProductUpdate::default();
-            update.name = Some(product.name);
-            update.description = product.description;
-            update.tags = Some(product.tags);
-            update.production = Some(product.production);
-            update.material = Some(product.material.unwrap_or_default());
-            update.color = product.color;
-            update.print_time = product.print_time;
-            update.weight = product.weight;
-            update.stock_quantity = product.stock_quantity;
-            update.reorder_point = product.reorder_point;
-            update.unit_cost = product.unit_cost;
-            update.selling_price = product.selling_price;
-            app.perform_update(&sku, update)?;
-            app.input_mode = InputMode::Normal;
-            app.active_pane = ActivePane::Left;
-        }
-        KeyCode::Tab => {
-            // Open material selection
-            app.tag_selection = vec![false; app.materials.len()];
-            // Pre-select materials that are already in the current product
-            if let Some(product) = app.products.iter().find(|p| p.id == app.selected_product_id) {
-                for (i, material) in app.materials.iter().enumerate() {
-                    if product.material.as_ref()
-                        .map(|m| m.contains(material))
-                        .unwrap_or(false) {
-                        app.tag_selection[i] = true;
-                    }
-                }
-            }
-            app.create_form.material_selected_index = 0; // Initialize selection index
-            app.tag_select_mode = TagSelectMode::Edit;
-            app.input_mode = InputMode::EditMaterialSelect;
-            app.active_pane = ActivePane::Right;
-        }
-        KeyCode::Up => {
-            app.input_mode = InputMode::EditTags;
-        }
-        _ => {}
-    }
-    Ok(())
-}
-
-
-
 fn handle_edit_tags_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
     match key.code {
         KeyCode::Esc => {
             // Cancel changes and return to normal mode
             if let Some(original_product) = app.edit_backup.take() {
                 // Restore original product data
-                if let Some(current_product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
+                if let Some(current_product) = app
+                    .products
+                    .iter_mut()
+                    .find(|p| p.id == app.selected_product_id)
+                {
                     *current_product = original_product;
                 }
             }
@@ -906,7 +997,11 @@ fn handle_edit_tags_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
         }
         KeyCode::Enter => {
             // Parse and save changes
-            if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
+            if let Some(product) = app
+                .products
+                .iter_mut()
+                .find(|p| p.id == app.selected_product_id)
+            {
                 product.tags = app
                     .edit_tags_string
                     .split(',')
@@ -949,7 +1044,11 @@ fn handle_edit_tags_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
         KeyCode::Tab => {
             app.tag_selection = vec![false; app.tags.len()];
             // Pre-select tags that are already in the current product
-            if let Some(product) = app.products.iter().find(|p| p.id == app.selected_product_id) {
+            if let Some(product) = app
+                .products
+                .iter()
+                .find(|p| p.id == app.selected_product_id)
+            {
                 for (i, tag) in app.tags.iter().enumerate() {
                     if product.tags.contains(tag) {
                         app.tag_selection[i] = true;
@@ -977,7 +1076,9 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
             match app.item_type {
                 ItemType::Tag => {
                     app.item_form = TagForm::default();
-                    app.input_mode = app.previous_input_mode.unwrap_or(InputMode::CreateTagSelect);
+                    app.input_mode = app
+                        .previous_input_mode
+                        .unwrap_or(InputMode::CreateTagSelect);
                 }
                 ItemType::Category => {
                     app.category_form = CategoryForm::default();
@@ -986,7 +1087,9 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                 }
                 ItemType::Material => {
                     app.item_form = TagForm::default(); // Reuse TagForm for Material
-                    app.input_mode = app.previous_input_mode.unwrap_or(InputMode::CreateMaterialSelect);
+                    app.input_mode = app
+                        .previous_input_mode
+                        .unwrap_or(InputMode::CreateMaterialSelect);
                 }
             }
         }
@@ -995,21 +1098,23 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                 ItemType::Tag => {
                     // Save new tag(s) - support comma-separated
                     if !app.item_form.name.trim().is_empty() {
-                        let tag_names: Vec<String> = app.item_form.name
+                        let tag_names: Vec<String> = app
+                            .item_form
+                            .name
                             .split(',')
                             .map(|s| s.trim().to_string())
                             .filter(|s| !s.is_empty())
                             .collect();
-                        
+
                         let mut created_count = 0;
                         let mut created_tag_names = Vec::new();
-                        
+
                         for tag_name in tag_names {
                             // Skip if tag already exists
                             if app.tags.contains(&tag_name) {
                                 continue;
                             }
-                            
+
                             let tag = crate::api::Tag {
                                 name: tag_name.clone(),
                                 usage_count: 0,
@@ -1021,17 +1126,22 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                                     created_count += 1;
                                 }
                                 Err(e) => {
-                                    app.set_status_message(format!("Error creating tag '{}': {:?}", tag_name, e));
+                                    app.set_status_message(format!(
+                                        "Error creating tag '{}': {:?}",
+                                        tag_name, e
+                                    ));
                                 }
                             }
                         }
-                        
+
                         if created_count > 0 {
                             // Remember currently selected tags before sorting
                             let mut previously_selected = Vec::new();
                             for (i, &selected) in app.tag_selection.iter().enumerate() {
-                                if selected && i < app.tags.len()
-                                    && let Some(tag) = app.tags.get(i) {
+                                if selected
+                                    && i < app.tags.len()
+                                    && let Some(tag) = app.tags.get(i)
+                                {
                                     previously_selected.push(tag.clone());
                                 }
                             }
@@ -1052,21 +1162,26 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                             // Pre-select all newly created tags
                             let mut first_new_index = None;
                             for created_tag_name in &created_tag_names {
-                                if let Some(index) = app.tags.iter().position(|t| t == created_tag_name) {
+                                if let Some(index) =
+                                    app.tags.iter().position(|t| t == created_tag_name)
+                                {
                                     app.tag_selection[index] = true;
                                     if first_new_index.is_none() {
                                         first_new_index = Some(index);
                                     }
                                 }
                             }
-                            
+
                             // Set selection index to first new tag if available
                             if let Some(first_index) = first_new_index {
                                 app.create_form.tag_selected_index = first_index;
                             }
-                            
+
                             let message = if created_count == 1 {
-                                format!("Tag '{}' created", created_tag_names.first().unwrap_or(&String::new()))
+                                format!(
+                                    "Tag '{}' created",
+                                    created_tag_names.first().unwrap_or(&String::new())
+                                )
                             } else {
                                 format!("{} tags created", created_count)
                             };
@@ -1083,7 +1198,8 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                 }
                 ItemType::Category => {
                     // Save new category
-                    if !app.category_form.name.trim().is_empty() && app.category_form.sku.len() == 3 {
+                    if !app.category_form.name.trim().is_empty() && app.category_form.sku.len() == 3
+                    {
                         let category = crate::api::Category {
                             id: None,
                             name: app.category_form.name.clone(),
@@ -1111,7 +1227,9 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                             }
                         }
                     } else {
-                        app.set_status_message("Error: Name required, SKU must be 3 letters".to_string());
+                        app.set_status_message(
+                            "Error: Name required, SKU must be 3 letters".to_string(),
+                        );
                     }
                     app.category_form = CategoryForm::default();
                     app.popup_field = 0;
@@ -1120,7 +1238,9 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                 ItemType::Material => {
                     // Save new material
                     if !app.item_form.name.trim().is_empty() {
-                        let material_names: Vec<String> = app.item_form.name
+                        let material_names: Vec<String> = app
+                            .item_form
+                            .name
                             .split(',')
                             .map(|s| s.trim().to_string())
                             .filter(|s| !s.is_empty())
@@ -1146,7 +1266,10 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                                     created_count += 1;
                                 }
                                 Err(e) => {
-                                    app.set_status_message(format!("Error creating material '{}': {:?}", material_name, e));
+                                    app.set_status_message(format!(
+                                        "Error creating material '{}': {:?}",
+                                        material_name, e
+                                    ));
                                 }
                             }
                         }
@@ -1155,8 +1278,10 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                             // Remember currently selected materials before sorting
                             let mut previously_selected = Vec::new();
                             for (i, &selected) in app.tag_selection.iter().enumerate() {
-                                if selected && i < app.materials.len()
-                                    && let Some(material) = app.materials.get(i) {
+                                if selected
+                                    && i < app.materials.len()
+                                    && let Some(material) = app.materials.get(i)
+                                {
                                     previously_selected.push(material.clone());
                                 }
                             }
@@ -1169,7 +1294,9 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
 
                             // Re-select previously selected materials
                             for material in &previously_selected {
-                                if let Some(index) = app.materials.iter().position(|m| m == material) {
+                                if let Some(index) =
+                                    app.materials.iter().position(|m| m == material)
+                                {
                                     app.tag_selection[index] = true;
                                 }
                             }
@@ -1177,7 +1304,11 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                             // Pre-select all newly created materials
                             let mut first_new_index = None;
                             for created_material_name in &created_material_names {
-                                if let Some(index) = app.materials.iter().position(|m| m == created_material_name) {
+                                if let Some(index) = app
+                                    .materials
+                                    .iter()
+                                    .position(|m| m == created_material_name)
+                                {
                                     app.tag_selection[index] = true;
                                     if first_new_index.is_none() {
                                         first_new_index = Some(index);
@@ -1191,7 +1322,10 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                             }
 
                             let message = if created_count == 1 {
-                                format!("Material '{}' created", created_material_names.first().unwrap_or(&String::new()))
+                                format!(
+                                    "Material '{}' created",
+                                    created_material_names.first().unwrap_or(&String::new())
+                                )
                             } else {
                                 format!("{} materials created", created_count)
                             };
@@ -1201,32 +1335,32 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
                         app.set_status_message("Error: Material name required".to_string());
                     }
                     app.item_form = TagForm::default();
-                    app.input_mode = app.previous_input_mode.unwrap_or(InputMode::CreateMaterialSelect);
+                    app.input_mode = app
+                        .previous_input_mode
+                        .unwrap_or(InputMode::CreateMaterialSelect);
                 }
             }
         }
-        KeyCode::Backspace => {
-            match app.item_type {
-                ItemType::Tag => {
-                    app.item_form.name.pop();
-                }
-                ItemType::Category => match app.popup_field {
-                    0 => {
-                        app.category_form.name.pop();
-                    }
-                    1 => {
-                        app.category_form.sku.pop();
-                    }
-                    2 => {
-                        app.category_form.description.pop();
-                    }
-                    _ => {}
-                },
-                ItemType::Material => {
-                    app.item_form.name.pop();
-                },
+        KeyCode::Backspace => match app.item_type {
+            ItemType::Tag => {
+                app.item_form.name.pop();
             }
-        }
+            ItemType::Category => match app.popup_field {
+                0 => {
+                    app.category_form.name.pop();
+                }
+                1 => {
+                    app.category_form.sku.pop();
+                }
+                2 => {
+                    app.category_form.description.pop();
+                }
+                _ => {}
+            },
+            ItemType::Material => {
+                app.item_form.name.pop();
+            }
+        },
         KeyCode::Tab | KeyCode::Down => {
             if app.item_type == ItemType::Category {
                 app.popup_field = (app.popup_field + 1) % 3;
@@ -1234,33 +1368,35 @@ fn handle_new_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -
         }
         KeyCode::BackTab => {
             if app.item_type == ItemType::Category {
-                app.popup_field = if app.popup_field == 0 { 2 } else { app.popup_field - 1 };
+                app.popup_field = if app.popup_field == 0 {
+                    2
+                } else {
+                    app.popup_field - 1
+                };
             }
         }
-        KeyCode::Char(c) => {
-            match app.item_type {
-                ItemType::Tag => {
-                    app.item_form.name.push(c);
+        KeyCode::Char(c) => match app.item_type {
+            ItemType::Tag => {
+                app.item_form.name.push(c);
+            }
+            ItemType::Category => match app.popup_field {
+                0 => {
+                    app.category_form.name.push(c);
                 }
-                ItemType::Category => match app.popup_field {
-                    0 => {
-                        app.category_form.name.push(c);
+                1 => {
+                    if app.category_form.sku.len() < 3 {
+                        app.category_form.sku.push(c);
                     }
-                    1 => {
-                        if app.category_form.sku.len() < 3 {
-                            app.category_form.sku.push(c);
-                        }
-                    }
-                    2 => {
-                        app.category_form.description.push(c);
-                    }
-                    _ => {}
-                },
-                ItemType::Material => {
-                    app.item_form.name.push(c);
-                },
+                }
+                2 => {
+                    app.category_form.description.push(c);
+                }
+                _ => {}
+            },
+            ItemType::Material => {
+                app.item_form.name.push(c);
             }
-        }
+        },
         _ => {}
     }
     Ok(())
@@ -1287,7 +1423,10 @@ fn handle_delete_confirm_mode(app: &mut super::App, key: crossterm::event::KeyEv
                 if let Some(product) = &app.selected_product_for_delete {
                     match app.api_client.delete_product(&product.sku, false) {
                         Ok(_) => {
-                            app.set_status_message(format!("Product {} deleted from database", product.sku));
+                            app.set_status_message(format!(
+                                "Product {} deleted from database",
+                                product.sku
+                            ));
                             app.refresh_data();
                             app.clear_selection();
                         }
@@ -1320,7 +1459,10 @@ fn handle_delete_confirm_mode(app: &mut super::App, key: crossterm::event::KeyEv
     Ok(())
 }
 
-fn handle_delete_file_confirm_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
+fn handle_delete_file_confirm_mode(
+    app: &mut super::App,
+    key: crossterm::event::KeyEvent,
+) -> Result<()> {
     match key.code {
         KeyCode::Esc => {
             app.input_mode = InputMode::Normal;
@@ -1332,7 +1474,10 @@ fn handle_delete_file_confirm_mode(app: &mut super::App, key: crossterm::event::
             if let Some(product) = &app.selected_product_for_delete {
                 match app.api_client.delete_product(&product.sku, true) {
                     Ok(_) => {
-                        app.set_status_message(format!("Product {} and all files deleted", product.sku));
+                        app.set_status_message(format!(
+                            "Product {} and all files deleted",
+                            product.sku
+                        ));
                         app.refresh_data();
                         app.clear_selection();
                     }
@@ -1358,17 +1503,17 @@ fn handle_delete_file_confirm_mode(app: &mut super::App, key: crossterm::event::
 
 fn build_file_tree(sku: &str) -> Result<Vec<String>> {
     use std::path::Path;
-    
+
     let mut content = Vec::new();
     let base_path = Path::new("/home/grbrum/Work/3d_print/Products").join(sku);
-    
+
     if !base_path.exists() {
         content.push("No files found for this product".to_string());
         return Ok(content);
     }
-    
+
     content.push(format!("📁 {}/", sku));
-    
+
     // Scan subdirectories
     let subdirs = ["images", "models", "notes", "print_files"];
     for subdir in &subdirs {
@@ -1383,13 +1528,13 @@ fn build_file_tree(sku: &str) -> Result<Vec<String>> {
             content.push(format!("├── 📁 {}/ (empty)", subdir));
         }
     }
-    
+
     // Check for metadata.json
     let metadata_path = base_path.join("metadata.json");
     if metadata_path.exists() {
         content.push("└── 📄 metadata.json".to_string());
     }
-    
+
     Ok(content)
 }
 
@@ -1399,21 +1544,21 @@ fn scan_directory(dir_path: &std::path::Path, prefix: &str) -> Result<Vec<String
         Ok(entries) => entries,
         Err(_) => return Ok(content),
     };
-    
+
     let mut file_entries: Vec<_> = entries
         .filter_map(|entry| entry.ok())
         .filter(|entry| entry.file_type().is_ok_and(|ft| ft.is_file()))
         .collect();
-    
+
     file_entries.sort_by_key(|a| a.file_name());
-    
+
     for (i, entry) in file_entries.iter().enumerate() {
         let file_name = entry.file_name().to_string_lossy().to_string();
         let is_last = i == file_entries.len() - 1;
         let connector = if is_last { "└──" } else { "├──" };
         content.push(format!("{}{} 📄 {}", prefix, connector, file_name));
     }
-    
+
     Ok(content)
 }
 
@@ -1421,15 +1566,13 @@ fn normalize_tag_name(tag: &str) -> String {
     // Normalize tag: lowercase, strip whitespace, replace spaces with hyphens
     // This matches the backend normalize_tag function in tag_utils.py
     use std::collections::HashMap;
-    
+
     let mut normalized = tag.to_lowercase();
     normalized = normalized.trim().to_string();
-    
+
     // Replace spaces and underscores with hyphens
-    let replacements: HashMap<char, char> = [
-        (' ', '-'), ('_', '-')
-    ].iter().cloned().collect();
-    
+    let replacements: HashMap<char, char> = [(' ', '-'), ('_', '-')].iter().cloned().collect();
+
     let mut result = String::new();
     for c in normalized.chars() {
         if let Some(&replacement) = replacements.get(&c) {
@@ -1439,7 +1582,7 @@ fn normalize_tag_name(tag: &str) -> String {
         }
         // Remove other special characters
     }
-    
+
     // Remove multiple consecutive hyphens
     let mut final_result = String::new();
     let mut prev_was_hyphen = false;
@@ -1454,26 +1597,26 @@ fn normalize_tag_name(tag: &str) -> String {
             prev_was_hyphen = false;
         }
     }
-    
+
     // Remove leading/trailing hyphens
     final_result.trim_matches('-').to_string()
 }
 
 fn open_product_folder(sku: &str) -> Result<()> {
-    use std::process::Command;
-    use std::path::Path;
     use anyhow::anyhow;
-    
+    use std::path::Path;
+    use std::process::Command;
+
     let base_path = Path::new("/home/grbrum/Work/3d_print/Products").join(sku);
-    
+
     if !base_path.exists() {
         return Err(anyhow!("Product folder not found: {}", base_path.display()));
     }
-    
+
     // Try different file managers for Linux (following Python frontend pattern)
     let file_managers = ["dolphin", "nautilus", "yazi", "thunar", "pcmanfm", "nemo"];
     let mut opened = false;
-    
+
     for fm in &file_managers {
         match Command::new(fm).arg(&base_path).spawn() {
             Ok(_) => {
@@ -1483,40 +1626,38 @@ fn open_product_folder(sku: &str) -> Result<()> {
             Err(_) => continue,
         }
     }
-    
+
     if opened {
         Ok(())
     } else {
         // Fallback to xdg-open if no specific file manager works
         match Command::new("xdg-open").arg(&base_path).spawn() {
             Ok(_) => Ok(()),
-            Err(e) => Err(anyhow!("Failed to open folder: {}", e))
+            Err(e) => Err(anyhow!("Failed to open folder: {}", e)),
         }
     }
 }
 
 fn handle_edit_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) -> Result<()> {
     match key.code {
-        KeyCode::Esc => {
-            match app.edit_item_type {
-                ItemType::Tag => {
-                    app.item_form = TagForm::default();
-                    app.input_mode = match app.tag_select_mode {
-                        TagSelectMode::Create => InputMode::CreateTagSelect,
-                        TagSelectMode::Edit => InputMode::EditTagSelect,
-                    };
-                }
-                ItemType::Category => {
-                    app.category_form = CategoryForm::default();
-                    app.popup_field = 0;
-                    app.input_mode = InputMode::CreateCategorySelect;
-                }
-                ItemType::Material => {
-                    app.item_form = TagForm::default();
-                    app.input_mode = InputMode::CreateMaterialSelect;
-                }
+        KeyCode::Esc => match app.edit_item_type {
+            ItemType::Tag => {
+                app.item_form = TagForm::default();
+                app.input_mode = match app.tag_select_mode {
+                    TagSelectMode::Create => InputMode::CreateTagSelect,
+                    TagSelectMode::Edit => InputMode::EditTagSelect,
+                };
             }
-        }
+            ItemType::Category => {
+                app.category_form = CategoryForm::default();
+                app.popup_field = 0;
+                app.input_mode = InputMode::CreateCategorySelect;
+            }
+            ItemType::Material => {
+                app.item_form = TagForm::default();
+                app.input_mode = InputMode::CreateMaterialSelect;
+            }
+        },
         KeyCode::Enter => {
             match app.edit_item_type {
                 ItemType::Tag => {
@@ -1560,17 +1701,19 @@ fn handle_edit_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
                 }
                 ItemType::Category => {
                     // Save edited category
-                    if !app.category_form.name.trim().is_empty() && app.category_form.sku.len() == 3 {
+                    if !app.category_form.name.trim().is_empty() && app.category_form.sku.len() == 3
+                    {
                         if app.create_form.category_selected_index < app.categories.len() {
                             let mut category =
                                 app.categories[app.create_form.category_selected_index].clone();
                             category.name = app.category_form.name.clone();
                             category.sku_initials = app.category_form.sku.clone();
-                            category.description = if app.category_form.description.trim().is_empty() {
-                                None
-                            } else {
-                                Some(app.category_form.description.clone())
-                            };
+                            category.description =
+                                if app.category_form.description.trim().is_empty() {
+                                    None
+                                } else {
+                                    Some(app.category_form.description.clone())
+                                };
                             match app.api_client.update_category(&category) {
                                 Ok(updated_category) => {
                                     app.categories[app.create_form.category_selected_index] =
@@ -1586,12 +1729,17 @@ fn handle_edit_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
                                     app.refresh_data();
                                 }
                                 Err(e) => {
-                                    app.set_status_message(format!("Error updating category: {:?}", e));
+                                    app.set_status_message(format!(
+                                        "Error updating category: {:?}",
+                                        e
+                                    ));
                                 }
                             }
                         }
                     } else {
-                        app.set_status_message("Error: Name required, SKU must be 3 letters".to_string());
+                        app.set_status_message(
+                            "Error: Name required, SKU must be 3 letters".to_string(),
+                        );
                     }
                     app.category_form = CategoryForm::default();
                     app.popup_field = 0;
@@ -1601,7 +1749,8 @@ fn handle_edit_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
                     // Save edited material
                     if !app.item_form.name.trim().is_empty() {
                         if app.create_form.material_selected_index < app.materials.len() {
-                            let old_name = app.materials[app.create_form.material_selected_index].clone();
+                            let old_name =
+                                app.materials[app.create_form.material_selected_index].clone();
                             let material = crate::api::Material {
                                 name: old_name.clone(),
                                 usage_count: 0, // Not used for update
@@ -1623,7 +1772,10 @@ fn handle_edit_item_mode(app: &mut super::App, key: crossterm::event::KeyEvent) 
                                     app.refresh_data();
                                 }
                                 Err(e) => {
-                                    app.set_status_message(format!("Error updating material: {:?}", e));
+                                    app.set_status_message(format!(
+                                        "Error updating material: {:?}",
+                                        e
+                                    ));
                                 }
                             }
                         }

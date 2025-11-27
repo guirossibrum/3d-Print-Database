@@ -49,12 +49,14 @@ pub struct App {
     pub item_form: TagForm,
     pub popup_field: usize,
     pub tag_selection: Vec<bool>, // Selection state for tags and materials
+    #[allow(dead_code)]
     pub category_selection: Vec<bool>,
+    #[allow(dead_code)]
     pub selected_category_index: usize,
     pub edit_tags_string: String,
 
     // Delete state
-    pub delete_option: usize,        // 0=database only, 1=database+files
+    pub delete_option: usize,           // 0=database only, 1=database+files
     pub file_tree_content: Vec<String>, // File tree for display
     pub selected_product_for_delete: Option<crate::api::Product>, // Store product being deleted
 }
@@ -176,14 +178,8 @@ impl App {
             self.products
                 .iter()
                 .filter(|product| {
-                    product
-                        .name
-                        .to_lowercase()
-                        .contains(&query.to_lowercase())
-                        || product
-                            .sku
-                            .to_lowercase()
-                            .contains(&query.to_lowercase())
+                    product.name.to_lowercase().contains(&query.to_lowercase())
+                        || product.sku.to_lowercase().contains(&query.to_lowercase())
                 })
                 .collect()
         }
@@ -192,7 +188,10 @@ impl App {
     pub fn get_selected_product(&self) -> Option<&crate::api::Product> {
         let filtered_products = self.get_filtered_products();
         match self.selected_product_id {
-            Some(product_id) => filtered_products.iter().find(|p| p.id == Some(product_id)).copied(),
+            Some(product_id) => filtered_products
+                .iter()
+                .find(|p| p.id == Some(product_id))
+                .copied(),
             None => filtered_products.first().copied(),
         }
     }
@@ -200,9 +199,10 @@ impl App {
     pub fn get_selected_index(&self) -> usize {
         let filtered_products = self.get_filtered_products();
         match self.selected_product_id {
-            Some(product_id) => {
-                filtered_products.iter().position(|p| p.id == Some(product_id)).unwrap_or(0)
-            }
+            Some(product_id) => filtered_products
+                .iter()
+                .position(|p| p.id == Some(product_id))
+                .unwrap_or(0),
             None => 0,
         }
     }
@@ -251,7 +251,10 @@ impl App {
         }
         match self.api_client.get_materials() {
             Ok(materials) => {
-                self.materials = materials.into_iter().map(|material| material.name).collect();
+                self.materials = materials
+                    .into_iter()
+                    .map(|material| material.name)
+                    .collect();
             }
             Err(e) => self.set_status_message(format!("Failed to refresh materials: {:?}", e)),
         }
@@ -332,7 +335,9 @@ impl App {
     }
 
     pub fn get_selected_product_data(&self) -> Option<(String, crate::api::Product)> {
-        self.products.iter().find(|p| p.id == self.selected_product_id)
+        self.products
+            .iter()
+            .find(|p| p.id == self.selected_product_id)
             .map(|p| (p.sku.clone(), p.clone()))
     }
 
@@ -355,7 +360,7 @@ impl App {
     pub fn handle_key(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
         // Import and use the handlers module
         use crate::handlers::*;
-        
+
         handle_key_dispatch(self, key)
     }
 }

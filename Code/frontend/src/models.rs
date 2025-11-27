@@ -10,7 +10,6 @@ pub enum Tab {
 #[derive(Debug, Clone, PartialEq)]
 pub enum TagSelectMode {
     Create,
-    #[allow(dead_code)]
     Edit,
 }
 
@@ -19,7 +18,6 @@ pub enum TagSelectMode {
 pub enum ItemType {
     Tag,
     Material,
-    #[allow(dead_code)]
     Category,
 }
 

@@ -74,8 +74,12 @@ pub fn draw(f: &mut Frame, app: &mut App, version: &str) {
     // Draw popup if in popup mode (global, works across all tabs)
     let is_popup_active = matches!(
         app.input_mode,
-        InputMode::NewCategory | InputMode::EditCategory | InputMode::NewTag | InputMode::NewMaterial |
-        InputMode::DeleteConfirm | InputMode::DeleteFileConfirm
+        InputMode::NewCategory
+            | InputMode::EditCategory
+            | InputMode::NewTag
+            | InputMode::NewMaterial
+            | InputMode::DeleteConfirm
+            | InputMode::DeleteFileConfirm
     );
 
     if is_popup_active {
@@ -229,7 +233,12 @@ fn draw_create_left_pane(f: &mut Frame, area: Rect, app: &App, border_style: Sty
                 }
             )
         } else {
-            (if app.create_form.production { "Yes" } else { "No" }).to_string()
+            (if app.create_form.production {
+                "Yes"
+            } else {
+                "No"
+            })
+            .to_string()
         }),
     ]));
 
@@ -252,10 +261,7 @@ fn draw_create_left_pane(f: &mut Frame, area: Rect, app: &App, border_style: Sty
     ]));
 
     // Materials field
-    let materials_style = if matches!(
-        app.input_mode,
-        InputMode::CreateMaterials
-    ) {
+    let materials_style = if matches!(app.input_mode, InputMode::CreateMaterials) {
         Style::default().fg(Color::Yellow).bold()
     } else {
         Style::default().fg(Color::Cyan)
@@ -276,7 +282,9 @@ fn draw_create_left_pane(f: &mut Frame, area: Rect, app: &App, border_style: Sty
         InputMode::CreateCategory => "[TAB] Select     [ESC] Cancel",
         InputMode::CreateProduction => "[←/→] Toggle     [↑/↓] select     [ESC] Cancel",
         InputMode::CreateTags => "[TAB] Select Tags     [ENTER] Save     [↑] Prev     [ESC] Cancel",
-        InputMode::CreateMaterials => "[TAB] Select Materials     [ENTER] Save     [↑] Prev     [↓] Save     [ESC] Cancel",
+        InputMode::CreateMaterials => {
+            "[TAB] Select Materials     [ENTER] Save     [↑] Prev     [↓] Save     [ESC] Cancel"
+        }
         _ => "[ENTER] Create     [ESC] Cancel]",
     };
     content.push(Line::from(vec![Span::styled(
@@ -421,17 +429,21 @@ fn draw_popup(f: &mut Frame, area: Rect, app: &App) {
             };
 
             content.push(Line::from(vec![
-                Span::styled(format!("{} Name: ", item_type_name),
-                             Style::default().fg(Color::Yellow).bold()),
+                Span::styled(
+                    format!("{} Name: ", item_type_name),
+                    Style::default().fg(Color::Yellow).bold(),
+                ),
                 Span::raw(&app.item_form.name),
                 Span::styled("_", Style::default().fg(Color::White)),
             ]));
 
-            content.push(Line::from(vec![
-                Span::styled(format!("[Enter] Save     [ESC] Cancel    (Tip: Use commas for multiple {})",
-                                     item_type_name.to_lowercase()),
-                             Style::default().fg(Color::Gray)),
-            ]));
+            content.push(Line::from(vec![Span::styled(
+                format!(
+                    "[Enter] Save     [ESC] Cancel    (Tip: Use commas for multiple {})",
+                    item_type_name.to_lowercase()
+                ),
+                Style::default().fg(Color::Gray),
+            )]));
         }
         InputMode::EditTag => {
             content.push(Line::from(vec![
@@ -451,9 +463,10 @@ fn draw_popup(f: &mut Frame, area: Rect, app: &App) {
                     Span::raw(&product.sku),
                 ]));
                 content.push(Line::from(""));
-                content.push(Line::from(vec![
-                    Span::styled("Choose deletion method:", Style::default().fg(Color::Yellow)),
-                ]));
+                content.push(Line::from(vec![Span::styled(
+                    "Choose deletion method:",
+                    Style::default().fg(Color::Yellow),
+                )]));
                 content.push(Line::from(""));
                 let option1_style = if app.delete_option == 0 {
                     Style::default().fg(Color::Yellow).bold()
@@ -465,12 +478,14 @@ fn draw_popup(f: &mut Frame, area: Rect, app: &App) {
                 } else {
                     Style::default().fg(Color::White)
                 };
-                content.push(Line::from(vec![
-                    Span::styled(" [1] Delete record from database only", option1_style),
-                ]));
-                content.push(Line::from(vec![
-                    Span::styled(" [2] Delete record and all associated files", option2_style),
-                ]));
+                content.push(Line::from(vec![Span::styled(
+                    " [1] Delete record from database only",
+                    option1_style,
+                )]));
+                content.push(Line::from(vec![Span::styled(
+                    " [2] Delete record and all associated files",
+                    option2_style,
+                )]));
             }
         }
         InputMode::DeleteFileConfirm => {
@@ -484,18 +499,17 @@ fn draw_popup(f: &mut Frame, area: Rect, app: &App) {
                     Span::raw(&product.sku),
                 ]));
                 content.push(Line::from(""));
-                content.push(Line::from(vec![
-                    Span::styled("Files to be deleted:", Style::default().fg(Color::Yellow)),
-                ]));
+                content.push(Line::from(vec![Span::styled(
+                    "Files to be deleted:",
+                    Style::default().fg(Color::Yellow),
+                )]));
                 content.push(Line::from(""));
-                
+
                 // Display file tree
                 for line in &app.file_tree_content {
-                    content.push(Line::from(vec![
-                        Span::raw(line),
-                    ]));
+                    content.push(Line::from(vec![Span::raw(line)]));
                 }
-                
+
                 content.push(Line::from(""));
                 content.push(Line::from(vec![
                     Span::styled("Confirm deletion? ", Style::default().fg(Color::Red).bold()),
@@ -540,9 +554,7 @@ fn draw_popup(f: &mut Frame, area: Rect, app: &App) {
 
 fn build_tag_selection_content<'a>(app: &'a App, header: &'a str, help: &'a str) -> Vec<Line<'a>> {
     let mut content = vec![];
-    content.push(Line::from(vec![
-        Span::styled(header, HEADER_STYLE),
-    ]));
+    content.push(Line::from(vec![Span::styled(header, HEADER_STYLE)]));
     for (i, tag) in app.tags.iter().enumerate() {
         let is_current = i == app.create_form.tag_selected_index;
         let is_selected = app.tag_selection.get(i).copied().unwrap_or(false);
@@ -556,14 +568,13 @@ fn build_tag_selection_content<'a>(app: &'a App, header: &'a str, help: &'a str)
         content.push(Line::from(Span::styled(line, style)));
     }
     if app.tags.is_empty() {
-        content.push(Line::from(vec![
-            Span::styled("No tags available", HELP_STYLE),
-        ]));
+        content.push(Line::from(vec![Span::styled(
+            "No tags available",
+            HELP_STYLE,
+        )]));
     }
     content.push(Line::from(""));
-    content.push(Line::from(vec![
-        Span::styled(help, HELP_STYLE),
-    ]));
+    content.push(Line::from(vec![Span::styled(help, HELP_STYLE)]));
     content
 }
 
@@ -597,11 +608,13 @@ fn build_category_selection_content<'a>(app: &'a App, header: &'a str, help: &'a
     content
 }
 
-fn build_material_selection_content<'a>(app: &'a App, header: &'a str, help: &'a str) -> Vec<Line<'a>> {
+fn build_material_selection_content<'a>(
+    app: &'a App,
+    header: &'a str,
+    help: &'a str,
+) -> Vec<Line<'a>> {
     let mut content = vec![];
-    content.push(Line::from(vec![
-        Span::styled(header, HEADER_STYLE),
-    ]));
+    content.push(Line::from(vec![Span::styled(header, HEADER_STYLE)]));
     for (i, material) in app.materials.iter().enumerate() {
         let is_current = i == app.create_form.material_selected_index;
         let is_selected = app.tag_selection.get(i).copied().unwrap_or(false);
@@ -615,14 +628,13 @@ fn build_material_selection_content<'a>(app: &'a App, header: &'a str, help: &'a
         content.push(Line::from(Span::styled(line, style)));
     }
     if app.materials.is_empty() {
-        content.push(Line::from(vec![
-            Span::styled("No materials available", HELP_STYLE),
-        ]));
+        content.push(Line::from(vec![Span::styled(
+            "No materials available",
+            HELP_STYLE,
+        )]));
     }
     content.push(Line::from(""));
-    content.push(Line::from(vec![
-        Span::styled(help, HELP_STYLE),
-    ]));
+    content.push(Line::from(vec![Span::styled(help, HELP_STYLE)]));
     content
 }
 
@@ -676,11 +688,11 @@ fn draw_searchable_pane_with_styles<F>(
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),     // Title
-            Constraint::Min(10),       // Content area
-            Constraint::Length(1),     // Footer helper
-            Constraint::Length(1),     // Status message line
-            Constraint::Length(1),     // Version info
+            Constraint::Length(3), // Title
+            Constraint::Min(10),   // Content area
+            Constraint::Length(1), // Footer helper
+            Constraint::Length(1), // Status message line
+            Constraint::Length(1), // Version info
         ])
         .split(area);
 
@@ -735,10 +747,12 @@ fn display_as_list(
 
     // Add the list items - use product ID for selection
     for (i, product) in products.iter().enumerate() {
-        let style = if product.id == app.selected_product_id || (app.selected_product_id.is_none() && i == 0) {
-            Style::default().fg(Color::Yellow)  // Yellow text for selected item
+        let style = if product.id == app.selected_product_id
+            || (app.selected_product_id.is_none() && i == 0)
+        {
+            Style::default().fg(Color::Yellow) // Yellow text for selected item
         } else {
-            Style::default().fg(Color::White)   // White text for unselected items
+            Style::default().fg(Color::White) // White text for unselected items
         };
 
         content_lines.push(Line::from(Span::styled(
@@ -782,12 +796,14 @@ fn display_as_table(
 
     // Product rows
     let mut rows = vec![];
-    
+
     for (i, product) in products.iter().enumerate() {
-        let style = if product.id == app.selected_product_id || (app.selected_product_id.is_none() && i == 0) {
-            Style::default().fg(Color::Yellow)  // Yellow text for selected item
+        let style = if product.id == app.selected_product_id
+            || (app.selected_product_id.is_none() && i == 0)
+        {
+            Style::default().fg(Color::Yellow) // Yellow text for selected item
         } else {
-            Style::default().fg(Color::White)   // White text for unselected items
+            Style::default().fg(Color::White) // White text for unselected items
         };
 
         // Mock inventory data for now (in real app, this would come from API)
@@ -931,17 +947,21 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
             Style::default().fg(Color::Cyan)
         };
 
-        let category_name = app.categories.iter()
+        let category_name = app
+            .categories
+            .iter()
             .find(|c| c.id == product.category_id)
             .map(|c| c.name.as_str())
             .unwrap_or("Unknown");
 
         let tags_text = product.tags.join(", ");
-        let materials_text = product.material.as_ref()
+        let materials_text = product
+            .material
+            .as_ref()
             .map(|m| m.join(", "))
             .unwrap_or_else(|| "None".to_string());
 
-let content = vec![
+        let content = vec![
             Line::from(vec![
                 Span::styled("SKU: ", Style::default().fg(Color::Cyan)),
                 Span::raw(&product.sku),
@@ -1062,7 +1082,7 @@ fn draw_inventory_right_pane(f: &mut Frame, area: Rect, app: &App) {
         INACTIVE_BORDER_STYLE
     };
 
-if let Some(product) = app.get_selected_product() {
+    if let Some(product) = app.get_selected_product() {
         let content = vec![
             Line::from(vec![
                 Span::styled("Product: ", Style::default().fg(Color::Cyan)),
@@ -1137,18 +1157,26 @@ fn draw_inventory_totals(f: &mut Frame, area: Rect, app: &App) {
 fn draw_footer(f: &mut Frame, area: Rect, app: &App, version: &str) {
     // Get instructions based on current tab, pane, and mode
     let instructions = match app.current_tab {
-Tab::Create => match app.input_mode {
+        Tab::Create => match app.input_mode {
             InputMode::Normal => "[←/→] switch tabs     [Enter] create product",
             InputMode::CreateName => "[Enter] name     [↑/↓] select     [Esc] cancel",
             InputMode::CreateDescription => "[Enter] desc     [↑/↓] select     [Esc] cancel",
             InputMode::CreateCategory => "[Tab] select     [Esc] cancel",
-            InputMode::CreateProduction => "[←/→] toggle     [y/n] toggle     [↑/↓] select     [Esc] cancel",
-            InputMode::CreateTags => "[Tab] select tags     [Enter] save     [↑] prev     [Esc] cancel",
-            InputMode::CreateTagSelect => "[↑/↓] select     [Enter] choose     [Ctrl+n] new     [Ctrl+e] edit     [Esc] back",
+            InputMode::CreateProduction => {
+                "[←/→] toggle     [y/n] toggle     [↑/↓] select     [Esc] cancel"
+            }
+            InputMode::CreateTags => {
+                "[Tab] select tags     [Enter] save     [↑] prev     [Esc] cancel"
+            }
+            InputMode::CreateTagSelect => {
+                "[↑/↓] select     [Enter] choose     [Ctrl+n] new     [Ctrl+e] edit     [Esc] back"
+            }
             InputMode::NewCategory | InputMode::EditCategory => {
                 "[Enter] name     [Enter] save     [Esc] cancel"
             }
-            InputMode::NewTag | InputMode::NewMaterial => "[Enter] name     [Enter] save     [Esc] cancel",
+            InputMode::NewTag | InputMode::NewMaterial => {
+                "[Enter] name     [Enter] save     [Esc] cancel"
+            }
             InputMode::EditTag => "[Enter] name     [Enter] save     [Esc] cancel",
             _ => "[←/→] switch tabs",
         },
@@ -1156,16 +1184,26 @@ Tab::Create => match app.input_mode {
             InputMode::Normal => {
                 if app.has_multiple_panes() {
                     match app.active_pane {
-                        ActivePane::Left => "[Tab] edit selected     [↑/↓] select     [type] search     [Ctrl+o] open folder     [Ctrl+d] delete",
-                        ActivePane::Right => "[Tab] back to results     [Enter] save     [↑/↓] select",
+                        ActivePane::Left => {
+                            "[Tab] edit selected     [↑/↓] select     [type] search     [Ctrl+o] open folder     [Ctrl+d] delete"
+                        }
+                        ActivePane::Right => {
+                            "[Tab] back to results     [Enter] save     [↑/↓] select"
+                        }
                     }
                 } else {
                     "[↑/↓] select product     [Enter] edit       [type] search     [Ctrl+o] open folder      [Ctrl+d] delete"
                 }
             }
-            InputMode::EditName => "[Enter] name     [Tab] cancel     [Enter] save     [↑/↓] select",
-            InputMode::EditDescription => "[Enter] desc      [Tab] cancel     [Enter] save     [↑/↓] select",
-            InputMode::EditProduction => "[←/→] toggle     [Tab] cancel     [Enter] save     [↑/↓] select",
+            InputMode::EditName => {
+                "[Enter] name     [Tab] cancel     [Enter] save     [↑/↓] select"
+            }
+            InputMode::EditDescription => {
+                "[Enter] desc      [Tab] cancel     [Enter] save     [↑/↓] select"
+            }
+            InputMode::EditProduction => {
+                "[←/→] toggle     [Tab] cancel     [Enter] save     [↑/↓] select"
+            }
             InputMode::EditCategories => "[Tab] select category     [Enter] save     [↑/↓] select",
             InputMode::EditMaterials => "[Tab] select materials     [Enter] save     [↑/↓] select",
             _ => "[Tab] switch panes     [↑/↓] navigate",
@@ -1174,8 +1212,12 @@ Tab::Create => match app.input_mode {
             InputMode::Normal => {
                 if app.has_multiple_panes() {
                     match app.active_pane {
-                        ActivePane::Left => "[Tab] right pane     [↑/↓] select     [type] search     [Ctrl+d] delete",
-                        ActivePane::Right => "[Tab] left pane     [+/-] adjust stock     [Enter] confirm",
+                        ActivePane::Left => {
+                            "[Tab] right pane     [↑/↓] select     [type] search     [Ctrl+d] delete"
+                        }
+                        ActivePane::Right => {
+                            "[Tab] left pane     [+/-] adjust stock     [Enter] confirm"
+                        }
                     }
                 } else {
                     "[↑/↓] select product     [type] search     [Ctrl+d] delete"
@@ -1200,9 +1242,9 @@ Tab::Create => match app.input_mode {
     let footer_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(1),  // Helper text
-            Constraint::Length(1),  // Status message
-            Constraint::Length(1),  // Version
+            Constraint::Length(1), // Helper text
+            Constraint::Length(1), // Status message
+            Constraint::Length(1), // Version
         ])
         .split(area);
 

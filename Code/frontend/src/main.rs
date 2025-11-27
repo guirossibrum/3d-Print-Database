@@ -2,17 +2,17 @@ use crossterm::{
     cursor::{Hide, Show},
     execute,
     terminal::{
-        Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode,
-        enable_raw_mode, SetTitle,
+        Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, SetTitle, disable_raw_mode,
+        enable_raw_mode,
     },
 };
 use ratatui::{Terminal, backend::CrosstermBackend};
 use std::io;
 
 mod api;
+mod handlers;
 mod models;
 mod state;
-mod handlers;
 mod ui;
 
 use state::App;
@@ -36,8 +36,9 @@ fn setup_terminal()
     if let Err(e) = enable_raw_mode() {
         if e.raw_os_error() == Some(6) {
             // Check if we're being launched through omarchy system
-            if std::env::var("XDG_TERMINAL_TTY").is_ok() || 
-               std::env::var("GHOSTTY_RESOURCES_DIR").is_ok() {
+            if std::env::var("XDG_TERMINAL_TTY").is_ok()
+                || std::env::var("GHOSTTY_RESOURCES_DIR").is_ok()
+            {
                 // Being launched through terminal emulator, continue
             } else {
                 return Err(TerminalError::NotInteractive);
@@ -48,7 +49,8 @@ fn setup_terminal()
 
     let mut stdout = io::stdout();
     // Set window title for Hyprland detection
-    execute!(stdout, SetTitle("3D Print Database TUI")).map_err(|e| TerminalError::SetupFailed(e.into()))?;
+    execute!(stdout, SetTitle("3D Print Database TUI"))
+        .map_err(|e| TerminalError::SetupFailed(e.into()))?;
     // Aggressive screen clearing
     execute!(stdout, Clear(ClearType::All)).map_err(|e| TerminalError::SetupFailed(e.into()))?;
     execute!(stdout, Hide).map_err(|e| TerminalError::SetupFailed(e.into()))?;

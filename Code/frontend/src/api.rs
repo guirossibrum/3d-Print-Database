@@ -1,7 +1,7 @@
 use anyhow::Result;
+use anyhow::anyhow;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
-use anyhow::anyhow;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Product {
@@ -181,7 +181,10 @@ impl ApiClient {
     }
 
     pub fn delete_product(&self, sku: &str, delete_files: bool) -> Result<String> {
-        let url = format!("{}/products/{}?delete_files={}", self.base_url, sku, delete_files);
+        let url = format!(
+            "{}/products/{}?delete_files={}",
+            self.base_url, sku, delete_files
+        );
         let response = self.client.delete(&url).send()?;
         if response.status().is_success() {
             Ok("Product deleted successfully".to_string())
