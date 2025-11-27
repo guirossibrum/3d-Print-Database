@@ -29,17 +29,7 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
                 }
                 KeyCode::Enter => {
                     // Save changes and return to normal mode
-                    app.edit_backup = None; // Clear backup since we're saving
-                    let (sku, product) = if let Some(data) = app.get_selected_product_data() {
-                        data
-                    } else {
-                        return Ok(false);
-                    };
-                    let mut update = crate::api::ProductUpdate::default();
-                    update.production = Some(product.production);
-                    app.perform_update(&sku, update)?;
-                    app.input_mode = crate::models::InputMode::Normal;
-                    app.active_pane = crate::models::ActivePane::Left;
+                    app.save_current_product()?;
                 }
                 KeyCode::Up => {
                     app.input_mode = crate::models::InputMode::EditDescription;
@@ -48,28 +38,50 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
                     app.input_mode = crate::models::InputMode::EditCategories;
                 }
                 KeyCode::Left => {
-                    // Already at first field, do nothing
-                }
-                KeyCode::Right => {
-                    app.input_mode = crate::models::InputMode::EditName;
-                }
-                KeyCode::Char('y') | KeyCode::Char('Y') => {
-                    if let Some(product) = app
-                        .products
-                        .iter_mut()
-                        .find(|p| p.id == app.selected_product_id)
+                    // Toggle production to true
+                    if let Some(selected_id) = app.get_selected_product_id() {
+                        if let Some(product) = app
+                            .products
+                            .iter_mut()
+                            .find(|p| p.id == Some(selected_id))
                         {
                             product.production = true;
                         }
+                    }
                 }
-                KeyCode::Char('n') | KeyCode::Char('N') => {
-                    if let Some(product) = app
-                        .products
-                        .iter_mut()
-                        .find(|p| p.id == app.selected_product_id)
+                KeyCode::Right => {
+                    // Toggle production to false
+                    if let Some(selected_id) = app.get_selected_product_id() {
+                        if let Some(product) = app
+                            .products
+                            .iter_mut()
+                            .find(|p| p.id == Some(selected_id))
                         {
                             product.production = false;
                         }
+                    }
+                }
+                KeyCode::Char('y') | KeyCode::Char('Y') => {
+                    if let Some(selected_id) = app.get_selected_product_id() {
+                        if let Some(product) = app
+                            .products
+                            .iter_mut()
+                            .find(|p| p.id == Some(selected_id))
+                        {
+                            product.production = true;
+                        }
+                    }
+                }
+                KeyCode::Char('n') | KeyCode::Char('N') => {
+                    if let Some(selected_id) = app.get_selected_product_id() {
+                        if let Some(product) = app
+                            .products
+                            .iter_mut()
+                            .find(|p| p.id == Some(selected_id))
+                        {
+                            product.production = false;
+                        }
+                    }
                 }
                 _ => {}
             }

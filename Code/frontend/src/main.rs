@@ -93,7 +93,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Initialize app without println to avoid text persistence
     let mut app = match App::new() {
-        Ok(app) => app,
+        Ok(mut app) => {
+            // Initialize tab-specific state
+            app.initialize_current_tab();
+            app
+        },
         Err(e) => {
             eprintln!("Failed to initialize app: {:?}", e);
             return Err(e.into());

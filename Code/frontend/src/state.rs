@@ -334,11 +334,71 @@ impl App {
         Ok(())
     }
 
+    pub fn save_current_product(&mut self) -> Result<()> {
+        let (sku, product) = if let Some(data) = self.get_selected_product_data() {
+            data
+        } else {
+            return Err(anyhow::anyhow!("No product selected"));
+        };
+
+        let mut update = crate::api::ProductUpdate::default();
+        update.name = Some(product.name.clone());
+        update.description = product.description.clone();
+        
+        // Handle tags specially - parse from edit_tags_string if we're in tags edit mode
+        if matches!(self.input_mode, InputMode::EditTags) {
+            update.tags = Some(
+                self.edit_tags_string
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect()
+            );
+        }
+        update.print_time = product.print_time;
+        update.weight = product.weight;
+        update.stock_quantity = product.stock_quantity;
+        update.reorder_point = product.reorder_point;
+        update.unit_cost = product.unit_cost;
+        update.selling_price = product.selling_price;
+
+        self.perform_update(&sku, update)?;
+        self.edit_backup = None; // Clear backup since we're saving
+        self.input_mode = crate::models::InputMode::Normal;
+        self.active_pane = crate::models::ActivePane::Left;
+        Ok(())
+    }
+
     pub fn get_selected_product_data(&self) -> Option<(String, crate::api::Product)> {
-        self.products
-            .iter()
-            .find(|p| p.id == self.selected_product_id)
-            .map(|p| (p.sku.clone(), p.clone()))
+        let filtered_products = self.get_filtered_products();
+        match self.selected_product_id {
+            Some(product_id) => {
+                filtered_products.iter().find(|p| p.id == Some(product_id))
+            }
+            None => filtered_products.first()
+        }
+        .map(|p| (p.sku.clone(), (*p).clone()))
+    }
+
+    pub fn get_selected_product_id(&self) -> Option<i32> {
+        match self.selected_product_id {
+            Some(product_id) => Some(product_id),
+            None => self.get_filtered_products().first().and_then(|p| p.id),
+        }
+    }
+
+    pub fn initialize_current_tab(&mut self) {
+        // Auto-select first item for tabs with product lists
+        if matches!(self.current_tab, Tab::Search | Tab::Inventory) {
+            if !self.products.is_empty() {
+                if let Some(first_product) = self.get_filtered_products().first() {
+                    if let Some(product_id) = first_product.id {
+                        self.selected_product_id = Some(product_id);
+                    }
+                }
+            }
+        }
+        // For Create tab and other non-list tabs: keep selected_product_id = None
     }
 
     // Status message management with 20-second persistence

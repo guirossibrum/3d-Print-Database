@@ -29,42 +29,36 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
                 }
                 KeyCode::Enter => {
                     // Save changes and return to normal mode
-                    app.edit_backup = None; // Clear backup since we're saving
-                    let (sku, product) = if let Some(data) = app.get_selected_product_data() {
-                        data
-                    } else {
-                        return Ok(false);
-                    };
-                    let mut update = crate::api::ProductUpdate::default();
-                    update.description = product.description.clone();
-                    app.perform_update(&sku, update)?;
-                    app.input_mode = crate::models::InputMode::Normal;
-                    app.active_pane = crate::models::ActivePane::Left;
+                    app.save_current_product()?;
                 }
                 KeyCode::Down => {
-                    app.input_mode = crate::models::InputMode::CreateProduction; // or EditProduction
+                    app.input_mode = crate::models::InputMode::EditProduction;
                 }
                 KeyCode::Up => {
                     app.input_mode = crate::models::InputMode::EditName;
                 }
                 KeyCode::Backspace => {
-                    if let Some(product) = app
-                        .products
-                        .iter_mut()
-                        .find(|p| p.id == app.selected_product_id)
-                        && let Some(ref mut desc) = product.description
-                    {
-                        desc.pop();
+                    if let Some(selected_id) = app.get_selected_product_id() {
+                        if let Some(product) = app
+                            .products
+                            .iter_mut()
+                            .find(|p| p.id == Some(selected_id))
+                            && let Some(ref mut desc) = product.description
+                        {
+                            desc.pop();
+                        }
                     }
                 }
                 KeyCode::Char(c) => {
-                    if let Some(product) = app
-                        .products
-                        .iter_mut()
-                        .find(|p| p.id == app.selected_product_id)
-                        && let Some(ref mut desc) = product.description
-                    {
-                        desc.push(c);
+                    if let Some(selected_id) = app.get_selected_product_id() {
+                        if let Some(product) = app
+                            .products
+                            .iter_mut()
+                            .find(|p| p.id == Some(selected_id))
+                            && let Some(ref mut desc) = product.description
+                        {
+                            desc.push(c);
+                        }
                     }
                 }
                 _ => {}

@@ -16,12 +16,14 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
                     // Cancel changes and return to normal mode
                     if let Some(original) = app.edit_backup.take() {
                         // Restore original product data
-                        if let Some(current) = app
-                            .products
-                            .iter_mut()
-                            .find(|p| p.id == app.selected_product_id)
-                        {
-                            *current = original;
+                        if let Some(selected_id) = app.get_selected_product_id() {
+                            if let Some(current) = app
+                                .products
+                                .iter_mut()
+                                .find(|p| p.id == Some(selected_id))
+                            {
+                                *current = original;
+                            }
                         }
                     }
                     app.input_mode = crate::models::InputMode::Normal;
@@ -29,26 +31,19 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
                     return Ok(true);
                 }
                 KeyCode::Enter => {
-                    // Category is read-only, navigate to next field
-                    app.input_mode = crate::models::InputMode::EditTags;
+                    // Save changes and return to normal mode
+                    app.save_current_product()?;
                     return Ok(true);
                 }
                 KeyCode::Up => {
-                    app.input_mode = crate::models::InputMode::EditDescription;
+                    app.input_mode = crate::models::InputMode::EditProduction;
                     return Ok(true);
                 }
                 KeyCode::Down => {
-                    app.input_mode = crate::models::InputMode::EditMaterials;
+                    app.input_mode = crate::models::InputMode::EditTags;
                     return Ok(true);
                 }
-                KeyCode::Left => {
-                    // Already at first field, do nothing
-                    return Ok(true);
-                }
-                KeyCode::Right => {
-                    // Already at last field, do nothing
-                    return Ok(true);
-                }
+
                 KeyCode::Backspace => {
                     // Go back to previous field
                     app.input_mode = crate::models::InputMode::EditName;

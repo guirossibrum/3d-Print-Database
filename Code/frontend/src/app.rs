@@ -118,46 +118,13 @@ impl App {
                     Event::Key(key) => self.handle_key(key)?,
                     Event::Mouse(mouse) => self.handle_mouse_event(mouse),
                     _ => {}
-                }
-            }
-        }
-        Ok(())
-    }
-
-    pub fn get_max_items(&self) -> usize {
-        match self.current_tab {
-            Tab::Search | Tab::Inventory => self.products.len(),
-            Tab::Create => 0,
         }
     }
 
-    pub fn has_multiple_panes(&self) -> bool {
-        matches!(self.current_tab, Tab::Search | Tab::Inventory)
-    }
-
-    pub fn next_pane(&mut self) {
-        if self.has_multiple_panes() {
-            self.active_pane = match self.active_pane {
-                ActivePane::Left => ActivePane::Right,
-                ActivePane::Right => ActivePane::Left,
-            };
-        }
-    }
-
-    pub fn prev_pane(&mut self) {
-        if self.has_multiple_panes() {
-            self.active_pane = match self.active_pane {
-                ActivePane::Left => ActivePane::Right,
-                ActivePane::Right => ActivePane::Left,
-            };
-        }
-    }
-
-    pub fn get_selected_product(&self) -> Option<&crate::api::Product> {
-        let filtered_products = self.get_filtered_products();
+    pub fn get_selected_product_id(&self) -> Option<i32> {
         match self.selected_product_id {
-            Some(product_id) => filtered_products.iter().find(|p| p.id == Some(product_id)),
-            None => filtered_products.first(),
+            Some(product_id) => Some(product_id),
+            None => self.get_filtered_products().first().and_then(|p| p.id),
         }
     }
 

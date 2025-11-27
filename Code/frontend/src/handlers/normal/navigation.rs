@@ -59,12 +59,34 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
             app.active_pane = crate::models::ActivePane::Left;
             app.clear_selection();
             app.refresh_data();
+            
+            // Auto-select first item for tabs with product lists
+            if matches!(app.current_tab, crate::models::Tab::Search | crate::models::Tab::Inventory) {
+                if !app.products.is_empty() {
+                    if let Some(first_product) = app.get_filtered_products().first() {
+                        if let Some(product_id) = first_product.id {
+                            app.selected_product_id = Some(product_id);
+                        }
+                    }
+                }
+            }
         }
         KeyCode::Right => {
             app.current_tab = app.current_tab.next();
             app.active_pane = crate::models::ActivePane::Left;
             app.clear_selection();
             app.refresh_data();
+            
+            // Auto-select first item for tabs with product lists
+            if matches!(app.current_tab, crate::models::Tab::Search | crate::models::Tab::Inventory) {
+                if !app.products.is_empty() {
+                    if let Some(first_product) = app.get_filtered_products().first() {
+                        if let Some(product_id) = first_product.id {
+                            app.selected_product_id = Some(product_id);
+                        }
+                    }
+                }
+            }
         }
         KeyCode::Enter => {
             if matches!(app.current_tab, crate::models::Tab::Create) {

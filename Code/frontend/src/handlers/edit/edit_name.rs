@@ -16,54 +16,50 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
                     // Cancel changes (discard) and return to normal mode
                     if let Some(original) = app.edit_backup.take() {
                         // Restore original product data
+                    if let Some(selected_id) = app.get_selected_product_id() {
                         if let Some(current) = app
                             .products
                             .iter_mut()
-                            .find(|p| p.id == app.selected_product_id)
+                            .find(|p| p.id == Some(selected_id))
                         {
                             *current = original;
                         }
+                    }
                     }
                     app.input_mode = crate::models::InputMode::Normal;
                     app.active_pane = crate::models::ActivePane::Left;
                 }
                 KeyCode::Enter => {
                     // Save changes and return to normal mode
-                    app.edit_backup = None; // Clear backup since we're saving
-                    let (sku, product) = if let Some(data) = app.get_selected_product_data() {
-                        data
-                    } else {
-                        return Ok(false);
-                    };
-                    let mut update = crate::api::ProductUpdate::default();
-                    update.name = Some(product.name.clone());
-                    app.perform_update(&sku, update)?;
-                    app.input_mode = crate::models::InputMode::Normal;
-                    app.active_pane = crate::models::ActivePane::Left;
+                    app.save_current_product()?;
                 }
                 KeyCode::Down => {
                     app.input_mode = crate::models::InputMode::EditDescription;
                 }
                 KeyCode::Up => {
-                    // Already at first field, do nothing
+                    // Circular navigation: Name → Materials
+                    app.input_mode = crate::models::InputMode::EditMaterials;
                 }
                 KeyCode::Backspace => {
-                    if let Some(product) = app
-                        .products
-                        .iter_mut()
-                        .find(|p| p.id == app.selected_product_id)
-                        && let Some(ref mut desc) = product.description
-                    {
-                        desc.pop();
+                    if let Some(selected_id) = app.get_selected_product_id() {
+                        if let Some(product) = app
+                            .products
+                            .iter_mut()
+                            .find(|p| p.id == Some(selected_id))
+                        {
+                            product.name.pop();
+                        }
                     }
                 }
                 KeyCode::Char(c) => {
-                    if let Some(product) = app
-                        .products
-                        .iter_mut()
-                        .find(|p| p.id == app.selected_product_id)
-                    {
-                        product.name.push(c);
+                    if let Some(selected_id) = app.get_selected_product_id() {
+                        if let Some(product) = app
+                            .products
+                            .iter_mut()
+                            .find(|p| p.id == Some(selected_id))
+                        {
+                            product.name.push(c);
+                        }
                     }
                 }
                 _ => {}
