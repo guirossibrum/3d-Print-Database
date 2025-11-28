@@ -98,14 +98,34 @@ def get_product(sku: str = Path(...)):
     """
     Get a product by SKU
     """
+    # type: ignore  # SQLAlchemy typing issues
     db: Session = SessionLocal()
     try:
         product_db = crud.get_product_db(db, sku)
         if product_db is None:
             raise HTTPException(status_code=404, detail="Product not found")
 
-        # Convert to response schema (Product inherits from ProductBase)
-        product = schemas.Product.from_orm(product_db)
+        # Create Product schema manually (bypassing type checker issues)
+        product = schemas.Product(
+            name=product_db.name,
+            description=product_db.description,
+            tags=[tag.name for tag in product_db.tags],
+            production=product_db.production,
+            category_id=product_db.category.id if product_db.category else None,
+            materials=[material.name for material in product_db.materials]
+            if product_db.materials
+            else None,
+            color=product_db.color,
+            print_time=product_db.print_time,
+            weight=product_db.weight,
+            stock_quantity=product_db.stock_quantity,
+            reorder_point=product_db.reorder_point,
+            unit_cost=product_db.unit_cost,
+            selling_price=product_db.selling_price,
+            id=product_db.id,
+            sku=product_db.sku,
+            folder_path=product_db.folder_path,
+        )
         return product
     finally:
         db.close()
