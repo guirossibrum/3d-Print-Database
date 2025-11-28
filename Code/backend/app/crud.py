@@ -134,11 +134,11 @@ def create_product_db(
     return sku
 
 
-def get_product_db(db: Session, sku: str) -> Optional[models.Product]:
+def get_product_by_id(db: Session, product_id: int) -> Optional[models.Product]:
     """
-    Get a product by SKU from the database.
+    Get a product by product_id from database.
     """
-    return db.query(models.Product).filter(models.Product.sku == sku).first()
+    return db.query(models.Product).filter(models.Product.id == product_id).first()
 
 
 def associate_tags_with_product(
@@ -288,25 +288,13 @@ def update_product_materials_by_ids(
     associate_materials_with_product_by_ids(db, product, material_ids)
 
 
-def update_product_db(db: Session, sku: str, update: schemas.ProductUpdate):
+def update_product_by_id(db: Session, product_id: int, update: schemas.ProductUpdate):
     """
-    Update product by SKU or product_id
-    Handles product_id logic for frontend DRY architecture.
+    Update product by product_id
     """
-    # Check if product_id is provided for ID-based update
-    if update.product_id is not None and update.product_id != 0:
-        product = (
-            db.query(models.Product)
-            .filter(models.Product.id == update.product_id)
-            .first()
-        )
-        if not product:
-            return None
-    else:
-        # Fallback to SKU-based lookup for backward compatibility
-        product = db.query(models.Product).filter(models.Product.sku == sku).first()
-        if not product:
-            return None
+    product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not product:
+        return None
 
     if update.name is not None:
         product.name = update.name
@@ -337,6 +325,19 @@ def update_product_db(db: Session, sku: str, update: schemas.ProductUpdate):
 
     db.commit()
     db.refresh(product)
+    return product
+
+
+def delete_product_by_id(db: Session, product_id: int) -> Optional[models.Product]:
+    """
+    Delete a product by product_id from database.
+    """
+    product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not product:
+        return None
+
+    db.delete(product)
+    db.commit()
     return product
 
 

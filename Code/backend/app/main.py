@@ -18,7 +18,7 @@ create_tables()
 
 
 def handle_product_creation_side_effects(
-    sku: str, product: schemas.ProductCreate, db: Session
+    product_id: int, sku: str, product: schemas.ProductCreate, db: Session
 ):
     """
     Handle side effects after product creation: folder and metadata.
@@ -136,7 +136,7 @@ def create_product(product: schemas.ProductCreate):
         product_id = created_product.id if created_product else None
 
         # Handle side effects: folder and metadata
-        handle_product_creation_side_effects(sku, product, db)
+        handle_product_creation_side_effects(product_id, sku, product, db)
     finally:
         db.close()
 
@@ -147,15 +147,15 @@ def create_product(product: schemas.ProductCreate):
     }
 
 
-@app.get("/products/{sku}")
-def get_product(sku: str = Path(...)):
+@app.get("/products/{product_id}")
+def get_product(product_id: int = Path(...)):
     """
-    Get a product by SKU
+    Get a product by product_id
     """
     # type: ignore  # SQLAlchemy typing issues
     db: Session = SessionLocal()
     try:
-        product_db = crud.get_product_db(db, sku)
+        product_db = crud.get_product_by_id(db, product_id)
         if product_db is None:
             raise HTTPException(status_code=404, detail="Product not found")
 
@@ -197,25 +197,11 @@ def get_product(sku: str = Path(...)):
         db.close()
 
 
-@app.put("/products/{sku}")
-def update_product(update: schemas.ProductUpdate, sku: str = Path(...)):
+@app.put("/products/{product_id}")
+def update_product(update: schemas.ProductUpdate, product_id: int = Path(...)):
     db: Session = SessionLocal()
     try:
-        # Validate product_id for update operation
-        if update.product_id is not None and update.product_id != 0:
-            # Check if product_id exists
-            existing_product = (
-                db.query(models.Product)
-                .filter(models.Product.id == update.product_id)
-                .first()
-            )
-            if not existing_product:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Product with ID {update.product_id} not found",
-                )
-
-        product_db = crud.update_product_db(db, sku, update)
+        product_db = crud.update_product_by_id(db, product_id, update)
         if not product_db:
             raise HTTPException(status_code=404, detail="Product not found")
 
@@ -747,30 +733,24 @@ def delete_category(category_id: int):
         db.close()
 
 
-@app.delete("/products/{sku}")
+@app.delete("/products/{product_id}")
 def delete_product(
-    sku: str = Path(..., description="SKU of the product to delete"),
+    product_id: int = Path(..., description="Product ID to delete"),
     delete_files: bool = Query(False, description="Also delete files from filesystem"),
 ):
     """
-    Delete a product by SKU
+    Delete a product by product_id
     Options: Delete from database only, or database + filesystem
     """
     db: Session = SessionLocal()
     try:
-        # Find the product
-        product = (
-            db.query(crud.models.Product).filter(crud.models.Product.sku == sku).first()
-        )
+        # Find product
+        product = crud.delete_product_by_id(db, product_id)
         if not product:
             raise HTTPException(status_code=404, detail="Product not found")
 
         # Store folder path for file deletion
         folder_path = product.folder_path
-
-        # Delete from database
-        db.delete(product)
-        db.commit()
 
         # Delete files if requested
         if delete_files and folder_path:
@@ -781,11 +761,11 @@ def delete_product(
                 if os.path.exists(folder_path):
                     shutil.rmtree(folder_path)
             except Exception as e:
-                # Log error but don't fail the request
+                # Log error but don't fail request
                 print(f"Warning: Could not delete folder {folder_path}: {e}")
 
         return {
-            "message": f"Product {sku} deleted successfully",
+            "message": f"Product {product_id} deleted successfully",
             "files_deleted": delete_files,
         }
 
