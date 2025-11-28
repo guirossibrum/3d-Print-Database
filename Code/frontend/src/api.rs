@@ -123,8 +123,14 @@ impl ApiClient {
                     selling_price: product.selling_price.map(|p| p as i32), // Convert to i32
                 };
                 let response = self.client.put(&url).json(&update_data).send()?;
-                let save_response = response.json()?;
-                Ok(save_response)
+                if response.status().is_success() {
+                    let save_response = response.json()?;
+                    Ok(save_response)
+                } else {
+                    // Try to get error message from response
+                    let error_text = response.text().unwrap_or_else(|_| "Unknown error".to_string());
+                    Err(anyhow!("Save failed: {}", error_text))
+                }
             }
             None => {
                 // Create new product - use POST /products/
@@ -144,8 +150,14 @@ impl ApiClient {
                     "selling_price": product.selling_price.map(|p| p as i32)
                 });
                 let response = self.client.post(&url).json(&create_data).send()?;
-                let save_response = response.json()?;
-                Ok(save_response)
+                if response.status().is_success() {
+                    let save_response = response.json()?;
+                    Ok(save_response)
+                } else {
+                    // Try to get error message from response
+                    let error_text = response.text().unwrap_or_else(|_| "Unknown error".to_string());
+                    Err(anyhow!("Create failed: {}", error_text))
+                }
             }
         }
     }

@@ -302,6 +302,12 @@ pub fn save_current_product(&mut self) -> Result<()> {
             return Ok(());
         }
 
+        // For new products, validate category is selected
+        if self.current_product.id.is_none() && self.current_product.category_id.is_none() {
+            self.set_status_message("Error: Category must be selected for new products".to_string());
+            return Ok(());
+        }
+
         // Store the product ID before save for selection sync
         let was_create = self.current_product.id.is_none();
 
