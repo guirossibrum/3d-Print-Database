@@ -70,7 +70,7 @@ def handle_product_creation_side_effects(
 
 
 def handle_product_update_side_effects(
-    sku: str, update: schemas.ProductUpdate, db: Session
+    product_id: int, sku: str, update: schemas.ProductUpdate, db: Session
 ):
     """
     Handle side effects after product update: metadata.
@@ -172,6 +172,7 @@ def get_product(product_id: int = Path(...)):
             reorder_point=product_db.reorder_point,
             unit_cost=product_db.unit_cost,
             selling_price=product_db.selling_price,
+            product_id=product_db.id,  # Required field in response schema
             id=product_db.id,
             sku=product_db.sku,
             folder_path=product_db.folder_path,
@@ -205,11 +206,12 @@ def update_product(update: schemas.ProductUpdate, product_id: int = Path(...)):
         if not product_db:
             raise HTTPException(status_code=404, detail="Product not found")
 
-        # Get product_id for response
+        # Get product_id and SKU for response
         product_id = product_db.id
+        sku = product_db.sku
 
         # Handle side effects: metadata update
-        handle_product_update_side_effects(sku, update, db)
+        handle_product_update_side_effects(product_id, sku, update, db)
     finally:
         db.close()
 
