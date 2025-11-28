@@ -176,12 +176,7 @@ pub fn handle_tab(app: &mut App) -> Result<()> {
             app.input_mode = InputMode::EditProduction;
         }
         InputMode::EditProduction => {
-            // In create mode, allow category selection first
-            if app.current_product.id.is_none() {
-                app.input_mode = InputMode::EditCategory;
-            } else {
-                app.input_mode = InputMode::EditTags;
-            }
+            app.input_mode = InputMode::EditTags;
         }
         InputMode::EditCategory => {
             // Enter category selection
@@ -477,10 +472,10 @@ pub fn handle_new(app: &mut App) -> Result<()> {
         // Normal mode - create new product (only in Create tab)
         InputMode::Normal => {
             if app.current_tab == Tab::Create {
-                // Initialize new product and enter EditName mode
+                // Initialize new product and enter EditCategory mode first
                 app.current_product = crate::api::Product::default();
                 app.active_pane = ActivePane::Right;
-                app.input_mode = InputMode::EditName;
+                app.input_mode = InputMode::EditCategory;
             }
         }
 
