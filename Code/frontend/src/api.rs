@@ -28,14 +28,14 @@ pub struct ProductUpdate {
     pub description: Option<String>,
     pub tags: Option<Vec<String>>,
     pub production: Option<bool>,
-    pub material: Option<Vec<String>>, // Changed to support multiple materials
+    pub materials: Option<Vec<String>>, // Match backend schema (plural)
     pub color: Option<String>,
-    pub print_time: Option<i32>,
-    pub weight: Option<f64>,
+    pub print_time: Option<String>, // Match backend (string, not i32)
+    pub weight: Option<i32>, // Match backend (i32, not f64)
     pub stock_quantity: Option<i32>,
     pub reorder_point: Option<i32>,
-    pub unit_cost: Option<f64>,
-    pub selling_price: Option<f64>,
+    pub unit_cost: Option<i32>, // Match backend (i32, not f64)
+    pub selling_price: Option<i32>, // Match backend (i32, not f64)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -104,10 +104,50 @@ impl ApiClient {
     }
 
     pub fn save_product(&self, product: &Product) -> Result<SaveProductResponse> {
-        let url = format!("{}/products/save", self.base_url);
-        let response = self.client.post(&url).json(product).send()?;
-        let save_response = response.json()?;
-        Ok(save_response)
+        match product.id {
+            Some(_) => {
+                // Update existing product - use PUT /products/{sku}
+                let url = format!("{}/products/{}", self.base_url, product.sku);
+                let update_data = ProductUpdate {
+                    name: Some(product.name.clone()),
+                    description: product.description.clone(),
+                    tags: Some(product.tags.clone()),
+                    production: Some(product.production),
+                    materials: product.material.clone(), // Match backend field name
+                    color: product.color.clone(),
+                    print_time: product.print_time.clone().map(|t| t.to_string()), // Convert to string
+                    weight: product.weight.map(|w| w as i32), // Convert to i32
+                    stock_quantity: product.stock_quantity,
+                    reorder_point: product.reorder_point,
+                    unit_cost: product.unit_cost.map(|c| c as i32), // Convert to i32
+                    selling_price: product.selling_price.map(|p| p as i32), // Convert to i32
+                };
+                let response = self.client.put(&url).json(&update_data).send()?;
+                let save_response = response.json()?;
+                Ok(save_response)
+            }
+            None => {
+                // Create new product - use POST /products/
+                let url = format!("{}/products/", self.base_url);
+                let create_data = serde_json::json!({
+                    "name": product.name,
+                    "description": product.description,
+                    "tags": product.tags,
+                    "production": product.production,
+                    "materials": product.material,
+                    "color": product.color,
+                    "print_time": product.print_time.map(|t| t.to_string()),
+                    "weight": product.weight.map(|w| w as i32),
+                    "stock_quantity": product.stock_quantity,
+                    "reorder_point": product.reorder_point,
+                    "unit_cost": product.unit_cost.map(|c| c as i32),
+                    "selling_price": product.selling_price.map(|p| p as i32)
+                });
+                let response = self.client.post(&url).json(&create_data).send()?;
+                let save_response = response.json()?;
+                Ok(save_response)
+            }
+        }
     }
 
     pub fn get_products(&self) -> Result<Vec<Product>> {
