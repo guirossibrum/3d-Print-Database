@@ -1,0 +1,187 @@
+# Refactoring & Rebuild Strategy
+
+This document guides the stepwise rebuild of the Rust frontend (TUI) and backend payload unification for the 3D Print Database. Follow each step incrementally, verify backend compatibility, write tests, and commit frequently.
+
+1. Backend Strategy
+Goal
+
+Unify materials handling into a single payload for product creation/editing.
+
+Maintain full compatibility with existing Python frontend.
+
+Avoid breaking existing APIs.
+
+Steps
+
+Analyze current endpoints:
+
+Identify where materials are handled separately from product payload.
+
+Determine which endpoints (create_product, edit_product) need payload changes.
+
+Unify materials:
+
+Add materials as an array within the main product JSON payload:
+
+{
+  "sku": "ABC123",
+  "name": "Example Product",
+  "description": "Sample description",
+  "tags": ["tag1", "tag2"],
+  "materials": ["PLA", "PETG"],
+  "all other fields": this is an example - double check backend and all possible fields
+}
+
+
+Update Pydantic models and SQLAlchemy ORM mapping accordingly.
+
+Ensure backward compatibility:
+
+Keep previous fields optional during transition.
+
+Validate API responses with both old and new payload formats.
+
+Test backend changes:
+
+Add unit tests for the new unified payload.
+
+Run pytest with existing tests to ensure nothing else broke.
+
+2. Frontend Strategy
+Goal
+
+Rebuild Rust TUI with mode-driven architecture.
+
+Make the app modular, readable, and maintainable.
+
+Verify backend compatibility at each step.
+
+Steps
+Step 1: Setup New Frontend Folder
+
+Rename current frontend folder:
+
+mv Code/frontend Code/frontend-deprecated
+
+
+Create a new frontend folder:
+
+mkdir Code/frontend
+cd Code/frontend
+cargo init --bin frontend_tui_rust
+
+Step 2: Define Folder/File Structure
+frontend/
+├─ src/
+│  ├─ main.rs              # Entry point, terminal setup, app loop
+│  ├─ app.rs               # App struct, global state, selection functions
+│  ├─ models.rs            # Enums, Product struct, InputMode, Tab, etc.
+│  ├─ api.rs               # Backend API calls (create, edit, delete)
+│  ├─ utils.rs             # Helper functions, file tree builder, misc
+│  ├─ handlers/
+│  │  ├─ mod.rs
+│  │  ├─ normal.rs         # Normal mode key handlers
+│  │  ├─ edit.rs           # Edit/Create mode key handlers (merge all edit_*.rs)
+│  │  ├─ create.rs         # Create mode key handlers
+│  │  ├─ delete.rs         # Delete popup handlers
+│  │  └─ select.rs         # Tag/Material selection handlers (merge select/*.rs)
+│  └─ ui/
+│     ├─ mod.rs
+│     ├─ draw.rs           # Main UI rendering
+│     ├─ popups.rs         # Popup rendering (delete confirmation, alerts)
+│     └─ layout.rs         # Layout helpers, centering, constraints
+
+
+Step 3: Rebuild Step-by-Step
+
+Initialize App state & structs
+
+App struct in app.rs:
+
+pub struct App {
+    pub input_mode: InputMode,
+    pub products: Vec<Product>,
+    pub selected_product_id: Option<i32>,
+    pub delete_option: usize,
+    pub file_tree_content: Vec<String>,
+    pub selected_product_for_delete: Option<Product>,
+    // other state fields...
+}
+
+
+Implement mode-driven top-level dispatcher
+
+// main.rs
+use crossterm::event::KeyEvent;
+use crate::app::App;
+use crate::models::InputMode;
+
+pub fn handle_event(app: &mut App, key: KeyEvent) -> Result<()> {
+    match app.input_mode {
+        InputMode::Normal => handlers::normal::handle(app, key),
+        InputMode::Create | InputMode::NewCategory | InputMode::NewTag | InputMode::NewMaterial => {
+            handlers::create::handle(app, key)
+        }
+        InputMode::EditName
+        | InputMode::EditDescription
+        | InputMode::EditProduction
+        | InputMode::EditTags
+        | InputMode::EditMaterials
+        | InputMode::EditSelect => handlers::edit::handle(app, key),
+        InputMode::DeleteConfirm | InputMode::DeleteFileConfirm => handlers::delete::handle(app, key),
+        _ => Ok(()),
+    }
+}
+
+
+
+Recreate key handlers for each mode
+
+Consolidate scattered KeyCode events.
+
+Example for Up/Down navigation:
+
+pub fn handle_up(app: &mut App) -> Result<()> {
+    match app.input_mode {
+        InputMode::Normal => app.prev_filtered_item(),
+        InputMode::EditName => app.input_mode = InputMode::EditMaterials,
+        _ => {}
+    }
+    Ok(())
+}
+
+
+Implement popup system & file tree
+
+Move build_file_tree to utils.rs.
+
+Consolidate delete.rs to use InputMode::DeleteConfirm and DeleteFileConfirm.
+
+Integrate backend calls
+
+All backend calls through api.rs using unified payload.
+
+Verify each function individually with backend:
+
+let product = Product { ... };
+api_client.create_product(&product)?;
+api_client.delete_product(&sku, true)?;
+
+
+Add unit testing
+
+Use Rust test modules for:
+
+API communication
+
+File tree generation
+
+Mode transitions
+
+Popup rendering
+
+Test incrementally
+
+Build small features → verify backend compatibility → commit.
+
+Do not merge large changes at once.

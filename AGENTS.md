@@ -2,6 +2,20 @@
 
 This document provides coding guidelines and requirements for AI agents working on the 3D Print Database project. AI agents must adhere to these guidelines to ensure consistency, quality, and proper project management.
 
+## Frontend Rebuild Guidelines
+- **New folder**: `frontend/` (rename old frontend to `frontend-deprecated/`)
+- **Architecture**: Mode-driven, modular, readable.
+- **Folder structure**: Clear separation:
+  - `handlers/` → normal, edit, create, delete, select
+  - `ui/` → draw, popups, layout
+  - `api.rs` → all backend calls
+  - `utils.rs` → file tree, helper functions
+- **Event dispatch**: All key events go through `handle_event()` dispatcher.
+- **Popup system**: Consolidated in `delete.rs` with mode-aware states.
+- **Backend integration**: Unified product payload including materials.
+- **Stepwise rebuild**: Implement one feature at a time, verify backend compatibility, commit each step.
+- **Testing**: Add Rust unit tests for every feature before moving to the next.
+
 ## Build/Lint/Test Commands
 - **Backend dev**: `cd Code/backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
 - **Rust TUI**: `cd Code/frontend && cargo run --release`
