@@ -17,8 +17,11 @@ pub fn handle_input(app: &mut crate::App, key: KeyEvent) -> Result<()> {
     // Global keys that work in any mode (highest priority)
     match key.code {
         KeyCode::Char('q') => {
-            app.running = false;
-            return Ok(());
+            // Only quit if in Normal mode (not during editing)
+            if matches!(app.input_mode, crate::models::InputMode::Normal) {
+                app.running = false;
+                return Ok(());
+            }
         }
         _ => {}
     }

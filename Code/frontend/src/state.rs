@@ -292,22 +292,37 @@ pub fn save_current_product(&mut self) -> Result<()> {
             return Ok(());
         }
 
+        // Store the product ID before save for selection sync
+        let was_create = self.current_product.id.is_none();
+
         // Single unified API call
         match self.api_client.save_product(&self.current_product) {
             Ok(response) => {
                 self.set_status_message(response.message);
+
+                // Refresh data to get updated product list
                 self.refresh_data();
 
                 // Handle mode transition based on whether it was create or edit
-                if self.current_product.id.is_none() {
+                if was_create {
                     // Was create - prepare for next creation
                     self.current_product = crate::api::Product::default();
                     // Stay in edit mode for continuous creation
                 } else {
-                    // Was edit - return to normal
+                    // Was edit - return to normal and ensure selection is maintained
                     self.edit_backup = None;
                     self.input_mode = crate::models::InputMode::Normal;
                     self.active_pane = crate::models::ActivePane::Left;
+
+                    // Ensure selected product is still valid after refresh
+                    if let Some(selected_id) = self.selected_product_id {
+                        // Check if the selected product still exists in the refreshed data
+                        if !self.products.iter().any(|p| p.id == Some(selected_id)) {
+                            // Product no longer exists, clear selection
+                            self.selected_product_id = None;
+                        }
+                        // If it exists, selection is maintained
+                    }
                 }
             }
             Err(e) => self.set_status_message(format!("Error saving product: {:?}", e))

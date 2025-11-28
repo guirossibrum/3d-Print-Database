@@ -233,7 +233,19 @@ fn draw_product_form(f: &mut Frame, area: Rect, app: &App, border_style: Style) 
         ]),
         Line::from(vec![
             Span::styled("Production: ", prod_style),
-            Span::raw(if product.production { "Yes" } else { "No" }),
+            Span::raw(if matches!(app.input_mode, InputMode::EditProduction) {
+                format!(
+                    "[{}] Yes    [{}] No",
+                    if product.production { "x" } else { " " },
+                    if !product.production {
+                        "x"
+                    } else {
+                        " "
+                    }
+                )
+            } else {
+                (if product.production { "Yes" } else { "No" }).to_string()
+            }),
         ]),
         Line::from(vec![
             Span::styled("Tags: ", tags_style),
