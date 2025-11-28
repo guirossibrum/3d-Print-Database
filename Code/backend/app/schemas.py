@@ -113,7 +113,23 @@ class InventoryUpdate(BaseModel):
 
 
 # Schema for returning a product from DB
-class Product(ProductBase):
+class Product(BaseModel):
+    # ProductBase fields
+    name: str
+    description: Optional[str] = None
+    tags: List[str] = []
+    production: bool = False
+    category_id: Optional[int] = None
+    materials: Optional[List[str]] = []
+    color: Optional[str] = None
+    print_time: Optional[str] = None
+    weight: Optional[int] = None
+    stock_quantity: Optional[int] = 0
+    reorder_point: Optional[int] = 0
+    unit_cost: Optional[int] = None
+    selling_price: Optional[int] = None
+
+    # Product-specific fields
     id: int
     sku: str
     folder_path: str
