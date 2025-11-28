@@ -505,3 +505,95 @@ pub fn handle_space(app: &mut App) -> Result<()> {
 
     Ok(())
 }
+
+/// Handle character input (typing)
+pub fn handle_char(app: &mut App, c: char) -> Result<()> {
+    use crate::models::InputMode;
+
+    match app.input_mode {
+        // Edit name - add character to product name
+        InputMode::EditName => {
+            if let Some(selected_id) = app.get_selected_product_id() {
+                if let Some(product) = app.products.iter_mut().find(|p| p.id == Some(selected_id)) {
+                    product.name.push(c);
+                }
+            }
+        }
+
+        // Edit description - add character to product description
+        InputMode::EditDescription => {
+            if let Some(selected_id) = app.get_selected_product_id() {
+                if let Some(product) = app.products.iter_mut().find(|p| p.id == Some(selected_id)) {
+                    if let Some(ref mut desc) = product.description {
+                        desc.push(c);
+                    } else {
+                        product.description = Some(c.to_string());
+                    }
+                }
+            }
+        }
+
+        // Edit tags - add character to tag string
+        InputMode::EditTags => {
+            app.edit_tags_string.push(c);
+        }
+
+        // Create modes - handle character input for form fields
+        InputMode::CreateName => {
+            app.create_form.name.push(c);
+        }
+        InputMode::CreateDescription => {
+            app.create_form.description.push(c);
+        }
+
+        // Other modes - ignore character input
+        _ => {}
+    }
+
+    Ok(())
+}
+
+/// Handle Backspace key - delete character
+pub fn handle_backspace(app: &mut App) -> Result<()> {
+    use crate::models::InputMode;
+
+    match app.input_mode {
+        // Edit name - remove last character
+        InputMode::EditName => {
+            if let Some(selected_id) = app.get_selected_product_id() {
+                if let Some(product) = app.products.iter_mut().find(|p| p.id == Some(selected_id)) {
+                    product.name.pop();
+                }
+            }
+        }
+
+        // Edit description - remove last character
+        InputMode::EditDescription => {
+            if let Some(selected_id) = app.get_selected_product_id() {
+                if let Some(product) = app.products.iter_mut().find(|p| p.id == Some(selected_id)) {
+                    if let Some(ref mut desc) = product.description {
+                        desc.pop();
+                    }
+                }
+            }
+        }
+
+        // Edit tags - remove last character from tag string
+        InputMode::EditTags => {
+            app.edit_tags_string.pop();
+        }
+
+        // Create modes - remove character from form fields
+        InputMode::CreateName => {
+            app.create_form.name.pop();
+        }
+        InputMode::CreateDescription => {
+            app.create_form.description.pop();
+        }
+
+        // Other modes - ignore backspace
+        _ => {}
+    }
+
+    Ok(())
+}

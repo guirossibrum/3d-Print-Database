@@ -42,9 +42,11 @@ pub fn handle_input(app: &mut crate::App, key: KeyEvent) -> Result<()> {
         KeyCode::Down => key_handlers::handle_down(app)?,
         KeyCode::Left => key_handlers::handle_left(app)?,
         KeyCode::Right => key_handlers::handle_right(app)?,
+        KeyCode::Backspace => key_handlers::handle_backspace(app)?,
         KeyCode::Char('n') => key_handlers::handle_new(app)?,
         KeyCode::Char('d') => key_handlers::handle_delete(app)?,
         KeyCode::Char(' ') => key_handlers::handle_space(app)?,
+        KeyCode::Char(c) => key_handlers::handle_char(app, c)?,
         _ => {} // Unhandled keys
     }
 
