@@ -472,10 +472,10 @@ pub fn handle_new(app: &mut App) -> Result<()> {
         // Normal mode - create new product (only in Create tab)
         InputMode::Normal => {
             if app.current_tab == Tab::Create {
-                // Initialize new product and enter EditCategory mode first
+                // Initialize new product and enter EditName mode first
                 app.current_product = crate::api::Product::default();
                 app.active_pane = ActivePane::Right;
-                app.input_mode = InputMode::EditCategory;
+                app.input_mode = InputMode::EditName;
             }
         }
 
