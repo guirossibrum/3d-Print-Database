@@ -2,7 +2,11 @@
 import os
 import json
 
-BASE_DIR = "/Products"
+# Get products directory from environment variable or default to user's Work directory
+BASE_DIR = os.environ.get(
+    "PRODUCTS_DIR",
+    os.path.join(os.path.expanduser("~"), "Work", "3d_print", "Products"),
+)
 
 
 def create_product_folder(
