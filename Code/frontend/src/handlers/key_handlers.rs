@@ -326,7 +326,7 @@ pub fn handle_down(app: &mut App) -> Result<()> {
     Ok(())
 }
 
-/// Handle Left arrow - change tabs in normal mode, toggle in selection
+/// Handle Left arrow - change tabs in normal mode, toggle boolean left
 pub fn handle_left(app: &mut App) -> Result<()> {
     use crate::models::InputMode;
 
@@ -348,11 +348,11 @@ pub fn handle_left(app: &mut App) -> Result<()> {
             }
         }
 
-        // Edit production mode - toggle to false
+        // Edit production mode - toggle to true (Yes)
         InputMode::EditProduction => {
             if let Some(selected_id) = app.get_selected_product_id() {
                 if let Some(product) = app.products.iter_mut().find(|p| p.id == Some(selected_id)) {
-                    product.production = false;
+                    product.production = true;
                 }
             }
         }
@@ -369,7 +369,7 @@ pub fn handle_left(app: &mut App) -> Result<()> {
     Ok(())
 }
 
-/// Handle Right arrow - change tabs in normal mode, toggle in selection
+/// Handle Right arrow - change tabs in normal mode, toggle boolean right
 pub fn handle_right(app: &mut App) -> Result<()> {
     use crate::models::InputMode;
 
@@ -391,11 +391,11 @@ pub fn handle_right(app: &mut App) -> Result<()> {
             }
         }
 
-        // Edit production mode - toggle to true
+        // Edit production mode - toggle to false (No)
         InputMode::EditProduction => {
             if let Some(selected_id) = app.get_selected_product_id() {
                 if let Some(product) = app.products.iter_mut().find(|p| p.id == Some(selected_id)) {
-                    product.production = true;
+                    product.production = false;
                 }
             }
         }
