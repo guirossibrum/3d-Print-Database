@@ -1,22 +1,20 @@
 /// Represents the different tabs in the TUI application
 #[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ItemType {
+    Tag,
+    Material,
+    Category,
+}
+
+/// Type of selection being performed
+pub type SelectionType = ItemType;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Tab {
     Create,
     Search,
     Inventory,
 }
-
-
-
-/// Type of item being created/edited
-#[derive(Debug, Clone, PartialEq)]
-pub enum ItemType {
-    Tag,
-    Material,
-}
-
-/// Type of selection being performed
-pub type SelectionType = ItemType;
 
 impl Tab {
     pub fn next(&self) -> Self {
@@ -54,7 +52,6 @@ pub enum InputMode {
     EditSelect,
     #[allow(dead_code)]
     NewCategory,
-    #[allow(dead_code)]
     EditCategory,
     #[allow(dead_code)]
     NewTag,

@@ -174,6 +174,14 @@ fn draw_product_form(f: &mut Frame, area: Rect, app: &App, border_style: Style) 
         Style::default().fg(Color::Cyan)
     };
 
+    let category_style = if matches!(app.input_mode, InputMode::EditCategory) ||
+        (matches!(app.input_mode, InputMode::EditSelect) &&
+         matches!(app.selection_type, Some(crate::models::SelectionType::Category))) {
+        Style::default().fg(Color::Yellow).bold()
+    } else {
+        Style::default().fg(Color::Cyan)
+    };
+
     let tags_style = if matches!(app.input_mode, InputMode::EditTags) {
         Style::default().fg(Color::Yellow).bold()
     } else {
@@ -188,12 +196,23 @@ fn draw_product_form(f: &mut Frame, area: Rect, app: &App, border_style: Style) 
         Style::default().fg(Color::Cyan)
     };
 
-    let category_name = app
-        .categories
-        .iter()
-        .find(|c| c.id == product.category_id)
-        .map(|c| c.name.as_str())
-        .unwrap_or("No category selected");
+    let category_name = if product.id.is_none() {
+        // Create mode - show selectable category
+        app
+            .categories
+            .iter()
+            .find(|c| c.id == product.category_id)
+            .map(|c| c.name.clone())
+            .unwrap_or_else(|| "No category selected".to_string())
+    } else {
+        // Edit mode - show fixed category
+        app
+            .categories
+            .iter()
+            .find(|c| c.id == product.category_id)
+            .map(|c| format!("{} (Fixed)", c.name))
+            .unwrap_or_else(|| "Unknown (Fixed)".to_string())
+    };
 
     let tags_text = product.tags.join(", ");
     let materials_text = product
@@ -208,8 +227,13 @@ fn draw_product_form(f: &mut Frame, area: Rect, app: &App, border_style: Style) 
             Span::raw(&product.sku),
         ]),
         Line::from(vec![
-            Span::styled("Category: ", Style::default().fg(Color::White)),
+            Span::styled("Category: ", category_style),
             Span::raw(category_name),
+            if product.id.is_none() && matches!(app.input_mode, InputMode::EditCategory) {
+                Span::styled("_", Style::default().fg(Color::White))
+            } else {
+                Span::raw("")
+            },
         ]),
         Line::from(vec![
             Span::styled("Name: ", name_style),
@@ -362,6 +386,7 @@ fn draw_popup(f: &mut Frame, area: Rect, app: &App) {
             let item_type_name = match app.item_type {
                 ItemType::Tag => "Tag",
                 ItemType::Material => "Material",
+                ItemType::Category => "Category",
             };
 
             content.push(Line::from(vec![
@@ -826,6 +851,22 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
                 Block::default()
                     .borders(Borders::ALL)
                     .title("Tag Selection")
+                    .border_style(border_style),
+            )
+            .wrap(Wrap { trim: true });
+        f.render_widget(paragraph, area);
+    } else if matches!(app.input_mode, InputMode::EditSelect) && matches!(app.selection_type, Some(crate::models::SelectionType::Category)) {
+        // Draw category selection
+        let content = build_category_selection_content(
+            app,
+            "Available Categories:",
+            "[↑↓: Navigate] [Space: Select] [ENTER: Select Category] [ESC: Back]",
+        );
+        let paragraph = Paragraph::new(content)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Category Selection")
                     .border_style(border_style),
             )
             .wrap(Wrap { trim: true });

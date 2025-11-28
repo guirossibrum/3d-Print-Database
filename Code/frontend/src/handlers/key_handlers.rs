@@ -23,6 +23,16 @@ pub fn handle_enter(app: &mut App) -> Result<()> {
         // Selection mode - apply selection and return to edit mode
         InputMode::EditSelect => {
             match app.selection_type {
+                Some(SelectionType::Category) => {
+                    // Apply category selection and return to edit mode
+                    if app.selected_category_index < app.categories.len() {
+                        if let Some(category) = app.categories.get(app.selected_category_index) {
+                            app.current_product.category_id = category.id;
+                        }
+                    }
+                    app.input_mode = InputMode::EditCategory;
+                    app.active_pane = crate::models::ActivePane::Left;
+                }
                 Some(SelectionType::Tag) => {
                     // Apply tag selection and return to edit mode
                     if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
@@ -166,7 +176,29 @@ pub fn handle_tab(app: &mut App) -> Result<()> {
             app.input_mode = InputMode::EditProduction;
         }
         InputMode::EditProduction => {
-            app.input_mode = InputMode::EditTags;
+            // In create mode, allow category selection first
+            if app.current_product.id.is_none() {
+                app.input_mode = InputMode::EditCategory;
+            } else {
+                app.input_mode = InputMode::EditTags;
+            }
+        }
+        InputMode::EditCategory => {
+            // Enter category selection
+            app.selection_type = Some(SelectionType::Category);
+            app.category_selection = vec![false; app.categories.len()];
+            // Pre-select current category if any
+            if let Some(category_id) = app.current_product.category_id {
+                for (i, category) in app.categories.iter().enumerate() {
+                    if category.id == Some(category_id) {
+                        app.category_selection[i] = true;
+                        app.selected_category_index = i;
+                        break;
+                    }
+                }
+            }
+            app.input_mode = InputMode::EditSelect;
+            app.active_pane = crate::models::ActivePane::Right;
         }
         InputMode::EditTags => {
             // Enter tag selection
@@ -246,6 +278,15 @@ pub fn handle_up(app: &mut App) -> Result<()> {
         // Selection mode - navigate selection list
         InputMode::EditSelect => {
             match app.selection_type {
+                Some(SelectionType::Category) => {
+                    if !app.categories.is_empty() {
+                        app.selected_category_index = if app.selected_category_index == 0 {
+                            app.categories.len() - 1
+                        } else {
+                            app.selected_category_index - 1
+                        };
+                    }
+                }
                 Some(SelectionType::Tag) => {
                     if !app.tags.is_empty() {
                         app.tag_selected_index = if app.tag_selected_index == 0 {
@@ -308,6 +349,11 @@ pub fn handle_down(app: &mut App) -> Result<()> {
         // Selection mode - navigate selection list
         InputMode::EditSelect => {
             match app.selection_type {
+                Some(SelectionType::Category) => {
+                    if !app.categories.is_empty() {
+                        app.selected_category_index = (app.selected_category_index + 1) % app.categories.len();
+                    }
+                }
                 Some(SelectionType::Tag) => {
                     if !app.tags.is_empty() {
                         app.tag_selected_index = (app.tag_selected_index + 1) % app.tags.len();
@@ -501,6 +547,12 @@ pub fn handle_space(app: &mut App) -> Result<()> {
         // Selection mode - toggle selection
         InputMode::EditSelect => {
             match app.selection_type {
+                Some(SelectionType::Category) => {
+                    // For category, Space just moves selection (same as arrow keys)
+                    if !app.categories.is_empty() {
+                        app.selected_category_index = (app.selected_category_index + 1) % app.categories.len();
+                    }
+                }
                 Some(SelectionType::Tag) => {
                     if app.tag_selected_index < app.tag_selection.len() {
                         let idx = app.tag_selected_index;
