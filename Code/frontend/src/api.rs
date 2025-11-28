@@ -117,6 +117,13 @@ impl ApiClient {
         Ok(products)
     }
 
+    pub fn get_product_by_sku(&self, sku: &str) -> Result<Product> {
+        let url = format!("{}/products/{}", self.base_url, sku);
+        let response = self.client.get(&url).send()?;
+        let product = response.json()?;
+        Ok(product)
+    }
+
     pub fn create_category(&self, category: &Category) -> Result<Category> {
         let url = format!("{}/categories/", self.base_url);
         let response = self.client.post(&url).json(category).send()?;

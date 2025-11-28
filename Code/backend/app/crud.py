@@ -92,6 +92,13 @@ def create_product_db(
     return sku
 
 
+def get_product_db(db: Session, sku: str) -> Optional[models.Product]:
+    """
+    Get a product by SKU from the database.
+    """
+    return db.query(models.Product).filter(models.Product.sku == sku).first()
+
+
 def associate_tags_with_product(
     db: Session, product_db: models.Product, tags: List[str]
 ):

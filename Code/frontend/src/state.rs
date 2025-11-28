@@ -181,13 +181,18 @@ impl App {
         };
 
         if query.is_empty() {
-            self.products.iter().collect()
+            // Filter out any products with null IDs (shouldn't happen but safety check)
+            self.products
+                .iter()
+                .filter(|product| product.id.is_some())
+                .collect()
         } else {
             self.products
                 .iter()
                 .filter(|product| {
-                    product.name.to_lowercase().contains(&query.to_lowercase())
-                        || product.sku.to_lowercase().contains(&query.to_lowercase())
+                    product.id.is_some() && // Filter out null ID products
+                    (product.name.to_lowercase().contains(&query.to_lowercase())
+                        || product.sku.to_lowercase().contains(&query.to_lowercase()))
                 })
                 .collect()
         }
@@ -356,6 +361,8 @@ pub fn save_current_product(&mut self) -> Result<()> {
     pub fn initialize_current_tab(&mut self) {
         // Auto-select first item for tabs with product lists
         if matches!(self.current_tab, Tab::Search | Tab::Inventory) {
+            // Always refresh data from database for Search/Inventory tabs
+            self.refresh_data();
             if !self.products.is_empty() {
                 if let Some(first_product) = self.get_filtered_products().first() {
                     if let Some(product_id) = first_product.id {

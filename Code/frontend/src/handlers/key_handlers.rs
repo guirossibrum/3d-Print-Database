@@ -136,17 +136,25 @@ pub fn handle_tab(app: &mut App) -> Result<()> {
     match app.input_mode {
         // Normal mode - enter edit mode (only in Search tab)
         InputMode::Normal => {
-            if matches!(app.current_tab, Tab::Search) && !app.products.is_empty() {
-                // Enter edit mode
-                app.refresh_data();
-                let selected_product = app.get_selected_product().cloned();
-                if let Some(product) = selected_product {
-                    app.edit_backup = Some(product.clone());
-                    app.edit_tags_string = product.tags.join(", ");
-                    app.edit_materials_string = product.material.as_ref().map(|m| m.join(", ")).unwrap_or_default();
+            if matches!(app.current_tab, Tab::Search) {
+                // Enter edit mode - fetch product by SKU from database
+                if let Some(product_data) = app.get_selected_product_data() {
+                    let (sku, _) = product_data;
+                    // Fetch fresh product data by SKU from database
+                    match app.api_client.get_product_by_sku(&sku) {
+                        Ok(product) => {
+                            app.current_product = product.clone();
+                            app.edit_backup = Some(product.clone());
+                            app.edit_tags_string = product.tags.join(", ");
+                            app.edit_materials_string = product.material.as_ref().map(|m| m.join(", ")).unwrap_or_default();
+                            app.active_pane = crate::models::ActivePane::Right;
+                            app.input_mode = InputMode::EditName;
+                        }
+                        Err(e) => {
+                            app.set_status_message(format!("Error loading product: {:?}", e));
+                        }
+                    }
                 }
-                app.active_pane = crate::models::ActivePane::Right;
-                app.input_mode = InputMode::EditName;
             }
         }
 

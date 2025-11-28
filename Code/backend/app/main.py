@@ -93,6 +93,24 @@ def create_product(product: schemas.ProductCreate):
     return {"sku": sku, "message": "Product created successfully"}
 
 
+@app.get("/products/{sku}")
+def get_product(sku: str = Path(...)):
+    """
+    Get a product by SKU
+    """
+    db: Session = SessionLocal()
+    try:
+        product_db = crud.get_product_db(db, sku)
+        if product_db is None:
+            raise HTTPException(status_code=404, detail="Product not found")
+
+        # Convert to response schema (Product inherits from ProductBase)
+        product = schemas.Product.from_orm(product_db)
+        return product
+    finally:
+        db.close()
+
+
 @app.put("/products/{sku}")
 def update_product(update: schemas.ProductUpdate, sku: str = Path(...)):
     db: Session = SessionLocal()
