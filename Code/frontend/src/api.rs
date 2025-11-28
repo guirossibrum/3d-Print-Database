@@ -91,12 +91,7 @@ impl ApiClient {
         Ok(categories)
     }
 
-    pub fn create_product(&self, product: &Product) -> Result<SaveProductResponse> {
-        let url = format!("{}/products/", self.base_url);
-        let response = self.client.post(&url).json(product).send()?;
-        let create_response = response.json()?;
-        Ok(create_response)
-    }
+
 
     pub fn update_product(&self, sku: &str, update: &ProductUpdate) -> Result<String> {
         let url = format!("{}/products/{}", self.base_url, sku);
