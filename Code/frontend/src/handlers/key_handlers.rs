@@ -51,6 +51,8 @@ pub fn handle_enter(app: &mut App) -> Result<()> {
                         } else {
                             Some(selected_materials)
                         };
+                        // Update edit_materials_string to match tags pattern
+                        app.edit_materials_string = product.material.as_ref().map(|m| m.join(", ")).unwrap_or_default();
                     }
                     app.input_mode = InputMode::EditMaterials;
                 }
@@ -156,6 +158,7 @@ pub fn handle_tab(app: &mut App) -> Result<()> {
                 if let Some(product) = selected_product {
                     app.edit_backup = Some(product.clone());
                     app.edit_tags_string = product.tags.join(", ");
+                    app.edit_materials_string = product.material.as_ref().map(|m| m.join(", ")).unwrap_or_default();
                 }
                 app.active_pane = crate::models::ActivePane::Right;
                 app.input_mode = InputMode::EditName;

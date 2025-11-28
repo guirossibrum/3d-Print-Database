@@ -55,6 +55,7 @@ pub struct App {
     #[allow(dead_code)]
     pub selected_category_index: usize,
     pub edit_tags_string: String,
+    pub edit_materials_string: String,
 
     // Delete state
     pub delete_option: usize,           // 0=database only, 1=database+files
@@ -111,6 +112,7 @@ impl App {
             category_selection: Vec::new(),
             selected_category_index: 0,
             edit_tags_string: String::new(),
+            edit_materials_string: String::new(),
 
             // Delete state
             delete_option: 0,
@@ -357,8 +359,16 @@ impl App {
                     .collect()
             );
         }
-        // Handle materials - use the product's material field directly
-        update.material = product.material.clone();
+        // Handle materials specially - parse from edit_materials_string if we're in materials edit mode
+        if matches!(self.input_mode, InputMode::EditMaterials) {
+            update.material = Some(
+                self.edit_materials_string
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect()
+            );
+        }
         update.production = Some(product.production);
         update.print_time = product.print_time;
         update.weight = product.weight;

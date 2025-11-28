@@ -78,7 +78,7 @@ cd Code/frontend && ./target/release/frontend_tui_rust --version
 ## Key Behavior Specification
 
 ### Enter
-- **Always confirms and saves record**
+- **Always confirms and saves record in modes where user is modifying something**
 - Save a new record (Create tab)
 - Save an edit record (Search tab edit modes)
 
@@ -93,17 +93,18 @@ cd Code/frontend && ./target/release/frontend_tui_rust --version
 ### Tab
 - **Always advances to next level**
 - Currently valid only in Search tab
-- Normal mode → edit mode → tag/material edit mode
+- Normal mode → Edit mode → Sub-edit (tags/materials/other) → (later?)
+- Create mode → Sub-edit (tags/materials/other)
 - Backtab not implemented
 
 ### Up/Down Arrows
-- **Always navigate item lists**
-- Search tab: navigates items in normal/edit/tag/material modes
-- Create tab: navigates items in create mode
+- **Up/Down navigate whatever the “current focus group” contains.**
+- Lists in list mode
+- Fields in form mode
 
 ### Right/Left Arrows
 - **Change tabs in normal mode**
-- **Toggle selection in other contexts**
+- **Toggle selection for boolean items**
 
 ### n Key
 - **Always create new record**
@@ -115,7 +116,7 @@ cd Code/frontend && ./target/release/frontend_tui_rust --version
 - Deletes Tag, Material, or Category
 
 ### Space Key
-- **Always toggle [x] selection**
+- **Always toggle [x] selection on multi selection items**
 - Used in Tag and Material selection lists
 
 ## Project Focus
