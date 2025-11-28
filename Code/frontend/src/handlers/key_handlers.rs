@@ -8,7 +8,7 @@ use anyhow::Result;
 
 use crate::App;
 
-/// Handle Enter key - always confirms and saves record
+/// Handle Enter key - confirms and saves record, or applies selection
 pub fn handle_enter(app: &mut App) -> Result<()> {
     use crate::models::InputMode;
 
@@ -20,9 +20,9 @@ pub fn handle_enter(app: &mut App) -> Result<()> {
             app.save_current_product()?;
         }
 
-        // Selection modes - apply selection and save
+        // Selection modes - apply selection and return to edit mode
         InputMode::EditTagSelect => {
-            // Apply tag selection and save
+            // Apply tag selection and return to edit mode
             if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
                 product.tags.clear();
                 for (i, &selected) in app.tag_selection.iter().enumerate() {
@@ -35,12 +35,12 @@ pub fn handle_enter(app: &mut App) -> Result<()> {
                 app.edit_tags_string = product.tags.join(", ");
             }
             app.tag_selection.clear();
-            app.input_mode = InputMode::EditTags; // Set correct mode for save
-            app.save_current_product()?;
+            app.input_mode = InputMode::EditTags;
+            app.active_pane = crate::models::ActivePane::Right;
         }
 
         InputMode::EditMaterialSelect => {
-            // Apply material selection and save
+            // Apply material selection and return to edit mode
             if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
                 let selected_materials: Vec<String> = app.tag_selection.iter()
                     .enumerate()
@@ -54,7 +54,8 @@ pub fn handle_enter(app: &mut App) -> Result<()> {
                 };
             }
             app.tag_selection.clear();
-            app.save_current_product()?;
+            app.input_mode = InputMode::EditMaterials;
+            app.active_pane = crate::models::ActivePane::Right;
         }
 
         // Create modes - save new product
