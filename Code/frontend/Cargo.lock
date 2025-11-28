@@ -936,7 +936,7 @@ dependencies = [
 
 [[package]]
 name = "printdb"
-version = "1.10.22"
+version = "1.10.25"
 dependencies = [
  "anyhow",
  "chrono",

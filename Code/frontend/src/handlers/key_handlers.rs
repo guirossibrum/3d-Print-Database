@@ -6,7 +6,7 @@
 
 use anyhow::Result;
 
-use crate::{App, models::{SelectionType, Tab, ActivePane}};
+use crate::{App, models::{SelectionType, Tab, ActivePane, CategoryForm}};
 
 /// Handle Enter key - confirms and saves record, or applies selection
 pub fn handle_enter(app: &mut App) -> Result<()> {
@@ -479,7 +479,7 @@ pub fn handle_new(app: &mut App) -> Result<()> {
             }
         }
 
-        // Selection modes - create new tag/material (works for both create and edit)
+        // Selection modes - create new tag/material/category (works for both create and edit)
         InputMode::EditSelect => {
             match app.selection_type {
                 Some(SelectionType::Tag) => {
@@ -487,6 +487,12 @@ pub fn handle_new(app: &mut App) -> Result<()> {
                 }
                 Some(SelectionType::Material) => {
                     // TODO: Implement new material creation
+                }
+                Some(SelectionType::Category) => {
+                    // Initialize category form and enter new category mode
+                    app.category_form = CategoryForm::default();
+                    app.input_mode = InputMode::NewCategory;
+                    app.active_pane = ActivePane::Right;
                 }
                 _ => {}
             }
