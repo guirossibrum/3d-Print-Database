@@ -222,7 +222,9 @@ fn draw_product_form(f: &mut Frame, area: Rect, app: &App, border_style: Style) 
         ]),
         Line::from(vec![
             Span::styled("Description: ", desc_style),
-            Span::raw(product.description.as_deref().unwrap_or(&"".to_string())),
+            Span::raw(product.description.as_deref().unwrap_or("")),
+
+
             if matches!(app.input_mode, InputMode::EditDescription) {
                 Span::styled("_", Style::default().fg(Color::White))
             } else {
@@ -290,217 +292,7 @@ fn draw_selection_pane(f: &mut Frame, area: Rect, app: &App, border_style: Style
     }
 }
 
-fn draw_create_left_pane(f: &mut Frame, area: Rect, app: &App, border_style: Style) {
-    let mut content = vec![];
 
-    // Name field
-    let name_style = if matches!(app.input_mode, InputMode::CreateName) {
-        Style::default().fg(Color::Yellow).bold()
-    } else {
-        Style::default().fg(Color::Cyan)
-    };
-    content.push(Line::from(vec![
-        Span::styled("Name: ", name_style),
-        Span::raw(&app.create_form.name),
-        if matches!(app.input_mode, InputMode::CreateName) {
-            Span::styled("_", Style::default().fg(Color::White))
-        } else {
-            Span::raw("")
-        },
-    ]));
-
-    // Description field
-    let desc_style = if matches!(app.input_mode, InputMode::CreateDescription) {
-        Style::default().fg(Color::Yellow).bold()
-    } else {
-        Style::default().fg(Color::Cyan)
-    };
-    content.push(Line::from(vec![
-        Span::styled("Description: ", desc_style),
-        Span::raw(&app.create_form.description),
-        if matches!(app.input_mode, InputMode::CreateDescription) {
-            Span::styled("_", Style::default().fg(Color::White))
-        } else {
-            Span::raw("")
-        },
-    ]));
-
-    // Category field
-    let category_style = if matches!(
-        app.input_mode,
-        InputMode::CreateCategory | InputMode::CreateCategorySelect
-    ) {
-        Style::default().fg(Color::Yellow).bold()
-    } else {
-        Style::default().fg(Color::Cyan)
-    };
-    let category_display = if let Some(cat_id) = app.create_form.category_id {
-        if let Some(category) = app.categories.iter().find(|c| c.id == Some(cat_id)) {
-            format!("{} ({})", category.name, category.sku_initials)
-        } else {
-            format!("Category ID: {}", cat_id)
-        }
-    } else {
-        "No category selected".to_string()
-    };
-    content.push(Line::from(vec![
-        Span::styled("Category: ", category_style),
-        Span::raw(category_display),
-    ]));
-
-    // Production field
-    let prod_style = if matches!(app.input_mode, InputMode::CreateProduction) {
-        Style::default().fg(Color::Yellow).bold()
-    } else {
-        Style::default().fg(Color::Cyan)
-    };
-    content.push(Line::from(vec![
-        Span::styled("Production: ", prod_style),
-        Span::raw(if matches!(app.input_mode, InputMode::CreateProduction) {
-            format!(
-                "[{}] Yes    [{}] No",
-                if app.create_form.production { "x" } else { " " },
-                if !app.create_form.production {
-                    "x"
-                } else {
-                    " "
-                }
-            )
-        } else {
-            (if app.create_form.production {
-                "Yes"
-            } else {
-                "No"
-            })
-            .to_string()
-        }),
-    ]));
-
-    // Tags field
-    let tags_style = if matches!(
-        app.input_mode,
-        InputMode::CreateTags | InputMode::CreateTagSelect | InputMode::EditSelect
-    ) && matches!(app.selection_type, Some(crate::models::SelectionType::Tag)) {
-        Style::default().fg(Color::Yellow).bold()
-    } else {
-        Style::default().fg(Color::Cyan)
-    };
-    content.push(Line::from(vec![
-        Span::styled("Tags: ", tags_style),
-        Span::raw(if app.create_form.tags.is_empty() {
-            "None".to_string()
-        } else {
-            app.create_form.tags.join(", ")
-        }),
-    ]));
-
-    // Materials field
-    let materials_style = if matches!(app.input_mode, InputMode::CreateMaterials) {
-        Style::default().fg(Color::Yellow).bold()
-    } else {
-        Style::default().fg(Color::Cyan)
-    };
-    content.push(Line::from(vec![
-        Span::styled("Materials: ", materials_style),
-        Span::raw(if app.create_form.materials.is_empty() {
-            "None".to_string()
-        } else {
-            app.create_form.materials.join(", ")
-        }),
-    ]));
-
-    content.push(Line::from(""));
-    let help_text = match app.input_mode {
-        InputMode::EditName => "[↑/↓] select     [ESC: Cancel]",
-        InputMode::EditDescription => "[Enter] desc     [↑/↓] select     [Esc] cancel",
-        InputMode::EditProduction => "[←/→] Toggle     [↑/↓] select     [ESC] Cancel",
-        InputMode::EditTags => "[TAB] Select Tags     [ENTER] Save     [↑] Prev     [ESC] Cancel",
-        InputMode::EditMaterials => {
-            "[TAB] Select Materials     [ENTER] Save     [↑] Prev     [↓] Save     [ESC] Cancel"
-        }
-        _ => "[ENTER] Create     [ESC] Cancel]",
-    };
-    content.push(Line::from(vec![Span::styled(
-        help_text,
-        Style::default().fg(Color::Gray),
-    )]));
-
-    let paragraph = Paragraph::new(content)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("Create Product")
-                .border_style(border_style),
-        )
-        .wrap(Wrap { trim: true });
-
-    f.render_widget(paragraph, area);
-}
-
-fn draw_create_right_pane(f: &mut Frame, area: Rect, app: &App) {
-    let border_style = if matches!(app.active_pane, ActivePane::Right) {
-        ACTIVE_BORDER_STYLE
-    } else {
-        INACTIVE_BORDER_STYLE
-    };
-
-    let mut content = vec![];
-
-    match app.input_mode {
-        InputMode::CreateCategorySelect => {
-            content.push(Line::from(vec![Span::styled(
-                "Categories:",
-                Style::default().fg(Color::Green).bold(),
-            )]));
-            for (i, category) in app.categories.iter().enumerate() {
-                let is_selected = i == app.create_form.category_selected_index;
-                let style = if is_selected {
-                    Style::default().fg(Color::Black).bg(Color::Yellow)
-                } else {
-                    Style::default().fg(Color::White)
-                };
-                content.push(Line::from(vec![Span::styled(
-                    format!("{} ({})", category.name, category.sku_initials),
-                    style,
-                )]));
-            }
-            if app.categories.is_empty() {
-                content.push(Line::from(vec![Span::styled(
-                    "No categories available",
-                    Style::default().fg(Color::Gray),
-                )]));
-            }
-            content.push(Line::from(""));
-            content.push(Line::from(vec![Span::styled(
-                "[↑↓] Select     [ENTER] Choose     [n] New     [e] Edit     [ESC] Back",
-                Style::default().fg(Color::Gray),
-            )]));
-        }
-        InputMode::CreateTagSelect => {
-            content.extend(build_tag_selection_content(app, "Available Tags:", "[↑/↓] select     [Space] Select     [ENTER] Add Selected     [n] New     [e] Edit     [d] Delete     [ESC] Back"));
-        }
-        InputMode::CreateMaterialSelect => {
-            content.extend(build_material_selection_content(app, "Available Materials:", "[↑/↓] select     [Space] Select     [ENTER] Add Selected     [n] New     [d] Delete     [ESC] Back"));
-        }
-        _ => {
-            content.push(Line::from(vec![Span::styled(
-                "Select a field to see options",
-                Style::default().fg(Color::Gray),
-            )]));
-        }
-    }
-
-    let paragraph = Paragraph::new(content)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("Options")
-                .border_style(border_style),
-        )
-        .wrap(Wrap { trim: true });
-
-    f.render_widget(paragraph, area);
-}
 
 fn draw_popup(f: &mut Frame, area: Rect, app: &App) {
     let popup_area = centered_rect(80, 30, area);
@@ -688,7 +480,7 @@ fn build_tag_selection_content<'a>(app: &'a App, header: &'a str, help: &'a str)
     let mut content = vec![];
     content.push(Line::from(vec![Span::styled(header, HEADER_STYLE)]));
     for (i, tag) in app.tags.iter().enumerate() {
-        let is_current = i == app.create_form.tag_selected_index;
+        let is_current = i == app.tag_selected_index;
         let is_selected = app.tag_selection.get(i).copied().unwrap_or(false);
         let marker = if is_selected { "[x]" } else { "[ ]" };
         let line = if is_current {
@@ -748,7 +540,7 @@ fn build_material_selection_content<'a>(
     let mut content = vec![];
     content.push(Line::from(vec![Span::styled(header, HEADER_STYLE)]));
     for (i, material) in app.materials.iter().enumerate() {
-        let is_current = i == app.create_form.material_selected_index;
+        let is_current = i == app.material_selected_index;
         let is_selected = app.tag_selection.get(i).copied().unwrap_or(false);
         let marker = if is_selected { "[x]" } else { "[ ]" };
         let line = if is_current {
@@ -1297,9 +1089,6 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App, version: &str) {
             }
             InputMode::EditTags => {
                 "[Tab] select tags     [Enter] save     [↑] prev     [Esc] cancel"
-            }
-            InputMode::CreateTagSelect => {
-                "[↑/↓] select     [Enter] choose     [Ctrl+n] new     [Ctrl+e] edit     [Esc] back"
             }
             InputMode::NewCategory | InputMode::EditCategory => {
                 "[Enter] name     [Enter] save     [Esc] cancel"

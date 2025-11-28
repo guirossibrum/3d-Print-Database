@@ -69,13 +69,6 @@ pub fn handle_enter(app: &mut App) -> Result<()> {
             app.selection_type = None;
         }
 
-// Edit modes - save current product (works for both create and edit)
-        InputMode::EditName | InputMode::EditDescription |
-        InputMode::EditProduction | InputMode::EditTags |
-        InputMode::EditMaterials => {
-            app.save_current_product()?;
-        }
-
         // Delete confirmation - confirm deletion
         InputMode::DeleteConfirm | InputMode::DeleteFileConfirm => {
             // TODO: Implement delete confirmation
