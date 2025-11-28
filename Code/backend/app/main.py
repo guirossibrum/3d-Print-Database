@@ -872,10 +872,7 @@ def list_products():
         )
         result = []
         for p in products:
-            if p.materials:
-                materials_list = [m.name for m in p.materials]
-            else:
-                materials_list = None
+            materials_list = [m.name for m in p.materials]
             result.append(
                 {
                     "id": p.id,
