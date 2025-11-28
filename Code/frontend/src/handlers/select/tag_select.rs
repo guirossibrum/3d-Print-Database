@@ -10,12 +10,11 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
     use crossterm::event::KeyCode;
 
     match app.input_mode {
-        crate::models::InputMode::CreateTagSelect | crate::models::InputMode::EditTagSelect => {
+        crate::models::InputMode::CreateTagSelect => {
             match key.code {
                 KeyCode::Esc => {
                     let return_mode = match app.input_mode {
                         crate::models::InputMode::CreateTagSelect => crate::models::InputMode::CreateTags,
-                        crate::models::InputMode::EditTagSelect => crate::models::InputMode::EditTags,
                         _ => crate::models::InputMode::Normal,
                     };
                     app.input_mode = return_mode;
@@ -35,23 +34,6 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
                             }
                             app.tag_selection.clear();
                             app.input_mode = crate::models::InputMode::CreateTags;
-                            app.active_pane = crate::models::ActivePane::Right;
-                        }
-                        crate::models::InputMode::EditTagSelect => {
-                            if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
-                                product.tags.clear();
-                                for (i, &selected) in app.tag_selection.iter().enumerate() {
-                                    if selected {
-                                        if let Some(tag) = app.tags.get(i) {
-                                            product.tags.push(tag.clone());
-                                        }
-                                    }
-                                }
-                                // Update edit_tags_string to reflect the new selection
-                                app.edit_tags_string = product.tags.join(", ");
-                            }
-                            app.tag_selection.clear();
-                            app.input_mode = crate::models::InputMode::EditTags;
                             app.active_pane = crate::models::ActivePane::Right;
                         }
                         _ => {}

@@ -248,7 +248,10 @@ fn edit_tag_handler(app: &mut App) -> Result<()> {
     app.item_form = crate::models::TagForm::default();
     app.input_mode = match app.tag_select_mode {
         crate::models::TagSelectMode::Create => crate::models::InputMode::CreateTagSelect,
-        crate::models::TagSelectMode::Edit => crate::models::InputMode::EditTagSelect,
+        crate::models::TagSelectMode::Edit => {
+            app.selection_type = Some(crate::models::SelectionType::Tag);
+            crate::models::InputMode::EditSelect
+        },
     };
     Ok(())
 }
@@ -287,7 +290,10 @@ fn edit_material_handler(app: &mut App) -> Result<()> {
     app.item_form = crate::models::TagForm::default();
     app.input_mode = match app.tag_select_mode {
         crate::models::TagSelectMode::Create => crate::models::InputMode::CreateMaterialSelect,
-        crate::models::TagSelectMode::Edit => crate::models::InputMode::EditMaterialSelect,
+        crate::models::TagSelectMode::Edit => {
+            app.selection_type = Some(crate::models::SelectionType::Material);
+            crate::models::InputMode::EditSelect
+        },
     };
     Ok(())
 }

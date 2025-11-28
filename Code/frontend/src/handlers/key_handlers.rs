@@ -6,7 +6,7 @@
 
 use anyhow::Result;
 
-use crate::App;
+use crate::{App, models::SelectionType};
 
 /// Handle Enter key - confirms and saves record, or applies selection
 pub fn handle_enter(app: &mut App) -> Result<()> {
@@ -20,42 +20,48 @@ pub fn handle_enter(app: &mut App) -> Result<()> {
             app.save_current_product()?;
         }
 
-        // Selection modes - apply selection and return to edit mode
-        InputMode::EditTagSelect => {
-            // Apply tag selection and return to edit mode
-            if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
-                product.tags.clear();
-                for (i, &selected) in app.tag_selection.iter().enumerate() {
-                    if selected {
-                        if let Some(tag) = app.tags.get(i) {
-                            product.tags.push(tag.clone());
+        // Selection mode - apply selection and return to edit mode
+        InputMode::EditSelect => {
+            match app.selection_type {
+                Some(SelectionType::Tag) => {
+                    // Apply tag selection and return to edit mode
+                    if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
+                        product.tags.clear();
+                        for (i, &selected) in app.tag_selection.iter().enumerate() {
+                            if selected {
+                                if let Some(tag) = app.tags.get(i) {
+                                    product.tags.push(tag.clone());
+                                }
+                            }
                         }
+                        app.edit_tags_string = product.tags.join(", ");
                     }
+                    app.input_mode = InputMode::EditTags;
                 }
-                app.edit_tags_string = product.tags.join(", ");
+                Some(SelectionType::Material) => {
+                    // Apply material selection and return to edit mode
+                    if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
+                        let selected_materials: Vec<String> = app.tag_selection.iter()
+                            .enumerate()
+                            .filter(|&(_, &selected)| selected)
+                            .filter_map(|(i, _)| app.materials.get(i).cloned())
+                            .collect();
+                        product.material = if selected_materials.is_empty() {
+                            None
+                        } else {
+                            Some(selected_materials)
+                        };
+                    }
+                    app.input_mode = InputMode::EditMaterials;
+                }
+                _ => {
+                    // Unknown selection type, return to normal
+                    app.input_mode = InputMode::Normal;
+                }
             }
             app.tag_selection.clear();
-            app.input_mode = InputMode::EditTags;
             app.active_pane = crate::models::ActivePane::Right;
-        }
-
-        InputMode::EditMaterialSelect => {
-            // Apply material selection and return to edit mode
-            if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
-                let selected_materials: Vec<String> = app.tag_selection.iter()
-                    .enumerate()
-                    .filter(|&(_, &selected)| selected)
-                    .filter_map(|(i, _)| app.materials.get(i).cloned())
-                    .collect();
-                product.material = if selected_materials.is_empty() {
-                    None
-                } else {
-                    Some(selected_materials)
-                };
-            }
-            app.tag_selection.clear();
-            app.input_mode = InputMode::EditMaterials;
-            app.active_pane = crate::models::ActivePane::Right;
+            app.selection_type = None;
         }
 
         // Create modes - save new product
@@ -102,11 +108,16 @@ pub fn handle_escape(app: &mut App) -> Result<()> {
             app.active_pane = crate::models::ActivePane::Left;
         }
 
-        // Selection modes - cancel and return to edit mode
-        InputMode::EditTagSelect | InputMode::EditMaterialSelect => {
+        // Selection mode - cancel and return to edit mode
+        InputMode::EditSelect => {
             app.tag_selection.clear();
-            app.input_mode = InputMode::EditTags; // Return to appropriate edit mode
+            app.input_mode = match app.selection_type {
+                Some(SelectionType::Tag) => InputMode::EditTags,
+                Some(SelectionType::Material) => InputMode::EditMaterials,
+                _ => InputMode::Normal, // Fallback
+            };
             app.active_pane = crate::models::ActivePane::Right;
+            app.selection_type = None;
         }
 
         // Create modes - cancel creation
@@ -163,6 +174,7 @@ pub fn handle_tab(app: &mut App) -> Result<()> {
         }
         InputMode::EditTags => {
             // Enter tag selection
+            app.selection_type = Some(SelectionType::Tag);
             app.tag_selection = vec![false; app.tags.len()];
             if let Some(selected_id) = app.get_selected_product_id() {
                 for (i, tag) in app.tags.iter().enumerate() {
@@ -173,11 +185,12 @@ pub fn handle_tab(app: &mut App) -> Result<()> {
                     }
                 }
             }
-            app.input_mode = InputMode::EditTagSelect;
+            app.input_mode = InputMode::EditSelect;
             app.active_pane = crate::models::ActivePane::Right;
         }
         InputMode::EditMaterials => {
             // Enter material selection
+            app.selection_type = Some(SelectionType::Material);
             app.tag_selection = vec![false; app.materials.len()];
             if let Some(selected_id) = app.get_selected_product_id() {
                 for (i, material) in app.materials.iter().enumerate() {
@@ -190,12 +203,12 @@ pub fn handle_tab(app: &mut App) -> Result<()> {
                     }
                 }
             }
-            app.input_mode = InputMode::EditMaterialSelect;
+            app.input_mode = InputMode::EditSelect;
             app.active_pane = crate::models::ActivePane::Right;
         }
 
-        // Selection modes - no action (or cycle?)
-        InputMode::EditTagSelect | InputMode::EditMaterialSelect => {
+        // Selection mode - no action (or cycle?)
+        InputMode::EditSelect => {
             // Could cycle through selection items, but for now do nothing
         }
 
@@ -240,23 +253,28 @@ pub fn handle_up(app: &mut App) -> Result<()> {
             app.input_mode = InputMode::EditTags;
         }
 
-        // Selection modes - navigate selection list
-        InputMode::EditTagSelect => {
-            if !app.tags.is_empty() {
-                app.create_form.tag_selected_index = if app.create_form.tag_selected_index == 0 {
-                    app.tags.len() - 1
-                } else {
-                    app.create_form.tag_selected_index - 1
-                };
-            }
-        }
-        InputMode::EditMaterialSelect => {
-            if !app.materials.is_empty() {
-                app.create_form.material_selected_index = if app.create_form.material_selected_index == 0 {
-                    app.materials.len() - 1
-                } else {
-                    app.create_form.material_selected_index - 1
-                };
+        // Selection mode - navigate selection list
+        InputMode::EditSelect => {
+            match app.selection_type {
+                Some(SelectionType::Tag) => {
+                    if !app.tags.is_empty() {
+                        app.create_form.tag_selected_index = if app.create_form.tag_selected_index == 0 {
+                            app.tags.len() - 1
+                        } else {
+                            app.create_form.tag_selected_index - 1
+                        };
+                    }
+                }
+                Some(SelectionType::Material) => {
+                    if !app.materials.is_empty() {
+                        app.create_form.material_selected_index = if app.create_form.material_selected_index == 0 {
+                            app.materials.len() - 1
+                        } else {
+                            app.create_form.material_selected_index - 1
+                        };
+                    }
+                }
+                _ => {}
             }
         }
 
@@ -301,15 +319,20 @@ pub fn handle_down(app: &mut App) -> Result<()> {
             app.input_mode = InputMode::EditName;
         }
 
-        // Selection modes - navigate selection list
-        InputMode::EditTagSelect => {
-            if !app.tags.is_empty() {
-                app.create_form.tag_selected_index = (app.create_form.tag_selected_index + 1) % app.tags.len();
-            }
-        }
-        InputMode::EditMaterialSelect => {
-            if !app.materials.is_empty() {
-                app.create_form.material_selected_index = (app.create_form.material_selected_index + 1) % app.materials.len();
+        // Selection mode - navigate selection list
+        InputMode::EditSelect => {
+            match app.selection_type {
+                Some(SelectionType::Tag) => {
+                    if !app.tags.is_empty() {
+                        app.create_form.tag_selected_index = (app.create_form.tag_selected_index + 1) % app.tags.len();
+                    }
+                }
+                Some(SelectionType::Material) => {
+                    if !app.materials.is_empty() {
+                        app.create_form.material_selected_index = (app.create_form.material_selected_index + 1) % app.materials.len();
+                    }
+                }
+                _ => {}
             }
         }
 
@@ -357,8 +380,8 @@ pub fn handle_left(app: &mut App) -> Result<()> {
             }
         }
 
-        // Selection modes - could navigate, but for now no action
-        InputMode::EditTagSelect | InputMode::EditMaterialSelect => {
+        // Selection mode - could navigate, but for now no action
+        InputMode::EditSelect => {
             // Could implement left/right navigation in selection
         }
 
@@ -400,8 +423,8 @@ pub fn handle_right(app: &mut App) -> Result<()> {
             }
         }
 
-        // Selection modes - could navigate, but for now no action
-        InputMode::EditTagSelect | InputMode::EditMaterialSelect => {
+        // Selection mode - could navigate, but for now no action
+        InputMode::EditSelect => {
             // Could implement left/right navigation in selection
         }
 
@@ -417,12 +440,17 @@ pub fn handle_new(app: &mut App) -> Result<()> {
     use crate::models::InputMode;
 
     match app.input_mode {
-        // Selection modes - create new tag/material
-        InputMode::EditTagSelect => {
-            // TODO: Implement new tag creation
-        }
-        InputMode::EditMaterialSelect => {
-            // TODO: Implement new material creation
+        // Selection mode - create new tag/material
+        InputMode::EditSelect => {
+            match app.selection_type {
+                Some(SelectionType::Tag) => {
+                    // TODO: Implement new tag creation
+                }
+                Some(SelectionType::Material) => {
+                    // TODO: Implement new material creation
+                }
+                _ => {}
+            }
         }
         InputMode::CreateTagSelect => {
             // TODO: Implement new tag creation in create mode
@@ -443,12 +471,17 @@ pub fn handle_delete(app: &mut App) -> Result<()> {
     use crate::models::InputMode;
 
     match app.input_mode {
-        // Selection modes - delete selected tag/material
-        InputMode::EditTagSelect => {
-            // TODO: Implement tag deletion with safety checks
-        }
-        InputMode::EditMaterialSelect => {
-            // TODO: Implement material deletion with safety checks
+        // Selection mode - delete selected tag/material
+        InputMode::EditSelect => {
+            match app.selection_type {
+                Some(SelectionType::Tag) => {
+                    // TODO: Implement tag deletion with safety checks
+                }
+                Some(SelectionType::Material) => {
+                    // TODO: Implement material deletion with safety checks
+                }
+                _ => {}
+            }
         }
 
         // Normal mode - delete product
@@ -473,17 +506,22 @@ pub fn handle_space(app: &mut App) -> Result<()> {
     use crate::models::InputMode;
 
     match app.input_mode {
-        // Selection modes - toggle selection
-        InputMode::EditTagSelect => {
-            if app.create_form.tag_selected_index < app.tag_selection.len() {
-                let idx = app.create_form.tag_selected_index;
-                app.tag_selection[idx] = !app.tag_selection[idx];
-            }
-        }
-        InputMode::EditMaterialSelect => {
-            if app.create_form.material_selected_index < app.tag_selection.len() {
-                let idx = app.create_form.material_selected_index;
-                app.tag_selection[idx] = !app.tag_selection[idx];
+        // Selection mode - toggle selection
+        InputMode::EditSelect => {
+            match app.selection_type {
+                Some(SelectionType::Tag) => {
+                    if app.create_form.tag_selected_index < app.tag_selection.len() {
+                        let idx = app.create_form.tag_selected_index;
+                        app.tag_selection[idx] = !app.tag_selection[idx];
+                    }
+                }
+                Some(SelectionType::Material) => {
+                    if app.create_form.material_selected_index < app.tag_selection.len() {
+                        let idx = app.create_form.material_selected_index;
+                        app.tag_selection[idx] = !app.tag_selection[idx];
+                    }
+                }
+                _ => {}
             }
         }
         InputMode::CreateTagSelect => {

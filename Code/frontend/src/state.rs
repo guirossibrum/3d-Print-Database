@@ -42,6 +42,7 @@ pub struct App {
     pub tag_select_mode: TagSelectMode,
     pub item_type: ItemType,
     pub edit_item_type: ItemType,
+    pub selection_type: Option<SelectionType>, // Type of selection in EditSelect mode
 
     // Create form
     pub create_form: CreateForm,
@@ -98,6 +99,7 @@ impl App {
             tag_select_mode: TagSelectMode::Create,
             item_type: ItemType::Tag,
             edit_item_type: ItemType::Tag,
+            selection_type: None,
             create_form: CreateForm {
                 production: true, // Default to production ready
                 ..Default::default()

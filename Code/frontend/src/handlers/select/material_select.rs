@@ -10,12 +10,11 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
     use crossterm::event::KeyCode;
 
     match app.input_mode {
-        crate::models::InputMode::CreateMaterialSelect | crate::models::InputMode::EditMaterialSelect => {
+        crate::models::InputMode::CreateMaterialSelect => {
             match key.code {
                 KeyCode::Esc => {
                     let return_mode = match app.input_mode {
                         crate::models::InputMode::CreateMaterialSelect => crate::models::InputMode::CreateMaterials,
-                        crate::models::InputMode::EditMaterialSelect => crate::models::InputMode::EditMaterials,
                         _ => crate::models::InputMode::Normal,
                     };
                     app.input_mode = return_mode;
@@ -36,23 +35,6 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
                             app.tag_selection.clear();
                             app.input_mode = crate::models::InputMode::CreateMaterials;
                             app.active_pane = crate::models::ActivePane::Left;
-                        }
-                        crate::models::InputMode::EditMaterialSelect => {
-                            if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
-                                let selected_materials: Vec<String> = app.tag_selection.iter()
-                                    .enumerate()
-                                    .filter(|&(_, &selected)| selected)
-                                    .filter_map(|(i, _)| app.materials.get(i).cloned())
-                                    .collect();
-                                product.material = if selected_materials.is_empty() {
-                                    None
-                                } else {
-                                    Some(selected_materials)
-                                };
-                            }
-                            app.tag_selection.clear();
-                            app.input_mode = crate::models::InputMode::EditMaterials;
-                            app.active_pane = crate::models::ActivePane::Right;
                         }
                         _ => {}
                     }

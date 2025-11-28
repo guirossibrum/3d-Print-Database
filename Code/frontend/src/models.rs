@@ -21,6 +21,9 @@ pub enum ItemType {
     Category,
 }
 
+/// Type of selection being performed
+pub type SelectionType = ItemType;
+
 impl Tab {
     pub fn next(&self) -> Self {
         match self {
@@ -62,9 +65,8 @@ pub enum InputMode {
     EditDescription,
     EditProduction,
     EditTags,
-    EditTagSelect,
     EditMaterials,
-    EditMaterialSelect,
+    EditSelect,
     #[allow(dead_code)]
     NewCategory,
     #[allow(dead_code)]
@@ -106,9 +108,8 @@ impl InputMode {
                 | InputMode::EditDescription
                 | InputMode::EditProduction
                 | InputMode::EditTags
-                | InputMode::EditTagSelect
                 | InputMode::EditMaterials
-                | InputMode::EditMaterialSelect
+                | InputMode::EditSelect
         )
     }
 
@@ -119,8 +120,7 @@ impl InputMode {
             InputMode::CreateCategorySelect
                 | InputMode::CreateTagSelect
                 | InputMode::CreateMaterialSelect
-                | InputMode::EditTagSelect
-                | InputMode::EditMaterialSelect
+                | InputMode::EditSelect
         )
     }
 

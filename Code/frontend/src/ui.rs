@@ -245,8 +245,8 @@ fn draw_create_left_pane(f: &mut Frame, area: Rect, app: &App, border_style: Sty
     // Tags field
     let tags_style = if matches!(
         app.input_mode,
-        InputMode::CreateTags | InputMode::CreateTagSelect | InputMode::EditTagSelect
-    ) {
+        InputMode::CreateTags | InputMode::CreateTagSelect | InputMode::EditSelect
+    ) && matches!(app.selection_type, Some(crate::models::SelectionType::Tag)) {
         Style::default().fg(Color::Yellow).bold()
     } else {
         Style::default().fg(Color::Cyan)
@@ -878,7 +878,7 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
         INACTIVE_BORDER_STYLE
     };
 
-    if matches!(app.input_mode, InputMode::EditTagSelect) {
+    if matches!(app.input_mode, InputMode::EditSelect) && matches!(app.selection_type, Some(crate::models::SelectionType::Tag)) {
         // Draw tag selection
         let content = build_tag_selection_content(
             app,
@@ -894,7 +894,7 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
             )
             .wrap(Wrap { trim: true });
         f.render_widget(paragraph, area);
-    } else if matches!(app.input_mode, InputMode::EditMaterialSelect) {
+    } else if matches!(app.input_mode, InputMode::EditSelect) && matches!(app.selection_type, Some(crate::models::SelectionType::Material)) {
         // Draw material selection
         let content = build_material_selection_content(
             app,
@@ -935,7 +935,9 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
             Style::default().fg(Color::Cyan)
         };
 
-        let materials_style = if matches!(app.input_mode, InputMode::EditMaterials) {
+        let materials_style = if matches!(app.input_mode, InputMode::EditMaterials) ||
+            (matches!(app.input_mode, InputMode::EditSelect) &&
+             matches!(app.selection_type, Some(crate::models::SelectionType::Material))) {
             Style::default().fg(Color::Yellow).bold()
         } else {
             Style::default().fg(Color::Cyan)

@@ -63,7 +63,8 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
                             }
                         }
                     }
-                    app.input_mode = InputMode::EditTagSelect;
+                    app.selection_type = Some(crate::models::SelectionType::Tag);
+                    app.input_mode = InputMode::EditSelect;
                     return Ok(true);
                 }
                 InputMode::EditMaterials => {
@@ -85,7 +86,8 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<bool> {
                             }
                         }
                     }
-                    app.input_mode = InputMode::EditMaterialSelect;
+                    app.selection_type = Some(crate::models::SelectionType::Material);
+                    app.input_mode = InputMode::EditSelect;
                     return Ok(true);
                 }
                 _ => {
