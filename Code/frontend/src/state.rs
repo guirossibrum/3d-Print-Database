@@ -193,6 +193,11 @@ impl App {
         }
     }
 
+    pub fn clear_search_queries(&mut self) {
+        self.search_query.clear();
+        self.inventory_search_query.clear();
+    }
+
     pub fn get_selected_product(&self) -> Option<&crate::api::Product> {
         let filtered_products = self.get_filtered_products();
         match self.selected_product_id {

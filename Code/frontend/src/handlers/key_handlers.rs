@@ -331,6 +331,10 @@ pub fn handle_left(app: &mut App) -> Result<()> {
             app.current_tab = app.current_tab.prev();
             app.active_pane = crate::models::ActivePane::Left;
             app.clear_selection();
+            // Clear search queries when leaving search tabs
+            if matches!(app.current_tab, crate::models::Tab::Create) {
+                app.clear_search_queries();
+            }
             // Auto-select first item for product tabs
             if matches!(app.current_tab, crate::models::Tab::Search | crate::models::Tab::Inventory) {
                 if !app.products.is_empty() {
@@ -374,6 +378,10 @@ pub fn handle_right(app: &mut App) -> Result<()> {
             app.current_tab = app.current_tab.next();
             app.active_pane = crate::models::ActivePane::Left;
             app.clear_selection();
+            // Clear search queries when leaving search tabs
+            if matches!(app.current_tab, crate::models::Tab::Create) {
+                app.clear_search_queries();
+            }
             // Auto-select first item for product tabs
             if matches!(app.current_tab, crate::models::Tab::Search | crate::models::Tab::Inventory) {
                 if !app.products.is_empty() {

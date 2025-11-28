@@ -846,116 +846,127 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
             )
             .wrap(Wrap { trim: true });
         f.render_widget(paragraph, area);
-    } else if matches!(app.current_tab, Tab::Create) || matches!(app.input_mode, InputMode::EditName | InputMode::EditDescription | InputMode::EditProduction | InputMode::EditTags | InputMode::EditMaterials) {
+    } else if matches!(app.current_tab, Tab::Create) || (matches!(app.current_tab, Tab::Search | Tab::Inventory) && matches!(app.input_mode, InputMode::EditName | InputMode::EditDescription | InputMode::EditProduction | InputMode::EditTags | InputMode::EditMaterials)) {
         // Use unified product form for both Create and Edit tabs
         draw_product_form(f, area, app, border_style);
-    } else if let Some(product) = app.get_selected_product() {
-        let name_style = if matches!(app.input_mode, InputMode::EditName) {
-            Style::default().fg(Color::Yellow).bold()
+    } else if matches!(app.current_tab, Tab::Search | Tab::Inventory) && matches!(app.input_mode, InputMode::EditName | InputMode::EditDescription | InputMode::EditProduction | InputMode::EditTags | InputMode::EditMaterials | InputMode::EditSelect) {
+        // Only show product details when actually editing in Search/Inventory tabs
+        if let Some(product) = app.get_selected_product() {
+            let name_style = if matches!(app.input_mode, InputMode::EditName) {
+                Style::default().fg(Color::Yellow).bold()
+            } else {
+                Style::default().fg(Color::Cyan)
+            };
+
+            let desc_style = if matches!(app.input_mode, InputMode::EditDescription) {
+                Style::default().fg(Color::Yellow).bold()
+            } else {
+                Style::default().fg(Color::Cyan)
+            };
+
+            let prod_style = if matches!(app.input_mode, InputMode::EditProduction) {
+                Style::default().fg(Color::Yellow).bold()
+            } else {
+                Style::default().fg(Color::Cyan)
+            };
+
+            let tags_style = if matches!(app.input_mode, InputMode::EditTags) {
+                Style::default().fg(Color::Yellow).bold()
+            } else {
+                Style::default().fg(Color::Cyan)
+            };
+
+            let materials_style = if matches!(app.input_mode, InputMode::EditMaterials) ||
+                (matches!(app.input_mode, InputMode::EditSelect) &&
+                 matches!(app.selection_type, Some(crate::models::SelectionType::Material))) {
+                Style::default().fg(Color::Yellow).bold()
+            } else {
+                Style::default().fg(Color::Cyan)
+            };
+
+            let category_name = app
+                .categories
+                .iter()
+                .find(|c| c.id == product.category_id)
+                .map(|c| c.name.as_str())
+                .unwrap_or("Unknown");
+
+            let tags_text = product.tags.join(", ");
+            let materials_text = product
+                .material
+                .as_ref()
+                .map(|m| m.join(", "))
+                .unwrap_or_else(|| "None".to_string());
+
+            let content = vec![
+                Line::from(vec![
+                    Span::styled("SKU: ", Style::default().fg(Color::White)),
+                    Span::raw(&product.sku),
+                ]),
+                Line::from(vec![
+                    Span::styled("Category: ", Style::default().fg(Color::White)),
+                    Span::raw(category_name),
+                ]),
+                Line::from(vec![
+                    Span::styled("Name: ", name_style),
+                    Span::raw(&product.name),
+                    if matches!(app.input_mode, InputMode::EditName) {
+                        Span::styled("_", Style::default().fg(Color::White))
+                    } else {
+                        Span::raw("")
+                    },
+                ]),
+                Line::from(vec![
+                    Span::styled("Description: ", desc_style),
+                    Span::raw(product.description.as_deref().unwrap_or("")),
+                    if matches!(app.input_mode, InputMode::EditDescription) {
+                        Span::styled("_", Style::default().fg(Color::White))
+                    } else {
+                        Span::raw("")
+                    },
+                ]),
+                Line::from(vec![
+                    Span::styled("Production: ", prod_style),
+                    Span::raw(if matches!(app.input_mode, InputMode::EditProduction) {
+                        format!(
+                            "[{}] Yes    [{}] No",
+                            if product.production { "x" } else { " " },
+                            if !product.production { "x" } else { " " }
+                        )
+                    } else {
+                        (if product.production { "Yes" } else { "No" }).to_string()
+                    }),
+                ]),
+                Line::from(vec![
+                    Span::styled("Tags: ", tags_style),
+                    Span::raw(&tags_text),
+                ]),
+                Line::from(vec![
+                    Span::styled("Materials: ", materials_style),
+                    Span::raw(&materials_text),
+                ]),
+                Line::from(""),
+            ];
+
+            let paragraph = Paragraph::new(content)
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title("Product Details")
+                        .border_style(border_style),
+                )
+                .wrap(Wrap { trim: true });
+
+            f.render_widget(paragraph, area);
         } else {
-            Style::default().fg(Color::Cyan)
-        };
-
-        let desc_style = if matches!(app.input_mode, InputMode::EditDescription) {
-            Style::default().fg(Color::Yellow).bold()
-        } else {
-            Style::default().fg(Color::Cyan)
-        };
-
-        let prod_style = if matches!(app.input_mode, InputMode::EditProduction) {
-            Style::default().fg(Color::Yellow).bold()
-        } else {
-            Style::default().fg(Color::Cyan)
-        };
-
-        let tags_style = if matches!(app.input_mode, InputMode::EditTags) {
-            Style::default().fg(Color::Yellow).bold()
-        } else {
-            Style::default().fg(Color::Cyan)
-        };
-
-        let materials_style = if matches!(app.input_mode, InputMode::EditMaterials) ||
-            (matches!(app.input_mode, InputMode::EditSelect) &&
-             matches!(app.selection_type, Some(crate::models::SelectionType::Material))) {
-            Style::default().fg(Color::Yellow).bold()
-        } else {
-            Style::default().fg(Color::Cyan)
-        };
-
-        let category_name = app
-            .categories
-            .iter()
-            .find(|c| c.id == product.category_id)
-            .map(|c| c.name.as_str())
-            .unwrap_or("Unknown");
-
-        let tags_text = product.tags.join(", ");
-        let materials_text = product
-            .material
-            .as_ref()
-            .map(|m| m.join(", "))
-            .unwrap_or_else(|| "None".to_string());
-
-        let content = vec![
-            Line::from(vec![
-                Span::styled("SKU: ", Style::default().fg(Color::White)),
-                Span::raw(&product.sku),
-            ]),
-            Line::from(vec![
-                Span::styled("Category: ", Style::default().fg(Color::White)),
-                Span::raw(category_name),
-            ]),
-            Line::from(vec![
-                Span::styled("Name: ", name_style),
-                Span::raw(&product.name),
-                if matches!(app.input_mode, InputMode::EditName) {
-                    Span::styled("_", Style::default().fg(Color::White))
-                } else {
-                    Span::raw("")
-                },
-            ]),
-            Line::from(vec![
-                Span::styled("Description: ", desc_style),
-                Span::raw(product.description.as_deref().unwrap_or("")),
-                if matches!(app.input_mode, InputMode::EditDescription) {
-                    Span::styled("_", Style::default().fg(Color::White))
-                } else {
-                    Span::raw("")
-                },
-            ]),
-            Line::from(vec![
-                Span::styled("Production: ", prod_style),
-                Span::raw(if matches!(app.input_mode, InputMode::EditProduction) {
-                    format!(
-                        "[{}] Yes    [{}] No",
-                        if product.production { "x" } else { " " },
-                        if !product.production { "x" } else { " " }
-                    )
-                } else {
-                    (if product.production { "Yes" } else { "No" }).to_string()
-                }),
-            ]),
-            Line::from(vec![
-                Span::styled("Tags: ", tags_style),
-                Span::raw(&tags_text),
-            ]),
-            Line::from(vec![
-                Span::styled("Materials: ", materials_style),
-                Span::raw(&materials_text),
-            ]),
-            Line::from(""),
-        ];
-
-        let paragraph = Paragraph::new(content)
-            .block(
+            let paragraph = Paragraph::new("No product selected").block(
                 Block::default()
                     .borders(Borders::ALL)
                     .title("Product Details")
                     .border_style(border_style),
-            )
-            .wrap(Wrap { trim: true });
-
-        f.render_widget(paragraph, area);
+            );
+            f.render_widget(paragraph, area);
+        }
     } else {
         let paragraph = Paragraph::new("No product selected").block(
             Block::default()
