@@ -5,7 +5,10 @@ from sqlalchemy import func
 from typing import List
 from . import models, schemas
 from . import tag_utils
-from ensure_file_structure import create_product_folder  # import to create folders
+from ensure_file_structure import (
+    create_product_folder,
+    update_metadata,
+)  # import both functions
 
 
 def generate_sku(db: Session, category_id: int) -> str:
@@ -45,9 +48,13 @@ def create_product_db(
     db: Session, product: schemas.ProductCreate, sku: Optional[str] = None
 ) -> str:
     """
-    Create a new product in the database and return the SKU.
-    Folder is created first, then stored in DB.
+    Create a new product in database and return SKU.
+    Handles product_id logic for frontend DRY architecture.
     """
+    # Check if product_id is provided for create operation
+    if product.product_id is not None and product.product_id != 0:
+        raise ValueError("product_id must be empty for new product creation")
+
     if not sku:
         if not product.category_id:
             raise ValueError("Category is required for SKU generation")
@@ -64,6 +71,8 @@ def create_product_db(
         description=product.description or "",
         tags=tag_names,
         production=product.production,
+        materials=material_names,
+        category=None,  # Will be handled after product creation
     )
 
     # 2️⃣ Save product to DB with folder_path
@@ -92,6 +101,35 @@ def create_product_db(
     # 4️⃣ Associate materials with product (using IDs)
     associate_materials_with_product_by_ids(db, db_product, product.material_ids)
     db.commit()
+
+    # 5️⃣ Update metadata with category details
+    category_details = None
+    if product.category_id:
+        category_obj = (
+            db.query(models.Category)
+            .filter(models.Category.id == product.category_id)
+            .first()
+        )
+        if category_obj:
+            category_details = {
+                "id": category_obj.id,
+                "name": category_obj.name,
+                "sku_initials": category_obj.sku_initials,
+                "description": category_obj.description,
+            }
+
+    update_metadata(
+        sku=sku,
+        category=category_details,
+        materials=material_names,
+        color=product.color,
+        print_time=product.print_time,
+        weight=product.weight,
+        stock_quantity=product.stock_quantity,
+        reorder_point=product.reorder_point,
+        unit_cost=product.unit_cost,
+        selling_price=product.selling_price,
+    )
 
     return sku
 
@@ -252,11 +290,23 @@ def update_product_materials_by_ids(
 
 def update_product_db(db: Session, sku: str, update: schemas.ProductUpdate):
     """
-    Update product by SKU
+    Update product by SKU or product_id
+    Handles product_id logic for frontend DRY architecture.
     """
-    product = db.query(models.Product).filter(models.Product.sku == sku).first()
-    if not product:
-        return None
+    # Check if product_id is provided for ID-based update
+    if update.product_id is not None and update.product_id != 0:
+        product = (
+            db.query(models.Product)
+            .filter(models.Product.id == update.product_id)
+            .first()
+        )
+        if not product:
+            return None
+    else:
+        # Fallback to SKU-based lookup for backward compatibility
+        product = db.query(models.Product).filter(models.Product.sku == sku).first()
+        if not product:
+            return None
 
     if update.name is not None:
         product.name = update.name

@@ -27,6 +27,22 @@ def handle_product_creation_side_effects(
     tag_names = crud.get_tag_names_by_ids(db, product.tag_ids)
     material_names = crud.get_material_names_by_ids(db, product.material_ids)
 
+    # Get category details for metadata
+    category_details = None
+    if product.category_id:
+        category_obj = (
+            db.query(models.Category)
+            .filter(models.Category.id == product.category_id)
+            .first()
+        )
+        if category_obj:
+            category_details = {
+                "id": category_obj.id,
+                "name": category_obj.name,
+                "sku_initials": category_obj.sku_initials,
+                "description": category_obj.description,
+            }
+
     # Create folder and metadata.json
     create_product_folder(
         sku=sku,
@@ -34,11 +50,14 @@ def handle_product_creation_side_effects(
         description=product.description or "",
         tags=tag_names,
         production=product.production,
+        materials=material_names,
+        category=category_details,  # Pass category details
     )
 
     # Update metadata with additional fields (using materials array)
     update_metadata(
         sku=sku,
+        category=category_details,  # Store category object
         materials=material_names,  # Full array instead of single material
         color=product.color,
         print_time=product.print_time,
@@ -100,15 +119,32 @@ def handle_inventory_update_side_effects(sku: str, inventory: schemas.InventoryU
 def create_product(product: schemas.ProductCreate):
     db: Session = SessionLocal()
     try:
+        # Validate product_id for create operation (must be None)
+        if product.product_id is not None:
+            raise HTTPException(
+                status_code=400,
+                detail="product_id must be empty for new product creation",
+            )
+
         # Create product in DB and get SKU
         sku = crud.create_product_db(db, product)
+
+        # Get the created product to return product_id
+        created_product = (
+            db.query(models.Product).filter(models.Product.sku == sku).first()
+        )
+        product_id = created_product.id if created_product else None
 
         # Handle side effects: folder and metadata
         handle_product_creation_side_effects(sku, product, db)
     finally:
         db.close()
 
-    return {"sku": sku, "message": "Product created successfully"}
+    return {
+        "sku": sku,
+        "product_id": product_id,  # Return product_id for frontend
+        "message": "Product created successfully",
+    }
 
 
 @app.get("/products/{sku}")
@@ -123,16 +159,12 @@ def get_product(sku: str = Path(...)):
         if product_db is None:
             raise HTTPException(status_code=404, detail="Product not found")
 
-        # Create Product schema manually (bypassing type checker issues)
+        # Create Product schema with nested response objects
         product = schemas.Product(
             name=product_db.name,
             description=product_db.description,
-            tags=[tag.name for tag in product_db.tags],
             production=product_db.production,
             category_id=product_db.category.id if product_db.category else None,
-            materials=[material.name for material in product_db.materials]
-            if product_db.materials
-            else None,
             color=product_db.color,
             print_time=product_db.print_time,
             weight=product_db.weight,
@@ -143,6 +175,22 @@ def get_product(sku: str = Path(...)):
             id=product_db.id,
             sku=product_db.sku,
             folder_path=product_db.folder_path,
+            # Nested response objects with both ID and name
+            tags=[
+                schemas.TagResponse(id=tag.id, name=tag.name) for tag in product_db.tags
+            ],
+            materials=[
+                schemas.MaterialResponse(id=material.id, name=material.name)
+                for material in product_db.materials
+            ],
+            category=schemas.CategoryResponse(
+                id=product_db.category.id,
+                name=product_db.category.name,
+                sku_initials=product_db.category.sku_initials,
+                description=product_db.category.description,
+            )
+            if product_db.category
+            else None,
         )
         return product
     finally:
@@ -153,16 +201,37 @@ def get_product(sku: str = Path(...)):
 def update_product(update: schemas.ProductUpdate, sku: str = Path(...)):
     db: Session = SessionLocal()
     try:
+        # Validate product_id for update operation
+        if update.product_id is not None and update.product_id != 0:
+            # Check if product_id exists
+            existing_product = (
+                db.query(models.Product)
+                .filter(models.Product.id == update.product_id)
+                .first()
+            )
+            if not existing_product:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Product with ID {update.product_id} not found",
+                )
+
         product_db = crud.update_product_db(db, sku, update)
         if not product_db:
             raise HTTPException(status_code=404, detail="Product not found")
+
+        # Get product_id for response
+        product_id = product_db.id
 
         # Handle side effects: metadata update
         handle_product_update_side_effects(sku, update, db)
     finally:
         db.close()
 
-    return {"sku": sku, "message": "Product updated successfully"}
+    return {
+        "sku": sku,
+        "product_id": product_id,  # Return product_id for frontend
+        "message": "Product updated successfully",
+    }
 
     # Temporarily removed decorator to debug
 

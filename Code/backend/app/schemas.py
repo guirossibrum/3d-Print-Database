@@ -66,6 +66,7 @@ class Category(CategoryBase):
 
 # Base class for products
 class ProductBase(BaseModel):
+    product_id: Optional[int] = None  # New field for frontend DRY architecture
     name: str
     description: Optional[str] = None
     tag_ids: List[int] = []  # ID-based for many-to-many relationship
@@ -89,6 +90,7 @@ class ProductCreate(ProductBase):
 
 # Schema for updating a product (all fields optional)
 class ProductUpdate(BaseModel):
+    product_id: Optional[int] = None  # New field for frontend DRY architecture
     name: Optional[str] = None
     description: Optional[str] = None
     tag_ids: Optional[List[int]] = None  # ID-based for many-to-many relationship
@@ -155,6 +157,7 @@ class Product(BaseModel):
     selling_price: Optional[int] = None
 
     # Product-specific fields
+    product_id: int  # Add product_id to response
     id: int
     sku: str
     folder_path: str

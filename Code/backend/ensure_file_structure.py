@@ -12,6 +12,7 @@ def create_product_folder(
     tags=None,
     production: bool = False,
     materials=None,
+    category=None,
 ):
     """
     Creates folder structure and metadata.json for a product.
@@ -32,9 +33,10 @@ def create_product_folder(
         "sku": sku,
         "name": name,
         "description": description,
+        "category": category,  # Add category field
         "tags": tags,
-        "production": production,
         "materials": materials,  # Store materials array from start
+        "production": production,
         "color": None,
         "print_time": None,
         "weight": None,
@@ -55,6 +57,7 @@ def update_metadata(
     sku: str,
     name=None,
     description=None,
+    category=None,  # Add category parameter
     tags=None,
     production=None,
     material=None,  # Keep for backward compatibility
@@ -82,6 +85,8 @@ def update_metadata(
         data["name"] = name
     if description is not None:
         data["description"] = description
+    if category is not None:
+        data["category"] = category  # Store category object
     if tags is not None:
         data["tags"] = tags
     if production is not None:
