@@ -361,13 +361,16 @@ impl App {
         }
         // Handle materials specially - parse from edit_materials_string if we're in materials edit mode
         if matches!(self.input_mode, InputMode::EditMaterials) {
-            update.material = Some(
-                self.edit_materials_string
-                    .split(',')
-                    .map(|s| s.trim().to_string())
-                    .filter(|s| !s.is_empty())
-                    .collect()
-            );
+            let materials: Vec<String> = self.edit_materials_string
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
+            update.material = if materials.is_empty() {
+                None
+            } else {
+                Some(materials)
+            };
         }
         update.production = Some(product.production);
         update.print_time = product.print_time;
