@@ -40,8 +40,8 @@ pub struct App {
     // Consolidated modes
     pub item_type: ItemType,
 
-    // Create form
-    pub create_form: CreateForm,
+    // Current product being edited/created
+    pub current_product: crate::api::Product,
     pub category_form: CategoryForm,
     pub item_form: TagForm,
     pub popup_field: usize,
@@ -83,10 +83,9 @@ impl App {
             edit_backup: None,
             previous_input_mode: None,
              item_type: ItemType::Tag,
-            create_form: CreateForm {
-                production: true, // Default to production ready
-                ..Default::default()
-            },
+            current_product: crate::api::Product::default(),
+            tag_selected_index: 0,
+            material_selected_index: 0,
             category_form: CategoryForm::default(),
             item_form: TagForm::default(),
             popup_field: 0,

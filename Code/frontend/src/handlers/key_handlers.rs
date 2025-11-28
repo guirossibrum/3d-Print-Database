@@ -6,7 +6,7 @@
 
 use anyhow::Result;
 
-use crate::{App, models::SelectionType};
+use crate::{App, models::{SelectionType, Tab, ActivePane}};
 
 /// Handle Enter key - confirms and saves record, or applies selection
 pub fn handle_enter(app: &mut App) -> Result<()> {
@@ -69,14 +69,11 @@ pub fn handle_enter(app: &mut App) -> Result<()> {
             app.selection_type = None;
         }
 
-        // Create modes - save new product
-        InputMode::CreateName | InputMode::CreateDescription |
-        InputMode::CreateCategory | InputMode::CreateCategorySelect |
-        InputMode::CreateProduction | InputMode::CreateTags |
-        InputMode::CreateTagSelect | InputMode::CreateMaterials |
-        InputMode::CreateMaterialSelect => {
-            // TODO: Implement create product saving
-            // For now, do nothing
+// Edit modes - save current product (works for both create and edit)
+        InputMode::EditName | InputMode::EditDescription |
+        InputMode::EditProduction | InputMode::EditTags |
+        InputMode::EditMaterials => {
+            app.save_current_product()?;
         }
 
         // Delete confirmation - confirm deletion
@@ -125,15 +122,7 @@ pub fn handle_escape(app: &mut App) -> Result<()> {
             app.selection_type = None;
         }
 
-        // Create modes - cancel creation
-        InputMode::CreateName | InputMode::CreateDescription |
-        InputMode::CreateCategory | InputMode::CreateCategorySelect |
-        InputMode::CreateProduction | InputMode::CreateTags |
-        InputMode::CreateTagSelect | InputMode::CreateMaterials |
-        InputMode::CreateMaterialSelect => {
-            // TODO: Reset create form and return to normal
-            app.input_mode = InputMode::Normal;
-        }
+
 
         // Delete modes - cancel deletion
         InputMode::DeleteConfirm | InputMode::DeleteFileConfirm => {
@@ -182,13 +171,10 @@ pub fn handle_tab(app: &mut App) -> Result<()> {
             // Enter tag selection
             app.selection_type = Some(SelectionType::Tag);
             app.tag_selection = vec![false; app.tags.len()];
-            if let Some(selected_id) = app.get_selected_product_id() {
-                for (i, tag) in app.tags.iter().enumerate() {
-                    if let Some(product) = app.products.iter().find(|p| p.id == Some(selected_id)) {
-                        if product.tags.contains(tag) {
-                            app.tag_selection[i] = true;
-                        }
-                    }
+            // Use current_product for both create and edit
+            for (i, tag) in app.tags.iter().enumerate() {
+                if app.current_product.tags.contains(tag) {
+                    app.tag_selection[i] = true;
                 }
             }
             app.input_mode = InputMode::EditSelect;
@@ -198,14 +184,11 @@ pub fn handle_tab(app: &mut App) -> Result<()> {
             // Enter material selection
             app.selection_type = Some(SelectionType::Material);
             app.tag_selection = vec![false; app.materials.len()];
-            if let Some(selected_id) = app.get_selected_product_id() {
-                for (i, material) in app.materials.iter().enumerate() {
-                    if let Some(product) = app.products.iter().find(|p| p.id == Some(selected_id)) {
-                        if let Some(ref materials) = product.material.as_ref() {
-                            if materials.contains(material) {
-                                app.tag_selection[i] = true;
-                            }
-                        }
+            // Use current_product for both create and edit
+            for (i, material) in app.materials.iter().enumerate() {
+                if let Some(ref materials) = app.current_product.material.as_ref() {
+                    if materials.contains(material) {
+                        app.tag_selection[i] = true;
                     }
                 }
             }
@@ -264,19 +247,19 @@ pub fn handle_up(app: &mut App) -> Result<()> {
             match app.selection_type {
                 Some(SelectionType::Tag) => {
                     if !app.tags.is_empty() {
-                        app.create_form.tag_selected_index = if app.create_form.tag_selected_index == 0 {
+                        app.tag_selected_index = if app.tag_selected_index == 0 {
                             app.tags.len() - 1
                         } else {
-                            app.create_form.tag_selected_index - 1
+                            app.tag_selected_index - 1
                         };
                     }
                 }
                 Some(SelectionType::Material) => {
                     if !app.materials.is_empty() {
-                        app.create_form.material_selected_index = if app.create_form.material_selected_index == 0 {
+                        app.material_selected_index = if app.material_selected_index == 0 {
                             app.materials.len() - 1
                         } else {
-                            app.create_form.material_selected_index - 1
+                            app.material_selected_index - 1
                         };
                     }
                 }
@@ -284,11 +267,7 @@ pub fn handle_up(app: &mut App) -> Result<()> {
             }
         }
 
-        // Create modes - navigate form fields
-        InputMode::CreateName => {
-            // TODO: Implement create form navigation
-        }
-        // ... other create modes
+
 
         // Other modes - no action
         _ => {}
@@ -330,23 +309,17 @@ pub fn handle_down(app: &mut App) -> Result<()> {
             match app.selection_type {
                 Some(SelectionType::Tag) => {
                     if !app.tags.is_empty() {
-                        app.create_form.tag_selected_index = (app.create_form.tag_selected_index + 1) % app.tags.len();
+                        app.tag_selected_index = (app.tag_selected_index + 1) % app.tags.len();
                     }
                 }
                 Some(SelectionType::Material) => {
                     if !app.materials.is_empty() {
-                        app.create_form.material_selected_index = (app.create_form.material_selected_index + 1) % app.materials.len();
+                        app.material_selected_index = (app.material_selected_index + 1) % app.materials.len();
                     }
                 }
                 _ => {}
             }
         }
-
-        // Create modes - navigate form fields
-        InputMode::CreateName => {
-            // TODO: Implement create form navigation
-        }
-        // ... other create modes
 
         // Other modes - no action
         _ => {}
@@ -446,7 +419,17 @@ pub fn handle_new(app: &mut App) -> Result<()> {
     use crate::models::InputMode;
 
     match app.input_mode {
-        // Selection mode - create new tag/material
+        // Normal mode - create new product (only in Create tab)
+        InputMode::Normal => {
+            if app.current_tab == Tab::Create {
+                // Initialize new product and enter EditName mode
+                app.current_product = crate::api::Product::default();
+                app.active_pane = ActivePane::Right;
+                app.input_mode = InputMode::EditName;
+            }
+        }
+
+        // Selection modes - create new tag/material (works for both create and edit)
         InputMode::EditSelect => {
             match app.selection_type {
                 Some(SelectionType::Tag) => {
@@ -457,12 +440,6 @@ pub fn handle_new(app: &mut App) -> Result<()> {
                 }
                 _ => {}
             }
-        }
-        InputMode::CreateTagSelect => {
-            // TODO: Implement new tag creation in create mode
-        }
-        InputMode::CreateMaterialSelect => {
-            // TODO: Implement new material creation in create mode
         }
 
         // Other modes - no action
@@ -516,30 +493,18 @@ pub fn handle_space(app: &mut App) -> Result<()> {
         InputMode::EditSelect => {
             match app.selection_type {
                 Some(SelectionType::Tag) => {
-                    if app.create_form.tag_selected_index < app.tag_selection.len() {
-                        let idx = app.create_form.tag_selected_index;
+                    if app.tag_selected_index < app.tag_selection.len() {
+                        let idx = app.tag_selected_index;
                         app.tag_selection[idx] = !app.tag_selection[idx];
                     }
                 }
                 Some(SelectionType::Material) => {
-                    if app.create_form.material_selected_index < app.tag_selection.len() {
-                        let idx = app.create_form.material_selected_index;
+                    if app.material_selected_index < app.tag_selection.len() {
+                        let idx = app.material_selected_index;
                         app.tag_selection[idx] = !app.tag_selection[idx];
                     }
                 }
                 _ => {}
-            }
-        }
-        InputMode::CreateTagSelect => {
-            if app.create_form.tag_selected_index < app.tag_selection.len() {
-                let idx = app.create_form.tag_selected_index;
-                app.tag_selection[idx] = !app.tag_selection[idx];
-            }
-        }
-        InputMode::CreateMaterialSelect => {
-            if app.create_form.material_selected_index < app.tag_selection.len() {
-                let idx = app.create_form.material_selected_index;
-                app.tag_selection[idx] = !app.tag_selection[idx];
             }
         }
 
@@ -557,37 +522,21 @@ pub fn handle_char(app: &mut App, c: char) -> Result<()> {
     match app.input_mode {
         // Edit name - add character to product name
         InputMode::EditName => {
-            if let Some(selected_id) = app.get_selected_product_id() {
-                if let Some(product) = app.products.iter_mut().find(|p| p.id == Some(selected_id)) {
-                    product.name.push(c);
-                }
-            }
+            app.current_product.name.push(c);
         }
 
         // Edit description - add character to product description
         InputMode::EditDescription => {
-            if let Some(selected_id) = app.get_selected_product_id() {
-                if let Some(product) = app.products.iter_mut().find(|p| p.id == Some(selected_id)) {
-                    if let Some(ref mut desc) = product.description {
-                        desc.push(c);
-                    } else {
-                        product.description = Some(c.to_string());
-                    }
-                }
+            if let Some(ref mut desc) = app.current_product.description {
+                desc.push(c);
+            } else {
+                app.current_product.description = Some(c.to_string());
             }
         }
 
         // Edit tags - add character to tag string
         InputMode::EditTags => {
             app.edit_tags_string.push(c);
-        }
-
-        // Create modes - handle character input for form fields
-        InputMode::CreateName => {
-            app.create_form.name.push(c);
-        }
-        InputMode::CreateDescription => {
-            app.create_form.description.push(c);
         }
 
         // Other modes - ignore character input
@@ -604,21 +553,13 @@ pub fn handle_backspace(app: &mut App) -> Result<()> {
     match app.input_mode {
         // Edit name - remove last character
         InputMode::EditName => {
-            if let Some(selected_id) = app.get_selected_product_id() {
-                if let Some(product) = app.products.iter_mut().find(|p| p.id == Some(selected_id)) {
-                    product.name.pop();
-                }
-            }
+            app.current_product.name.pop();
         }
 
         // Edit description - remove last character
         InputMode::EditDescription => {
-            if let Some(selected_id) = app.get_selected_product_id() {
-                if let Some(product) = app.products.iter_mut().find(|p| p.id == Some(selected_id)) {
-                    if let Some(ref mut desc) = product.description {
-                        desc.pop();
-                    }
-                }
+            if let Some(ref mut desc) = app.current_product.description {
+                desc.pop();
             }
         }
 
@@ -627,13 +568,7 @@ pub fn handle_backspace(app: &mut App) -> Result<()> {
             app.edit_tags_string.pop();
         }
 
-        // Create modes - remove character from form fields
-        InputMode::CreateName => {
-            app.create_form.name.pop();
-        }
-        InputMode::CreateDescription => {
-            app.create_form.description.pop();
-        }
+
 
         // Other modes - ignore backspace
         _ => {}

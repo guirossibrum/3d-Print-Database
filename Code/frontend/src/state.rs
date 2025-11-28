@@ -41,12 +41,14 @@ pub struct App {
     pub item_type: ItemType,
     pub selection_type: Option<SelectionType>, // Type of selection in EditSelect mode
 
-    // Create form
-    pub create_form: CreateForm,
+    // Current product being edited/created
+    pub current_product: crate::api::Product,
     pub category_form: CategoryForm,
     pub item_form: TagForm,
     pub popup_field: usize,
     pub tag_selection: Vec<bool>, // Selection state for tags and materials
+    pub tag_selected_index: usize, // For selection navigation
+    pub material_selected_index: usize, // For selection navigation
     #[allow(dead_code)]
     pub category_selection: Vec<bool>,
     #[allow(dead_code)]
@@ -95,10 +97,9 @@ impl App {
              edit_backup: None,
              item_type: ItemType::Tag,
              selection_type: None,
-            create_form: CreateForm {
-                production: true, // Default to production ready
-                ..Default::default()
-            },
+            current_product: crate::api::Product::default(),
+            tag_selected_index: 0,
+            material_selected_index: 0,
             category_form: CategoryForm::default(),
             item_form: TagForm::default(),
             popup_field: 0,
@@ -140,7 +141,16 @@ impl App {
     }
 
     pub fn has_multiple_panes(&self) -> bool {
-        matches!(self.current_tab, Tab::Search | Tab::Inventory)
+        // Has multiple panes when in edit/create modes
+        matches!(
+            self.input_mode,
+            InputMode::EditName
+                | InputMode::EditDescription
+                | InputMode::EditProduction
+                | InputMode::EditTags
+                | InputMode::EditMaterials
+                | InputMode::EditSelect
+        )
     }
 
     pub fn next_pane(&mut self) {
@@ -262,64 +272,7 @@ impl App {
         }
     }
 
-    pub fn save_product(&mut self) -> Result<()> {
-        // Validate required fields
-        if self.create_form.name.trim().is_empty() {
-            self.set_status_message("Error: Product name is required".to_string());
-            return Ok(());
-        }
 
-        let category_id = match self.create_form.category_id {
-            Some(id) => id,
-            None => {
-                self.set_status_message("Error: Category must be selected".to_string());
-                return Ok(());
-            }
-        };
-
-        // Create product struct for API call
-        let product = Product {
-            id: None,
-            sku: "".to_string(), // Backend will generate SKU
-            name: self.create_form.name.clone(),
-            description: if self.create_form.description.trim().is_empty() {
-                None
-            } else {
-                Some(self.create_form.description.clone())
-            },
-            production: self.create_form.production,
-            tags: self.create_form.tags.clone(),
-            category_id: Some(category_id),
-            material: if self.create_form.materials.is_empty() {
-                None
-            } else {
-                Some(self.create_form.materials.clone())
-            },
-            color: None,
-            print_time: None,
-            weight: None,
-            stock_quantity: None,
-            reorder_point: None,
-            unit_cost: None,
-            selling_price: None,
-        };
-
-        // Call API to create product
-        match self.api_client.create_product(&product) {
-            Ok(_) => {
-                self.set_status_message("Product created successfully".to_string());
-                // Clear form
-                self.create_form = CreateForm {
-                    production: true,
-                    ..Default::default()
-                };
-                // Refresh data
-                self.refresh_data();
-            }
-            Err(e) => self.set_status_message(format!("Error creating product: {:?}", e)),
-        }
-        Ok(())
-    }
 
     pub fn perform_update(&mut self, sku: &str, update: crate::api::ProductUpdate) -> Result<()> {
         match self.api_client.update_product(sku, &update) {
@@ -332,52 +285,33 @@ impl App {
         Ok(())
     }
 
-    pub fn save_current_product(&mut self) -> Result<()> {
-        let (sku, product) = if let Some(data) = self.get_selected_product_data() {
-            data
-        } else {
-            return Err(anyhow::anyhow!("No product selected"));
-        };
-
-        let mut update = crate::api::ProductUpdate::default();
-        update.name = Some(product.name.clone());
-        update.description = product.description.clone();
-        
-        // Handle tags specially - parse from edit_tags_string if we're in tags edit mode
-        if matches!(self.input_mode, InputMode::EditTags) {
-            update.tags = Some(
-                self.edit_tags_string
-                    .split(',')
-                    .map(|s| s.trim().to_string())
-                    .filter(|s| !s.is_empty())
-                    .collect()
-            );
+pub fn save_current_product(&mut self) -> Result<()> {
+        // Validate required fields
+        if self.current_product.name.trim().is_empty() {
+            self.set_status_message("Error: Product name is required".to_string());
+            return Ok(());
         }
-        // Handle materials specially - parse from edit_materials_string if we're in materials edit mode
-        if matches!(self.input_mode, InputMode::EditMaterials) {
-            let materials: Vec<String> = self.edit_materials_string
-                .split(',')
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty())
-                .collect();
-            update.material = if materials.is_empty() {
-                None
-            } else {
-                Some(materials)
-            };
-        }
-        update.production = Some(product.production);
-        update.print_time = product.print_time;
-        update.weight = product.weight;
-        update.stock_quantity = product.stock_quantity;
-        update.reorder_point = product.reorder_point;
-        update.unit_cost = product.unit_cost;
-        update.selling_price = product.selling_price;
 
-        self.perform_update(&sku, update)?;
-        self.edit_backup = None; // Clear backup since we're saving
-        self.input_mode = crate::models::InputMode::Normal;
-        self.active_pane = crate::models::ActivePane::Left;
+        // Single unified API call
+        match self.api_client.save_product(&self.current_product) {
+            Ok(response) => {
+                self.set_status_message(response.message);
+                self.refresh_data();
+
+                // Handle mode transition based on whether it was create or edit
+                if self.current_product.id.is_none() {
+                    // Was create - prepare for next creation
+                    self.current_product = crate::api::Product::default();
+                    // Stay in edit mode for continuous creation
+                } else {
+                    // Was edit - return to normal
+                    self.edit_backup = None;
+                    self.input_mode = crate::models::InputMode::Normal;
+                    self.active_pane = crate::models::ActivePane::Left;
+                }
+            }
+            Err(e) => self.set_status_message(format!("Error saving product: {:?}", e))
+        }
         Ok(())
     }
 

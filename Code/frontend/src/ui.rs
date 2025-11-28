@@ -118,15 +118,12 @@ fn draw_tabs(f: &mut Frame, area: Rect, app: &App) {
 fn draw_create_tab(f: &mut Frame, area: Rect, app: &App) {
     let is_creating = matches!(
         app.input_mode,
-        InputMode::CreateName
-            | InputMode::CreateDescription
-            | InputMode::CreateCategory
-            | InputMode::CreateProduction
-            | InputMode::CreateTags
-            | InputMode::CreateMaterials
-            | InputMode::CreateCategorySelect
-            | InputMode::CreateTagSelect
-            | InputMode::CreateMaterialSelect
+        InputMode::EditName
+            | InputMode::EditDescription
+            | InputMode::EditProduction
+            | InputMode::EditTags
+            | InputMode::EditMaterials
+            | InputMode::EditSelect
     );
     let border_style = if is_creating {
         Style::default().fg(Color::Yellow).bold()
@@ -140,15 +137,152 @@ fn draw_create_tab(f: &mut Frame, area: Rect, app: &App) {
             .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
             .split(area);
 
-        draw_create_left_pane(f, chunks[0], app, border_style);
-        draw_create_right_pane(f, chunks[1], app);
+        draw_product_form(f, chunks[0], app, border_style);
+        draw_selection_pane(f, chunks[1], app, border_style);
     } else {
-        let content = vec![Line::from("Press ENTER to create a new product")];
+        let content = vec![Line::from("Press 'n' to create a new product")];
         let paragraph = Paragraph::new(content)
             .block(
                 Block::default()
                     .borders(Borders::ALL)
                     .title("Create Product")
+                    .border_style(border_style),
+            )
+            .wrap(Wrap { trim: true });
+        f.render_widget(paragraph, area);
+    }
+}
+
+fn draw_product_form(f: &mut Frame, area: Rect, app: &App, border_style: Style) {
+    let product = &app.current_product;
+
+    let name_style = if matches!(app.input_mode, InputMode::EditName) {
+        Style::default().fg(Color::Yellow).bold()
+    } else {
+        Style::default().fg(Color::Cyan)
+    };
+
+    let desc_style = if matches!(app.input_mode, InputMode::EditDescription) {
+        Style::default().fg(Color::Yellow).bold()
+    } else {
+        Style::default().fg(Color::Cyan)
+    };
+
+    let prod_style = if matches!(app.input_mode, InputMode::EditProduction) {
+        Style::default().fg(Color::Yellow).bold()
+    } else {
+        Style::default().fg(Color::Cyan)
+    };
+
+    let tags_style = if matches!(app.input_mode, InputMode::EditTags) {
+        Style::default().fg(Color::Yellow).bold()
+    } else {
+        Style::default().fg(Color::Cyan)
+    };
+
+    let materials_style = if matches!(app.input_mode, InputMode::EditMaterials) ||
+        (matches!(app.input_mode, InputMode::EditSelect) &&
+         matches!(app.selection_type, Some(crate::models::SelectionType::Material))) {
+        Style::default().fg(Color::Yellow).bold()
+    } else {
+        Style::default().fg(Color::Cyan)
+    };
+
+    let category_name = app
+        .categories
+        .iter()
+        .find(|c| c.id == product.category_id)
+        .map(|c| c.name.as_str())
+        .unwrap_or("No category selected");
+
+    let tags_text = product.tags.join(", ");
+    let materials_text = product
+        .material
+        .as_ref()
+        .map(|m| m.join(", "))
+        .unwrap_or_else(|| "None".to_string());
+
+    let content = vec![
+        Line::from(vec![
+            Span::styled("SKU: ", Style::default().fg(Color::White)),
+            Span::raw(&product.sku),
+        ]),
+        Line::from(vec![
+            Span::styled("Category: ", Style::default().fg(Color::White)),
+            Span::raw(category_name),
+        ]),
+        Line::from(vec![
+            Span::styled("Name: ", name_style),
+            Span::raw(&product.name),
+            if matches!(app.input_mode, InputMode::EditName) {
+                Span::styled("_", Style::default().fg(Color::White))
+            } else {
+                Span::raw("")
+            },
+        ]),
+        Line::from(vec![
+            Span::styled("Description: ", desc_style),
+            Span::raw(product.description.as_deref().unwrap_or(&"".to_string())),
+            if matches!(app.input_mode, InputMode::EditDescription) {
+                Span::styled("_", Style::default().fg(Color::White))
+            } else {
+                Span::raw("")
+            },
+        ]),
+        Line::from(vec![
+            Span::styled("Production: ", prod_style),
+            Span::raw(if product.production { "Yes" } else { "No" }),
+        ]),
+        Line::from(vec![
+            Span::styled("Tags: ", tags_style),
+            Span::raw(if tags_text.is_empty() { "None" } else { &tags_text }),
+        ]),
+        Line::from(vec![
+            Span::styled("Materials: ", materials_style),
+            Span::raw(&materials_text),
+        ]),
+    ];
+
+    let paragraph = Paragraph::new(content)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Product Details")
+                .border_style(border_style),
+        )
+        .wrap(Wrap { trim: true });
+    f.render_widget(paragraph, area);
+}
+
+fn draw_selection_pane(f: &mut Frame, area: Rect, app: &App, border_style: Style) {
+    if matches!(app.input_mode, InputMode::EditSelect) && matches!(app.selection_type, Some(crate::models::SelectionType::Tag)) {
+        // Draw tag selection
+        let content = build_tag_selection_content(
+            app,
+            "Available Tags:",
+            "[↑↓: Navigate] [Space: Select] [ENTER: Add Selected] [n: New] [e: Edit] [d: Delete] [ESC: Back]",
+        );
+        let paragraph = Paragraph::new(content)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Tag Selection")
+                    .border_style(border_style),
+            )
+            .wrap(Wrap { trim: true });
+        f.render_widget(paragraph, area);
+    } else if matches!(app.input_mode, InputMode::EditSelect) && matches!(app.selection_type, Some(crate::models::SelectionType::Material)) {
+        // Draw material selection
+        let content = build_material_selection_content(
+            app,
+            "Available Materials:",
+            "[↑↓: Navigate] [Space: Select] [ENTER: Add Selected] [n: New] [d: Delete] [ESC: Back]",
+        );
+        let paragraph = Paragraph::new(content)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("Material Selection")
                     .border_style(border_style),
             )
             .wrap(Wrap { trim: true });
@@ -277,12 +411,11 @@ fn draw_create_left_pane(f: &mut Frame, area: Rect, app: &App, border_style: Sty
 
     content.push(Line::from(""));
     let help_text = match app.input_mode {
-        InputMode::CreateName => "[↑/↓] select     [ESC: Cancel]",
-        InputMode::CreateDescription => "[Enter] desc     [↑/↓] select     [Esc] cancel",
-        InputMode::CreateCategory => "[TAB] Select     [ESC] Cancel",
-        InputMode::CreateProduction => "[←/→] Toggle     [↑/↓] select     [ESC] Cancel",
-        InputMode::CreateTags => "[TAB] Select Tags     [ENTER] Save     [↑] Prev     [ESC] Cancel",
-        InputMode::CreateMaterials => {
+        InputMode::EditName => "[↑/↓] select     [ESC: Cancel]",
+        InputMode::EditDescription => "[Enter] desc     [↑/↓] select     [Esc] cancel",
+        InputMode::EditProduction => "[←/→] Toggle     [↑/↓] select     [ESC] Cancel",
+        InputMode::EditTags => "[TAB] Select Tags     [ENTER] Save     [↑] Prev     [ESC] Cancel",
+        InputMode::EditMaterials => {
             "[TAB] Select Materials     [ENTER] Save     [↑] Prev     [↓] Save     [ESC] Cancel"
         }
         _ => "[ENTER] Create     [ESC] Cancel]",
@@ -909,6 +1042,9 @@ fn draw_search_right_pane(f: &mut Frame, area: Rect, app: &App) {
             )
             .wrap(Wrap { trim: true });
         f.render_widget(paragraph, area);
+    } else if matches!(app.current_tab, Tab::Create) || matches!(app.input_mode, InputMode::EditName | InputMode::EditDescription | InputMode::EditProduction | InputMode::EditTags | InputMode::EditMaterials) {
+        // Use unified product form for both Create and Edit tabs
+        draw_product_form(f, area, app, border_style);
     } else if let Some(product) = app.get_selected_product() {
         let name_style = if matches!(app.input_mode, InputMode::EditName) {
             Style::default().fg(Color::Yellow).bold()
@@ -1153,14 +1289,13 @@ fn draw_footer(f: &mut Frame, area: Rect, app: &App, version: &str) {
     // Get instructions based on current tab, pane, and mode
     let instructions = match app.current_tab {
         Tab::Create => match app.input_mode {
-            InputMode::Normal => "[←/→] switch tabs     [Enter] create product",
-            InputMode::CreateName => "[Enter] name     [↑/↓] select     [Esc] cancel",
-            InputMode::CreateDescription => "[Enter] desc     [↑/↓] select     [Esc] cancel",
-            InputMode::CreateCategory => "[Tab] select     [Esc] cancel",
-            InputMode::CreateProduction => {
+            InputMode::Normal => "[←/→] switch tabs     [n] create product",
+            InputMode::EditName => "[Enter] name     [↑/↓] select     [Esc] cancel",
+            InputMode::EditDescription => "[Enter] desc     [↑/↓] select     [Esc] cancel",
+            InputMode::EditProduction => {
                 "[←/→] toggle     [y/n] toggle     [↑/↓] select     [Esc] cancel"
             }
-            InputMode::CreateTags => {
+            InputMode::EditTags => {
                 "[Tab] select tags     [Enter] save     [↑] prev     [Esc] cancel"
             }
             InputMode::CreateTagSelect => {

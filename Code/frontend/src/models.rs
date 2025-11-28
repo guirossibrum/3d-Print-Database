@@ -46,15 +46,6 @@ pub enum ActivePane {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum InputMode {
     Normal,
-    CreateName,
-    CreateDescription,
-    CreateCategory,
-    CreateCategorySelect,
-    CreateProduction,
-    CreateTags,
-    CreateTagSelect,
-    CreateMaterials,
-    CreateMaterialSelect,
     EditName,
     EditDescription,
     EditProduction,
@@ -78,21 +69,7 @@ pub enum InputMode {
 }
 
 impl InputMode {
-    /// Check if this mode is a create-related mode
-    pub fn is_create_mode(&self) -> bool {
-        matches!(
-            self,
-            InputMode::CreateName
-                | InputMode::CreateDescription
-                | InputMode::CreateCategory
-                | InputMode::CreateCategorySelect
-                | InputMode::CreateProduction
-                | InputMode::CreateTags
-                | InputMode::CreateTagSelect
-                | InputMode::CreateMaterials
-                | InputMode::CreateMaterialSelect
-        )
-    }
+
 
     /// Check if this mode is an edit-related mode
     pub fn is_edit_mode(&self) -> bool {
@@ -109,13 +86,7 @@ impl InputMode {
 
     /// Check if this mode is a selection mode
     pub fn is_select_mode(&self) -> bool {
-        matches!(
-            self,
-            InputMode::CreateCategorySelect
-                | InputMode::CreateTagSelect
-                | InputMode::CreateMaterialSelect
-                | InputMode::EditSelect
-        )
+        matches!(self, InputMode::EditSelect)
     }
 
     /// Check if this mode is a delete confirmation mode
@@ -124,18 +95,7 @@ impl InputMode {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct CreateForm {
-    pub name: String,
-    pub description: String,
-    pub category_id: Option<i32>,
-    pub category_selected_index: usize,
-    pub production: bool,
-    pub tags: Vec<String>,
-    pub tag_selected_index: usize,
-    pub materials: Vec<String>,
-    pub material_selected_index: usize,
-}
+
 
 #[derive(Debug, Default)]
 pub struct CategoryForm {

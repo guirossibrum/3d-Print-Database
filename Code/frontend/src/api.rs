@@ -3,7 +3,7 @@ use anyhow::anyhow;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Product {
     pub id: Option<i32>,
     pub sku: String,
@@ -59,7 +59,7 @@ pub struct Category {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CreateProductResponse {
+pub struct SaveProductResponse {
     pub sku: String,
     pub message: String,
 }
@@ -91,7 +91,7 @@ impl ApiClient {
         Ok(categories)
     }
 
-    pub fn create_product(&self, product: &Product) -> Result<CreateProductResponse> {
+    pub fn create_product(&self, product: &Product) -> Result<SaveProductResponse> {
         let url = format!("{}/products/", self.base_url);
         let response = self.client.post(&url).json(product).send()?;
         let create_response = response.json()?;
@@ -106,6 +106,13 @@ impl ApiClient {
         } else {
             Err(anyhow!("Failed to update product: {}", response.status()))
         }
+    }
+
+    pub fn save_product(&self, product: &Product) -> Result<SaveProductResponse> {
+        let url = format!("{}/products/save", self.base_url);
+        let response = self.client.post(&url).json(product).send()?;
+        let save_response = response.json()?;
+        Ok(save_response)
     }
 
     pub fn get_products(&self) -> Result<Vec<Product>> {
