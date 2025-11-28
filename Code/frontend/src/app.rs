@@ -6,7 +6,6 @@ use std::time::Duration;
 use crate::api::{ApiClient, Category, Product};
 use crate::models::*;
 use crate::ui;
-use crate::handlers::AppHandlers;
 
 // Constants
 const EVENT_POLL_TIMEOUT_MS: u64 = 100;
@@ -39,9 +38,7 @@ pub struct App {
     pub previous_input_mode: Option<InputMode>,
 
     // Consolidated modes
-    pub tag_select_mode: TagSelectMode,
     pub item_type: ItemType,
-    pub edit_item_type: ItemType,
 
     // Create form
     pub create_form: CreateForm,
@@ -85,9 +82,7 @@ impl App {
             status_message: String::new(),
             edit_backup: None,
             previous_input_mode: None,
-            tag_select_mode: TagSelectMode::Create,
-            item_type: ItemType::Tag,
-            edit_item_type: ItemType::Tag,
+             item_type: ItemType::Tag,
             create_form: CreateForm {
                 production: true, // Default to production ready
                 ..Default::default()
@@ -215,7 +210,7 @@ impl App {
     }
 
     pub fn handle_key(&mut self, key: crossterm::event::KeyEvent) -> Result<()> {
-        self.handle_key_event(key)
+        self.handle_key(key)
     }
 
     pub fn refresh_data(&mut self) {

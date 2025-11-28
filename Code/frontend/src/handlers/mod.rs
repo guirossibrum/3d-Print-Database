@@ -6,17 +6,8 @@ use crossterm::event::KeyEvent;
 
 pub mod delete;
 pub mod edit;
-pub mod inventory;
-pub mod navigation;
-pub mod new_item;
-pub mod search;
 pub mod selection;
 pub mod util;
-
-// New modules
-pub mod create;
-pub mod select;
-pub mod normal;
 pub mod key_handlers;
 
 /// Main handler dispatcher - key-centric architecture

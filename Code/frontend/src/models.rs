@@ -6,19 +6,13 @@ pub enum Tab {
     Inventory,
 }
 
-/// Mode for tag selection
-#[derive(Debug, Clone, PartialEq)]
-pub enum TagSelectMode {
-    Create,
-    Edit,
-}
+
 
 /// Type of item being created/edited
 #[derive(Debug, Clone, PartialEq)]
 pub enum ItemType {
     Tag,
     Material,
-    Category,
 }
 
 /// Type of selection being performed

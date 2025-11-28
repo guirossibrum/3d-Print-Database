@@ -425,7 +425,6 @@ fn draw_popup(f: &mut Frame, area: Rect, app: &App) {
             let item_type_name = match app.item_type {
                 ItemType::Tag => "Tag",
                 ItemType::Material => "Material",
-                _ => "Item",
             };
 
             content.push(Line::from(vec![

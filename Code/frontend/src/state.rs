@@ -36,12 +36,9 @@ pub struct App {
 
     // Edit backup (for cancelling changes)
     pub edit_backup: Option<Product>,
-    pub previous_input_mode: Option<InputMode>,
 
     // Consolidated modes
-    pub tag_select_mode: TagSelectMode,
     pub item_type: ItemType,
-    pub edit_item_type: ItemType,
     pub selection_type: Option<SelectionType>, // Type of selection in EditSelect mode
 
     // Create form
@@ -95,12 +92,9 @@ impl App {
             inventory_search_query: String::new(),
             status_message: String::new(),
             status_message_timestamp: None,
-            edit_backup: None,
-            previous_input_mode: None,
-            tag_select_mode: TagSelectMode::Create,
-            item_type: ItemType::Tag,
-            edit_item_type: ItemType::Tag,
-            selection_type: None,
+             edit_backup: None,
+             item_type: ItemType::Tag,
+             selection_type: None,
             create_form: CreateForm {
                 production: true, // Default to production ready
                 ..Default::default()

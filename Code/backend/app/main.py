@@ -704,6 +704,7 @@ def search_products(
                     continue
 
                 product_tags = [t.name for t in p.tags]
+                product_materials = [m.name for m in p.materials]
                 results.append(
                     {
                         "id": p.id,
@@ -712,7 +713,7 @@ def search_products(
                         "description": p.description,
                         "production": p.production,
                         "tags": product_tags,
-                        "material": p.material,
+                        "material": product_materials,
                         "color": p.color,
                         "print_time": p.print_time,
                         "weight": p.weight,
@@ -765,7 +766,7 @@ def search_products(
                         "description": p.description,
                         "production": p.production,
                         "tags": product_tags,
-                        "material": p.material,
+                        "material": [m.name for m in p.materials],
                         "color": p.color,
                         "print_time": p.print_time,
                         "weight": p.weight,
