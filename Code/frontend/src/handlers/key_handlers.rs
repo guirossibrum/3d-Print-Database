@@ -41,17 +41,20 @@ pub fn handle_enter(app: &mut App) -> Result<()> {
                 Some(SelectionType::Material) => {
                     // Apply material selection and return to edit mode
                     if let Some(product) = app.products.iter_mut().find(|p| p.id == app.selected_product_id) {
-                        let selected_materials: Vec<String> = app.tag_selection.iter()
-                            .enumerate()
-                            .filter(|&(_, &selected)| selected)
-                            .filter_map(|(i, _)| app.materials.get(i).cloned())
-                            .collect();
-                        product.material = if selected_materials.is_empty() {
-                            None
-                        } else {
-                            Some(selected_materials)
-                        };
-                        // Update edit_materials_string to match tags pattern
+                        // Ensure material vec exists
+                        if product.material.is_none() {
+                            product.material = Some(Vec::new());
+                        }
+                        if let Some(ref mut materials) = product.material {
+                            materials.clear();
+                            for (i, &selected) in app.tag_selection.iter().enumerate() {
+                                if selected {
+                                    if let Some(material) = app.materials.get(i) {
+                                        materials.push(material.clone());
+                                    }
+                                }
+                            }
+                        }
                         app.edit_materials_string = product.material.as_ref().map(|m| m.join(", ")).unwrap_or_default();
                     }
                     app.input_mode = InputMode::EditMaterials;
