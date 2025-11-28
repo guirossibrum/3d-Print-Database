@@ -6,13 +6,20 @@ BASE_DIR = "/Products"
 
 
 def create_product_folder(
-    sku: str, name: str, description: str = "", tags=None, production: bool = False
+    sku: str,
+    name: str,
+    description: str = "",
+    tags=None,
+    production: bool = False,
+    materials=None,
 ):
     """
     Creates folder structure and metadata.json for a product.
     """
     if tags is None:
         tags = []
+    if materials is None:
+        materials = []
 
     product_dir = os.path.join(BASE_DIR, sku)
     subfolders = ["images", "models", "notes", "print_files"]
@@ -27,7 +34,7 @@ def create_product_folder(
         "description": description,
         "tags": tags,
         "production": production,
-        "material": None,  # Will be updated when product is created
+        "materials": materials,  # Store materials array from start
         "color": None,
         "print_time": None,
         "weight": None,
@@ -50,7 +57,8 @@ def update_metadata(
     description=None,
     tags=None,
     production=None,
-    material=None,
+    material=None,  # Keep for backward compatibility
+    materials=None,  # New materials array
     color=None,
     print_time=None,
     weight=None,
@@ -78,8 +86,10 @@ def update_metadata(
         data["tags"] = tags
     if production is not None:
         data["production"] = production
-    if material is not None:
-        data["material"] = material
+    if materials is not None:
+        data["materials"] = materials  # Store materials array
+    elif material is not None:
+        data["material"] = material  # Backward compatibility
     if color is not None:
         data["color"] = color
     if print_time is not None:

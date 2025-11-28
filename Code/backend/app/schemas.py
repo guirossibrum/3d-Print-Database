@@ -68,10 +68,10 @@ class Category(CategoryBase):
 class ProductBase(BaseModel):
     name: str
     description: Optional[str] = None
-    tags: List[str] = []
+    tag_ids: List[int] = []  # ID-based for many-to-many relationship
     production: bool = False  # default = prototype / not production
-    category_id: Optional[int] = None
-    materials: Optional[List[str]] = []
+    category_id: Optional[int] = None  # ID-based for one-to-many relationship
+    material_ids: List[int] = []  # ID-based for many-to-many relationship
     color: Optional[str] = None
     print_time: Optional[str] = None
     weight: Optional[int] = None
@@ -91,9 +91,9 @@ class ProductCreate(ProductBase):
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    tags: Optional[List[str]] = None
+    tag_ids: Optional[List[int]] = None  # ID-based for many-to-many relationship
     production: Optional[bool] = None  # optional for updates
-    materials: Optional[List[str]] = None
+    material_ids: Optional[List[int]] = None  # ID-based for many-to-many relationship
     color: Optional[str] = None
     print_time: Optional[str] = None
     weight: Optional[int] = None
@@ -112,15 +112,40 @@ class InventoryUpdate(BaseModel):
     selling_price: Optional[int] = None
 
 
-# Schema for returning a product from DB
+# Helper schemas for nested responses
+class TagResponse(BaseModel):
+    id: int
+    name: str
+
+    class Config:
+        from_attributes = True
+
+
+class MaterialResponse(BaseModel):
+    id: int
+    name: str
+
+    class Config:
+        from_attributes = True
+
+
+class CategoryResponse(BaseModel):
+    id: int
+    name: str
+    sku_initials: str
+    description: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+# Schema for returning a product from DB (with full nested objects)
 class Product(BaseModel):
-    # ProductBase fields
+    # Product fields
     name: str
     description: Optional[str] = None
-    tags: List[str] = []
     production: bool = False
     category_id: Optional[int] = None
-    materials: Optional[List[str]] = []
     color: Optional[str] = None
     print_time: Optional[str] = None
     weight: Optional[int] = None
@@ -133,6 +158,11 @@ class Product(BaseModel):
     id: int
     sku: str
     folder_path: str
+
+    # Nested relationships (both ID and name for frontend convenience)
+    tags: List[TagResponse] = []
+    materials: List[MaterialResponse] = []
+    category: Optional[CategoryResponse] = None
 
     class Config:
         from_attributes = True  # Pydantic V2 update (was orm_mode)

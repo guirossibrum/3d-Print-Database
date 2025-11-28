@@ -1,9 +1,9 @@
 # tests/test_api.py
 import pytest
 from fastapi.testclient import TestClient
-from ..app.main import app
-from ..app.database import SessionLocal
-from ..app import models
+from app.main import app
+from app.database import SessionLocal
+from app import models
 
 
 @pytest.fixture
@@ -34,11 +34,23 @@ def sample_category(db_session):
 
 
 def test_create_product_api(client, sample_category):
-    """Test creating a product via API"""
+    """Test creating a product via API with ID-based payload"""
+    # First create some tags and materials to get IDs
+    tag1_response = client.post("/tags", json={"name": "api"})
+    tag2_response = client.post("/tags", json={"name": "test"})
+    material1_response = client.post("/materials", json={"name": "PLA"})
+    material2_response = client.post("/materials", json={"name": "PETG"})
+
+    tag1_id = client.get("/tags").json()[0]["id"]  # Get first tag ID
+    tag2_id = client.get("/tags").json()[1]["id"]  # Get second tag ID
+    material1_id = client.get("/materials").json()[0]["id"]  # Get first material ID
+    material2_id = client.get("/materials").json()[1]["id"]  # Get second material ID
+
     product_data = {
         "name": "API Test Product",
         "description": "Created via API test",
-        "tags": ["api", "test"],
+        "tag_ids": [tag1_id, tag2_id],  # ID-based payload
+        "material_ids": [material1_id, material2_id],  # ID-based payload
         "production": False,
         "category_id": sample_category.id,
     }
@@ -49,7 +61,7 @@ def test_create_product_api(client, sample_category):
     data = response.json()
     assert "sku" in data
     assert data["sku"].startswith("TT-")
-    assert data["name"] == "API Test Product"
+    assert data["message"] == "Product created successfully"
 
 
 def test_get_products_api_empty(client):

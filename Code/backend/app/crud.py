@@ -53,12 +53,16 @@ def create_product_db(
             raise ValueError("Category is required for SKU generation")
         sku = generate_sku(db, product.category_id)
 
+    # Get tag and material names for metadata (from IDs)
+    tag_names = get_tag_names_by_ids(db, product.tag_ids)
+    material_names = get_material_names_by_ids(db, product.material_ids)
+
     # 1️⃣ Create folder & metadata first
     folder_path, _ = create_product_folder(
         sku=sku,
         name=product.name,
         description=product.description or "",
-        tags=product.tags,
+        tags=tag_names,
         production=product.production,
     )
 
@@ -82,11 +86,11 @@ def create_product_db(
     db.commit()
     db.refresh(db_product)
 
-    # 3️⃣ Associate tags with product
-    associate_tags_with_product(db, db_product, product.tags)
+    # 3️⃣ Associate tags with product (using IDs)
+    associate_tags_with_product_by_ids(db, db_product, product.tag_ids)
 
-    # 4️⃣ Associate materials with product
-    associate_materials_with_product(db, db_product, product.materials or [])
+    # 4️⃣ Associate materials with product (using IDs)
+    associate_materials_with_product_by_ids(db, db_product, product.material_ids)
     db.commit()
 
     return sku
@@ -158,6 +162,56 @@ def associate_materials_with_product(
         product_db.materials.append(material_obj)
 
 
+def get_tag_names_by_ids(db: Session, tag_ids: List[int]) -> List[str]:
+    """
+    Get tag names by their IDs.
+    """
+    if not tag_ids:
+        return []
+
+    tags = db.query(models.Tag).filter(models.Tag.id.in_(tag_ids)).all()
+    return [str(tag.name) for tag in tags]
+
+
+def get_material_names_by_ids(db: Session, material_ids: List[int]) -> List[str]:
+    """
+    Get material names by their IDs.
+    """
+    if not material_ids:
+        return []
+
+    materials = (
+        db.query(models.Material).filter(models.Material.id.in_(material_ids)).all()
+    )
+    return [str(material.name) for material in materials]
+
+
+def associate_tags_with_product_by_ids(
+    db: Session, product_db: models.Product, tag_ids: List[int]
+):
+    """
+    Associate tags with a product using tag IDs.
+    """
+    for tag_id in tag_ids:
+        tag_obj = db.query(models.Tag).filter(models.Tag.id == tag_id).first()
+        if tag_obj:
+            product_db.tags.append(tag_obj)
+
+
+def associate_materials_with_product_by_ids(
+    db: Session, product_db: models.Product, material_ids: List[int]
+):
+    """
+    Associate materials with a product using material IDs.
+    """
+    for material_id in material_ids:
+        material_obj = (
+            db.query(models.Material).filter(models.Material.id == material_id).first()
+        )
+        if material_obj:
+            product_db.materials.append(material_obj)
+
+
 def update_product_materials(
     db: Session, product: models.Product, new_materials: List[str]
 ):
@@ -174,6 +228,26 @@ def update_product_tags(db: Session, product: models.Product, new_tags: List[str
     """
     product.tags.clear()
     associate_tags_with_product(db, product, new_tags)
+
+
+def update_product_tags_by_ids(
+    db: Session, product: models.Product, tag_ids: List[int]
+):
+    """
+    Update the tags for a product by clearing existing and adding new ones using IDs.
+    """
+    product.tags.clear()
+    associate_tags_with_product_by_ids(db, product, tag_ids)
+
+
+def update_product_materials_by_ids(
+    db: Session, product: models.Product, material_ids: List[int]
+):
+    """
+    Update the materials for a product by clearing existing and adding new ones using IDs.
+    """
+    product.materials.clear()
+    associate_materials_with_product_by_ids(db, product, material_ids)
 
 
 def update_product_db(db: Session, sku: str, update: schemas.ProductUpdate):
@@ -205,11 +279,11 @@ def update_product_db(db: Session, sku: str, update: schemas.ProductUpdate):
     if update.selling_price is not None:
         product.selling_price = update.selling_price
 
-    if update.tags is not None:
-        update_product_tags(db, product, update.tags)
+    if update.tag_ids is not None:
+        update_product_tags_by_ids(db, product, update.tag_ids)
 
-    if update.materials is not None:
-        update_product_materials(db, product, update.materials)
+    if update.material_ids is not None:
+        update_product_materials_by_ids(db, product, update.material_ids)
 
     db.commit()
     db.refresh(product)

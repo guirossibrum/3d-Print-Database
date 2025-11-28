@@ -17,23 +17,29 @@ app = FastAPI()
 create_tables()
 
 
-def handle_product_creation_side_effects(sku: str, product: schemas.ProductCreate):
+def handle_product_creation_side_effects(
+    sku: str, product: schemas.ProductCreate, db: Session
+):
     """
     Handle side effects after product creation: folder and metadata.
     """
+    # Get tag and material names for metadata (from IDs)
+    tag_names = crud.get_tag_names_by_ids(db, product.tag_ids)
+    material_names = crud.get_material_names_by_ids(db, product.material_ids)
+
     # Create folder and metadata.json
     create_product_folder(
         sku=sku,
         name=product.name,
         description=product.description or "",
-        tags=product.tags,
+        tags=tag_names,
         production=product.production,
     )
 
-    # Update metadata with additional fields
+    # Update metadata with additional fields (using materials array)
     update_metadata(
         sku=sku,
-        material=product.materials[0] if product.materials else None,
+        materials=material_names,  # Full array instead of single material
         color=product.color,
         print_time=product.print_time,
         weight=product.weight,
@@ -44,17 +50,29 @@ def handle_product_creation_side_effects(sku: str, product: schemas.ProductCreat
     )
 
 
-def handle_product_update_side_effects(sku: str, update: schemas.ProductUpdate):
+def handle_product_update_side_effects(
+    sku: str, update: schemas.ProductUpdate, db: Session
+):
     """
     Handle side effects after product update: metadata.
     """
+    # Get tag and material names for metadata (from IDs) if provided
+    tag_names = None
+    material_names = None
+
+    if update.tag_ids is not None:
+        tag_names = crud.get_tag_names_by_ids(db, update.tag_ids)
+
+    if update.material_ids is not None:
+        material_names = crud.get_material_names_by_ids(db, update.material_ids)
+
     update_metadata(
         sku=sku,
         name=update.name,
         description=update.description,
-        tags=update.tags,
+        tags=tag_names,
         production=update.production,
-        material=update.materials[0] if update.materials else None,
+        materials=material_names,  # Full materials array
         color=update.color,
         print_time=update.print_time,
         weight=update.weight,
@@ -86,7 +104,7 @@ def create_product(product: schemas.ProductCreate):
         sku = crud.create_product_db(db, product)
 
         # Handle side effects: folder and metadata
-        handle_product_creation_side_effects(sku, product)
+        handle_product_creation_side_effects(sku, product, db)
     finally:
         db.close()
 
@@ -140,7 +158,7 @@ def update_product(update: schemas.ProductUpdate, sku: str = Path(...)):
             raise HTTPException(status_code=404, detail="Product not found")
 
         # Handle side effects: metadata update
-        handle_product_update_side_effects(sku, update)
+        handle_product_update_side_effects(sku, update, db)
     finally:
         db.close()
 
