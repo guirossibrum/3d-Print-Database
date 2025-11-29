@@ -9,52 +9,16 @@ BASE_DIR = os.environ.get(
 )
 
 
-def create_product_folder(
-    sku: str,
-    name: str,
-    description: str = "",
-    tags=None,
-    production: bool = False,
-    materials=None,
-    category=None,
-):
-    """
-    Creates folder structure and metadata.json for a product.
-    """
-    if tags is None:
-        tags = []
-    if materials is None:
-        materials = []
-
+def create_product_folder_debug(sku: str):
+    """Debug version - minimal folder creation only"""
     product_dir = os.path.join(BASE_DIR, sku)
-    subfolders = ["images", "models", "notes", "print_files"]
+    print(f"DEBUG: BASE_DIR = {BASE_DIR}")
+    print(f"DEBUG: product_dir = {product_dir}")
+    print(f"DEBUG: cwd = {os.getcwd()}")
 
     os.makedirs(product_dir, exist_ok=True)
-    for sub in subfolders:
-        os.makedirs(os.path.join(product_dir, sub), exist_ok=True)
-
-    metadata = {
-        "sku": sku,
-        "name": name,
-        "description": description,
-        "category": category,  # Add category field
-        "tags": tags,
-        "materials": materials,  # Store materials array from start
-        "production": production,
-        "color": None,
-        "print_time": None,
-        "weight": None,
-        "stock_quantity": 0,
-        "reorder_point": 0,
-        "unit_cost": None,
-        "selling_price": None,
-    }
-
-    metadata_file = os.path.join(product_dir, "metadata.json")
-    with open(metadata_file, "w") as f:
-        json.dump(metadata, f, indent=4)
-
-    return product_dir, metadata_file
+    print(f"DEBUG: Successfully created {product_dir}")
+    return product_dir
 
 
 def update_metadata(
