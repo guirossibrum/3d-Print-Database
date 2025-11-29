@@ -1,6 +1,5 @@
 // state.rs - Clean, optimized state management
 use anyhow::Result;
-use std::collections::HashMap;
 
 use crate::api::ApiClient;
 use crate::models::{Product, Tag, Material, Category, Tab, InputMode};
@@ -10,7 +9,7 @@ pub struct App {
     api_client: ApiClient,
     
     // ✅ APPLICATION STATE
-    running: bool,
+    pub running: bool,
     current_tab: Tab,
     input_mode: InputMode,
     
