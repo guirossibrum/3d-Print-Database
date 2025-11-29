@@ -212,9 +212,15 @@ fn draw_edit_search_tab(f: &mut Frame, area: Rect, app: &App) {
     draw_product_preview(f, preview_area, app);
 }
 
-/// Draw create tab in edit mode (not commonly used)
-fn draw_edit_create_tab(f: &mut Frame, area: Rect, _app: &App) {
-    draw_placeholder(f, area, "Edit mode not available in Create tab");
+/// Draw create tab in edit mode (create new product)
+fn draw_edit_create_tab(f: &mut Frame, area: Rect, app: &App) {
+    let (form_area, options_area) = create_content_panes(area);
+
+    // Left: Product creation form
+    draw_product_creation_form(f, form_area, app);
+
+    // Right: Available tags/materials/categories
+    draw_creation_options(f, options_area, app);
 }
 
 /// Draw inventory tab in edit mode (edit inventory)
@@ -308,20 +314,11 @@ fn draw_empty_details(f: &mut Frame, area: Rect, message: &str) {
 /// Draw creation instructions
 fn draw_create_instructions(f: &mut Frame, area: Rect) {
     let instructions = vec![
-        Line::from("Product Creation Instructions:"),
-        Line::from(""),
-        Line::from("1. Press ENTER to start creating a product"),
-        Line::from("2. Fill in form fields"),
-        Line::from("3. Select category, tags, and materials"),
-        Line::from("4. Press ENTER to save"),
-        Line::from("5. Press ESC to cancel"),
-        Line::from(""),
-        Line::from("Use TAB to navigate between fields"),
-        Line::from("Use n to create new tags/materials/categories"),
+        Line::from("press [n] to create new product"),
     ];
 
     let instructions_widget = Paragraph::new(instructions)
-        .block(Block::default().borders(Borders::ALL).title("Instructions"))
+        .block(Block::default().borders(Borders::ALL).title("Create"))
         .style(NORMAL_STYLE)
         .wrap(Wrap { trim: true });
 
@@ -329,21 +326,10 @@ fn draw_create_instructions(f: &mut Frame, area: Rect) {
 }
 
 /// Draw available options for creation
-fn draw_available_options(f: &mut Frame, area: Rect, app: &App) {
-    let options = vec![
-        Line::from("Available Options:"),
-        Line::from(""),
-        Line::from(format!("Categories: {}", app.categories().len())),
-        Line::from(format!("Tags: {}", app.tags().len())),
-        Line::from(format!("Materials: {}", app.materials().len())),
-        Line::from(""),
-        Line::from("Press 'n' to create new items"),
-    ];
-
-    let options_widget = Paragraph::new(options)
-        .block(Block::default().borders(Borders::ALL).title("Options"))
-        .style(NORMAL_STYLE)
-        .wrap(Wrap { trim: true });
+fn draw_available_options(f: &mut Frame, area: Rect, _app: &App) {
+    let options_widget = Paragraph::new("")
+        .block(Block::default().borders(Borders::ALL).title(""))
+        .style(NORMAL_STYLE);
 
     f.render_widget(options_widget, area);
 }
@@ -645,16 +631,17 @@ fn draw_delete_popup(f: &mut Frame, area: Rect, _app: &App) {
 /// Draw footer with status and instructions
 fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
     let footer_text = format!(
-        "Status: {} | Tab: {:?} | Mode: {:?}",
+        "Status: {} | Tab: {:?} | Mode: {:?} | v{}",
         app.status_message(),
         app.current_tab(),
-        app.input_mode()
+        app.input_mode(),
+        env!("CARGO_PKG_VERSION")
     );
 
     let footer = Paragraph::new(footer_text)
         .style(FOOTER_STYLE)
         .block(Block::default().borders(Borders::ALL));
-    
+
     f.render_widget(footer, area);
 }
 

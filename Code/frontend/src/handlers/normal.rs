@@ -54,8 +54,14 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
         
         // Create new record
         KeyCode::Char('n') => {
-            app.set_input_mode(InputMode::Create);
-            app.set_status("Enter create mode".to_string());
+            use crate::models::Tab;
+            if app.current_tab() == Tab::Create {
+                app.set_input_mode(InputMode::Edit);
+                app.set_status("Enter edit mode for new product".to_string());
+            } else {
+                app.set_input_mode(InputMode::Create);
+                app.set_status("Enter create mode".to_string());
+            }
         }
         
         // Delete selected record
