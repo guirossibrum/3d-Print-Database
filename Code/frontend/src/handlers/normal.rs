@@ -30,7 +30,7 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
             }
         }
         
-KeyCode::Down => {
+        KeyCode::Down => {
             if !app.products.is_empty() && app.selected_index + 1 < app.products.len() {
                 app.selected_index += 1;
                 app.update_selected_product_id();
