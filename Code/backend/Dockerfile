@@ -19,5 +19,5 @@ RUN echo 'umask 002' >> /root/.bashrc
 # Expose FastAPI port
 EXPOSE 8000
 
-# Start Uvicorn server with proper umask
-CMD ["sh", "-c", "umask 002 && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# Keep container running for testing
+CMD ["sh", "-c", "umask 002 && tail -f /dev/null"]
