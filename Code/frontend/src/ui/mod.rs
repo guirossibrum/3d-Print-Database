@@ -5,3 +5,4 @@ pub mod popups;
 pub mod layout;
 
 // Re-export commonly used UI functionality
+pub use draw::*;
