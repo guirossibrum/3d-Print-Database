@@ -97,4 +97,7 @@ pub struct Product {
     pub reorder_point: Option<i32>,
     pub unit_cost: Option<i32>,  // Cost in cents
     pub selling_price: Option<i32>,  // Price in cents
+    
+    // ✅ NEW: Active status field
+    pub active: bool,
 }
