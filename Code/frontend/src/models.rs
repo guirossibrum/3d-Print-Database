@@ -47,21 +47,21 @@ pub enum InputMode {
 }
 
 /// Tag structure matching backend TagResponse schema
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Tag {
     pub id: i32,
     pub name: String,
 }
 
 /// Material structure matching backend MaterialResponse schema
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Material {
     pub id: i32,
     pub name: String,
 }
 
 /// Category structure matching backend CategoryResponse schema
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Category {
     pub id: i32,
     pub name: String,
@@ -70,7 +70,7 @@ pub struct Category {
 }
 
 /// Complete product structure matching backend Product schema
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Product {
     // Basic product fields
     pub id: i32,
