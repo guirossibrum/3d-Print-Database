@@ -7,7 +7,9 @@ This script reads existing data from the database and creates a new product.
 import sys
 import os
 
-backend_path = os.path.join(os.path.dirname(__file__), "../../Code/backend")
+backend_path = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "../../Code/backend")
+)
 sys.path.insert(0, backend_path)
 
 from sqlalchemy.orm import Session
