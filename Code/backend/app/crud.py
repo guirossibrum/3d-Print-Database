@@ -44,94 +44,131 @@ def generate_sku(db: Session, category_id: int) -> str:
     return f"{prefix}-{max_num + 1:04d}"
 
 
-def create_product_db(
-    db: Session, product: schemas.ProductCreate, sku: Optional[str] = None
-) -> str:
+def save_product(db: Session, product: schemas.ProductBase) -> dict:
     """
-    Create a new product in database and return SKU.
-    Handles product_id logic for frontend DRY architecture.
-    """
-    # Check if product_id is provided for create operation
-    if product.product_id is not None and product.product_id != 0:
-        raise ValueError("product_id must be empty for new product creation")
+    Unified product save function - replaces create_product_db() and update_product_by_id().
+    Handles both create and update based on product_id.
 
-    if not sku:
+    FRONTEND: Use this unified function for both create and update operations.
+    """
+    if product.product_id is None or product.product_id == 0:
+        # CREATE NEW PRODUCT
+        # Generate SKU if not provided
         if not product.category_id:
             raise ValueError("Category is required for SKU generation")
         sku = generate_sku(db, product.category_id)
 
-    # Get tag and material names for metadata (from IDs)
-    tag_names = get_tag_names_by_ids(db, product.tag_ids)
-    material_names = get_material_names_by_ids(db, product.material_ids)
+        # Get tag and material names for metadata
+        tag_names = get_tag_names_by_ids(db, product.tag_ids)
+        material_names = get_material_names_by_ids(db, product.material_ids)
 
-    # 1️⃣ Create folder & metadata first
-    folder_path, _ = create_product_folder(
-        sku=sku,
-        name=product.name,
-        description=product.description or "",
-        tags=tag_names,
-        production=product.production,
-        materials=material_names,
-        category=None,  # Will be handled after product creation
-    )
+        # Create folder & metadata first
+        folder_path, _ = create_product_folder(
+            sku=sku,
+            name=product.name,
+            description=product.description or "",
+            tags=tag_names,
+            production=product.production,
+            materials=material_names,
+            category=None,
+        )
 
-    # 2️⃣ Save product to DB with folder_path
-    db_product = models.Product(
-        sku=sku,
-        name=product.name,
-        description=product.description,
-        folder_path=folder_path,
-        production=product.production,
-        category_id=product.category_id,
-        color=product.color,
-        print_time=product.print_time,
-        weight=product.weight,
-        stock_quantity=product.stock_quantity or 0,
-        reorder_point=product.reorder_point or 0,
-        unit_cost=product.unit_cost,
-        selling_price=product.selling_price,
-    )
-    db.add(db_product)
-    db.commit()
-    db.refresh(db_product)
+        # Save product to DB with folder_path
+        db_product = models.Product(
+            sku=sku,
+            name=product.name,
+            description=product.description,
+            folder_path=folder_path,
+            production=product.production,
+            category_id=product.category_id,
+            color=product.color,
+            print_time=product.print_time,
+            weight=product.weight,
+            stock_quantity=product.stock_quantity or 0,
+            reorder_point=product.reorder_point or 0,
+            unit_cost=product.unit_cost,
+            selling_price=product.selling_price,
+        )
+        db.add(db_product)
+        db.commit()
 
-    # 3️⃣ Associate tags with product (using IDs)
-    associate_tags_with_product_by_ids(db, db_product, product.tag_ids)
+        # Handle relationships after product has ID
+        if product.tag_ids:
+            associate_tags_with_product_by_ids(db, db_product, product.tag_ids)
+        if product.material_ids:
+            associate_materials_with_product_by_ids(
+                db, db_product, product.material_ids
+            )
 
-    # 4️⃣ Associate materials with product (using IDs)
-    associate_materials_with_product_by_ids(db, db_product, product.material_ids)
-    db.commit()
+        # Handle category after product creation
+        if product.category_id:
+            category_obj = (
+                db.query(models.Category)
+                .filter(models.Category.id == product.category_id)
+                .first()
+            )
+            if category_obj:
+                db_product.category = category_obj
 
-    # 5️⃣ Update metadata with category details
-    category_details = None
-    if product.category_id:
-        category_obj = (
-            db.query(models.Category)
-            .filter(models.Category.id == product.category_id)
+        return {
+            "sku": sku,
+            "product_id": db_product.id,
+            "message": "Product created successfully",
+        }
+    else:
+        # UPDATE EXISTING PRODUCT
+        product_db = (
+            db.query(models.Product)
+            .filter(models.Product.id == product.product_id)
             .first()
         )
-        if category_obj:
-            category_details = {
-                "id": category_obj.id,
-                "name": category_obj.name,
-                "sku_initials": category_obj.sku_initials,
-                "description": category_obj.description,
-            }
+        if not product_db:
+            raise ValueError(f"Product with ID {product.product_id} not found")
 
-    update_metadata(
-        sku=sku,
-        category=category_details,
-        materials=material_names,
-        color=product.color,
-        print_time=product.print_time,
-        weight=product.weight,
-        stock_quantity=product.stock_quantity,
-        reorder_point=product.reorder_point,
-        unit_cost=product.unit_cost,
-        selling_price=product.selling_price,
-    )
+        # Update fields if provided
+        if product.name is not None:
+            product_db.name = product.name
+        if product.description is not None:
+            product_db.description = product.description
+        if product.production is not None:
+            product_db.production = product.production
+        if product.color is not None:
+            product_db.color = product.color
+        if product.print_time is not None:
+            product_db.print_time = product.print_time
+        if product.weight is not None:
+            product_db.weight = product.weight
+        if product.stock_quantity is not None:
+            product_db.stock_quantity = product.stock_quantity
+        if product.reorder_point is not None:
+            product_db.reorder_point = product.reorder_point
+        if product.unit_cost is not None:
+            product_db.unit_cost = product.unit_cost
+        if product.selling_price is not None:
+            product_db.selling_price = product.selling_price
 
-    return sku
+        # Update relationships
+        if product.tag_ids is not None:
+            update_product_tags_by_ids(db, product_db, product.tag_ids)
+        if product.material_ids is not None:
+            update_product_materials_by_ids(db, product_db, product.material_ids)
+        if product.category_id is not None:
+            category_obj = (
+                db.query(models.Category)
+                .filter(models.Category.id == product.category_id)
+                .first()
+            )
+            if category_obj:
+                product_db.category = category_obj
+
+        db.commit()
+        db.refresh(product_db)
+
+        return {
+            "sku": product_db.sku,
+            "product_id": product_db.id,
+            "message": "Product updated successfully",
+        }
 
 
 def get_product_by_id(db: Session, product_id: int) -> Optional[models.Product]:
@@ -288,76 +325,3 @@ def update_product_materials_by_ids(
     associate_materials_with_product_by_ids(db, product, material_ids)
 
 
-def update_product_by_id(db: Session, product_id: int, update: schemas.ProductUpdate):
-    """
-    Update product by product_id
-    """
-    product = db.query(models.Product).filter(models.Product.id == product_id).first()
-    if not product:
-        return None
-
-    if update.name is not None:
-        product.name = update.name
-    if update.description is not None:
-        product.description = update.description
-    if update.production is not None:
-        product.production = update.production
-    if update.color is not None:
-        product.color = update.color
-    if update.print_time is not None:
-        product.print_time = update.print_time
-    if update.weight is not None:
-        product.weight = update.weight
-    if update.stock_quantity is not None:
-        product.stock_quantity = update.stock_quantity
-    if update.reorder_point is not None:
-        product.reorder_point = update.reorder_point
-    if update.unit_cost is not None:
-        product.unit_cost = update.unit_cost
-    if update.selling_price is not None:
-        product.selling_price = update.selling_price
-
-    if update.tag_ids is not None:
-        update_product_tags_by_ids(db, product, update.tag_ids)
-
-    if update.material_ids is not None:
-        update_product_materials_by_ids(db, product, update.material_ids)
-
-    db.commit()
-    db.refresh(product)
-    return product
-
-
-def delete_product_by_id(db: Session, product_id: int) -> Optional[models.Product]:
-    """
-    Delete a product by product_id from database.
-    """
-    product = db.query(models.Product).filter(models.Product.id == product_id).first()
-    if not product:
-        return None
-
-    db.delete(product)
-    db.commit()
-    return product
-
-
-def update_product_inventory(db: Session, sku: str, inventory: schemas.InventoryUpdate):
-    """
-    Update inventory fields for a product
-    """
-    product = db.query(models.Product).filter(models.Product.sku == sku).first()
-    if not product:
-        return None
-
-    if inventory.stock_quantity is not None:
-        product.stock_quantity = inventory.stock_quantity
-    if inventory.reorder_point is not None:
-        product.reorder_point = inventory.reorder_point
-    if inventory.unit_cost is not None:
-        product.unit_cost = inventory.unit_cost
-    if inventory.selling_price is not None:
-        product.selling_price = inventory.selling_price
-
-    db.commit()
-    db.refresh(product)
-    return product
