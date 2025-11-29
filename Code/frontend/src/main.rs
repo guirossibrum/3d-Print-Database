@@ -41,7 +41,7 @@ fn setup_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>, TerminalEr
                 return Err(TerminalError::NotInteractive);
             }
         }
-        return Err(TerminalError::SetupFailed(e.into()));
+        return Err(TerminalError::SetupFailed(e.to_string()));
     }
 
     let mut stdout = io::stdout();
@@ -55,7 +55,7 @@ fn setup_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>, TerminalEr
     let terminal = Terminal::new(backend).map_err(|e| {
         let _ = disable_raw_mode();
         let _ = execute!(io::stdout(), LeaveAlternateScreen);
-        TerminalError::SetupFailed(e.into())
+        TerminalError::SetupFailed(e.to_string())
     })?;
 
     Ok(terminal)

@@ -15,8 +15,9 @@ use crate::models::InputMode;
 pub fn handle_event(app: &mut App, event: Event) -> Result<()> {
     match event {
         Event::Key(key) => handle_key_event(app, key),
-        Event::Mouse(mouse) => handle_mouse_event(app, mouse),
         Event::Resize(_, _) => Ok(()), // Handle terminal resize if needed
+        Event::FocusGained | Event::FocusLost | Event::Paste(_) => Ok(()), // Handle focus/paste events
+        Event::Mouse(_) => todo!(), // Handle mouse events - to be implemented
     }
 }
 
@@ -28,14 +29,20 @@ fn handle_key_event(app: &mut App, key: KeyEvent) -> Result<()> {
         InputMode::Create => create::handle(app, key),
         InputMode::Select => select::handle(app, key),
         InputMode::Delete => delete::handle(app, key),
+        // Edit sub-modes
+        InputMode::EditName | InputMode::EditDescription | InputMode::EditCategory |
+        InputMode::EditProduction | InputMode::EditTags | InputMode::EditMaterials => {
+            edit::handle(app, key)
+        }
+        // Delete sub-modes
+        InputMode::DeleteConfirm | InputMode::DeleteFileConfirm => {
+            delete::handle(app, key)
+        }
     }
 }
 
 /// Handle mouse events (basic implementation for now)
-fn handle_mouse_event(app: &mut App, _mouse: MouseEvent) -> Result<()> {
+fn handle_mouse_event(_app: &mut App, _mouse: MouseEvent) -> Result<()> {
     // Basic mouse handling - can be expanded later
     Ok(())
 }
-
-// Re-export commonly used handler functionality
-pub use normal::*;

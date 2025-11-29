@@ -43,6 +43,15 @@ pub fn draw(f: &mut Frame, app: &App) {
         InputMode::Create => draw_create_mode(f, chunks[2], app),
         InputMode::Select => draw_select_mode(f, chunks[2], app),
         InputMode::Delete => draw_delete_mode(f, chunks[2], app),
+        // Edit sub-modes
+        InputMode::EditName | InputMode::EditDescription | InputMode::EditCategory |
+        InputMode::EditProduction | InputMode::EditTags | InputMode::EditMaterials => {
+            draw_edit_mode(f, chunks[2], app)
+        }
+        // Delete sub-modes
+        InputMode::DeleteConfirm | InputMode::DeleteFileConfirm => {
+            draw_delete_mode(f, chunks[2], app)
+        }
     }
 
     // Draw popups if active
@@ -147,13 +156,11 @@ fn draw_create_mode(f: &mut Frame, area: Rect, app: &App) {
 
 /// Draw select mode content (popup overlay)
 fn draw_select_mode(f: &mut Frame, area: Rect, app: &App) {
-    // Select mode renders as popup overlay
     draw_selection_popup(f, area, app);
 }
 
 /// Draw delete mode content (popup overlay)
 fn draw_delete_mode(f: &mut Frame, area: Rect, app: &App) {
-    // Delete mode renders as popup overlay
     draw_delete_popup(f, area, app);
 }
 
@@ -202,53 +209,49 @@ fn draw_edit_search_tab(f: &mut Frame, area: Rect, app: &App) {
     draw_edit_form(f, form_area, app);
     
     // Right: Live preview
-    if let Some(product) = app.selected_product() {
-        draw_product_preview(f, preview_area, product);
-    } else {
-        draw_empty_details(f, preview_area, "No product to edit");
-    }
+    draw_product_preview(f, preview_area, app);
 }
 
 /// Draw create tab in edit mode (not commonly used)
-fn draw_edit_create_tab(f: &mut Frame, area: Rect, app: &App) {
+fn draw_edit_create_tab(f: &mut Frame, area: Rect, _app: &App) {
     draw_placeholder(f, area, "Edit mode not available in Create tab");
 }
 
 /// Draw inventory tab in edit mode (edit inventory)
-fn draw_edit_inventory_tab(f: &mut Frame, area: Rect, app: &App) {
+fn draw_edit_inventory_tab(f: &mut Frame, area: Rect, _app: &App) {
     let (edit_area, preview_area) = create_content_panes(area);
     
     // Left: Inventory editing interface
-    draw_inventory_edit(f, edit_area, app);
+    draw_inventory_edit(f, edit_area, _app);
     
     // Right: Preview of changes
-    draw_inventory_preview(f, preview_area, app);
+    draw_inventory_preview(f, preview_area, _app);
 }
 
 /// Draw search tab in create mode (create product form)
-fn draw_create_search_tab(f: &mut Frame, area: Rect, app: &App) {
+fn draw_create_search_tab(f: &mut Frame, area: Rect, _app: &App) {
     let (form_area, options_area) = create_content_panes(area);
     
     // Left: Product creation form
-    draw_product_creation_form(f, form_area, app);
+    draw_product_creation_form(f, form_area, _app);
     
     // Right: Available tags/materials/categories
-    draw_creation_options(f, options_area, app);
+    draw_creation_options(f, options_area, _app);
 }
 
 /// Draw create tab in create mode (create new items)
-fn draw_create_create_tab(f: &mut Frame, area: Rect, app: &App) {
+fn draw_create_create_tab(f: &mut Frame, area: Rect, _app: &App) {
     let (form_area, list_area) = create_content_panes(area);
     
     // Left: Form for creating new tags/materials/categories
-    draw_item_creation_form(f, form_area, app);
+    draw_item_creation_form(f, form_area, _app);
     
     // Right: List of existing items
-    draw_existing_items_list(f, list_area, app);
+    draw_existing_items_list(f, list_area, _app);
 }
 
 /// Draw inventory tab in create mode (add inventory items)
-fn draw_create_inventory_tab(f: &mut Frame, area: Rect, app: &App) {
+fn draw_create_inventory_tab(f: &mut Frame, area: Rect, _app: &App) {
     draw_placeholder(f, area, "Create inventory mode - to be implemented");
 }
 
@@ -308,7 +311,7 @@ fn draw_create_instructions(f: &mut Frame, area: Rect) {
         Line::from("Product Creation Instructions:"),
         Line::from(""),
         Line::from("1. Press ENTER to start creating a product"),
-        Line::from("2. Fill in the form fields"),
+        Line::from("2. Fill in form fields"),
         Line::from("3. Select category, tags, and materials"),
         Line::from("4. Press ENTER to save"),
         Line::from("5. Press ESC to cancel"),
@@ -389,7 +392,7 @@ fn draw_inventory_summary(f: &mut Frame, area: Rect, products: &[crate::models::
 }
 
 /// Draw edit form for products
-fn draw_edit_form(f: &mut Frame, area: Rect, app: &App) {
+fn draw_edit_form(f: &mut Frame, area: Rect, _app: &App) {
     let form_text = vec![
         Line::from("Edit Product Form:"),
         Line::from(""),
@@ -410,13 +413,13 @@ fn draw_edit_form(f: &mut Frame, area: Rect, app: &App) {
 }
 
 /// Draw product preview
-fn draw_product_preview(f: &mut Frame, area: Rect, product: &crate::models::Product) {
+fn draw_product_preview(f: &mut Frame, area: Rect, app: &App) {
     let preview = vec![
         Line::from("Live Preview:"),
         Line::from(""),
-        Line::from(format!("Name: {}", product.name)),
-        Line::from(format!("SKU: {}", product.sku)),
-        Line::from(format!("Production: {}", if product.production { "Yes" } else { "No" })),
+        Line::from(format!("Name: {}", app.selected_product().map(|p| p.name.as_str()).unwrap_or("None"))),
+        Line::from(format!("SKU: {}", app.selected_product().map(|p| p.sku.as_str()).unwrap_or("None"))),
+        Line::from(format!("Production: {}", app.selected_product().map(|p| if p.production { "Yes" } else { "No" }).unwrap_or("None"))),
     ];
 
     let preview_widget = Paragraph::new(preview)
@@ -428,7 +431,7 @@ fn draw_product_preview(f: &mut Frame, area: Rect, product: &crate::models::Prod
 }
 
 /// Draw inventory editing interface
-fn draw_inventory_edit(f: &mut Frame, area: Rect, app: &App) {
+fn draw_inventory_edit(f: &mut Frame, area: Rect, _app: &App) {
     let edit_text = vec![
         Line::from("Inventory Editing:"),
         Line::from(""),
@@ -447,7 +450,7 @@ fn draw_inventory_edit(f: &mut Frame, area: Rect, app: &App) {
 }
 
 /// Draw inventory preview
-fn draw_inventory_preview(f: &mut Frame, area: Rect, app: &App) {
+fn draw_inventory_preview(f: &mut Frame, area: Rect, _app: &App) {
     let preview = vec![
         Line::from("Inventory Preview:"),
         Line::from(""),
@@ -464,7 +467,7 @@ fn draw_inventory_preview(f: &mut Frame, area: Rect, app: &App) {
 }
 
 /// Draw product creation form
-fn draw_product_creation_form(f: &mut Frame, area: Rect, app: &App) {
+fn draw_product_creation_form(f: &mut Frame, area: Rect, _app: &App) {
     let form_text = vec![
         Line::from("Create New Product:"),
         Line::from(""),
@@ -485,7 +488,7 @@ fn draw_product_creation_form(f: &mut Frame, area: Rect, app: &App) {
 }
 
 /// Draw creation options
-fn draw_creation_options(f: &mut Frame, area: Rect, app: &App) {
+fn draw_creation_options(f: &mut Frame, area: Rect, _app: &App) {
     let options = vec![
         Line::from("Creation Options:"),
         Line::from(""),
@@ -511,7 +514,7 @@ fn draw_creation_options(f: &mut Frame, area: Rect, app: &App) {
 }
 
 /// Draw item creation form (for tags, materials, categories)
-fn draw_item_creation_form(f: &mut Frame, area: Rect, app: &App) {
+fn draw_item_creation_form(f: &mut Frame, area: Rect, _app: &App) {
     let form_text = vec![
         Line::from("Create New Item:"),
         Line::from(""),
@@ -533,7 +536,7 @@ fn draw_item_creation_form(f: &mut Frame, area: Rect, app: &App) {
 }
 
 /// Draw existing items list
-fn draw_existing_items_list(f: &mut Frame, area: Rect, app: &App) {
+fn draw_existing_items_list(f: &mut Frame, area: Rect, _app: &App) {
     let items = vec![
         Line::from("Existing Items:"),
         Line::from(""),
@@ -571,8 +574,26 @@ fn should_show_popup(app: &App) -> bool {
     matches!(app.input_mode(), InputMode::Select | InputMode::Delete)
 }
 
+/// Draw popup overlay (router for different popup types)
+fn draw_popup_overlay(f: &mut Frame, area: Rect, app: &App) {
+    match app.input_mode() {
+        InputMode::Select => draw_selection_popup(f, area, app),
+        InputMode::Delete => draw_delete_popup(f, area, app),
+        // Edit sub-modes
+        InputMode::EditName | InputMode::EditDescription | InputMode::EditCategory |
+        InputMode::EditProduction | InputMode::EditTags | InputMode::EditMaterials => {
+            // Edit modes don't show popups in current implementation
+        }
+        // Delete sub-modes
+        InputMode::DeleteConfirm | InputMode::DeleteFileConfirm => {
+            draw_delete_popup(f, area, app)
+        }
+        _ => {}
+    }
+}
+
 /// Draw popup overlay for selection mode
-fn draw_selection_popup(f: &mut Frame, area: Rect, app: &App) {
+fn draw_selection_popup(f: &mut Frame, area: Rect, _app: &App) {
     let popup_area = centered_rect(60, 70, area);
     
     f.render_widget(Clear, popup_area);
@@ -600,7 +621,7 @@ fn draw_selection_popup(f: &mut Frame, area: Rect, app: &App) {
 }
 
 /// Draw popup overlay for delete confirmation
-fn draw_delete_popup(f: &mut Frame, area: Rect, app: &App) {
+fn draw_delete_popup(f: &mut Frame, area: Rect, _app: &App) {
     let popup_area = centered_rect(40, 20, area);
     
     f.render_widget(Clear, popup_area);
@@ -619,15 +640,6 @@ fn draw_delete_popup(f: &mut Frame, area: Rect, app: &App) {
         .wrap(Wrap { trim: true });
     
     f.render_widget(popup, popup_area);
-}
-
-/// Draw popup overlay (router for different popup types)
-fn draw_popup_overlay(f: &mut Frame, area: Rect, app: &App) {
-    match app.input_mode() {
-        InputMode::Select => draw_selection_popup(f, area, app),
-        InputMode::Delete => draw_delete_popup(f, area, app),
-        _ => {}
-    }
 }
 
 /// Draw footer with status and instructions
