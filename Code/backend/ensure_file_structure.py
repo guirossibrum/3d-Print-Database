@@ -92,7 +92,7 @@ def update_metadata(
     if production is not None:
         data["production"] = production
     if material is not None:
-        data["material"] = material
+        data["materials"] = material
     if color is not None:
         data["color"] = color
     if print_time is not None:
