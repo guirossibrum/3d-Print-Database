@@ -17,43 +17,6 @@ app = FastAPI()
 create_tables()
 
 
-    category_details = None
-                "name": category_obj.name,
-                "sku_initials": category_obj.sku_initials,
-                "description": category_obj.description,
-            }
-
-    # Create folder and metadata.json
-    create_product_folder(
-        sku=crud.create_product_db(db, product),
-        name=product.name,
-        description=product.description or "",
-        tags=tag_names,
-        production=product.production,
-        materials=material_names,
-        category=category_details,  # Pass category details
-    )
-
-    # Update metadata with additional fields (using materials array)
-    update_metadata(
-        sku=result["sku"],
-    Handle side effects after product update: metadata.
-    """
-    # Get tag and material names for metadata (from IDs) if provided
-    tag_names = None
-    material_names = None
-        sku=result["sku"],
-        name=update.name,
-        description=update.description,
-        tags=tag_names,
-        production=update.production,
-        stock_quantity=inventory.stock_quantity,
-        reorder_point=inventory.reorder_point,
-        unit_cost=inventory.unit_cost,
-        selling_price=inventory.selling_price,
-    )
-
-
 @app.post("/products/")
 def save_product(product: schemas.ProductBase):
     """
@@ -65,15 +28,18 @@ def save_product(product: schemas.ProductBase):
     """
     db: Session = SessionLocal()
     try:
-                result["product_id"],
-                result["sku"],
-                schemas.ProductUpdate(**product.dict(exclude_unset=True)),
-                db,
-            )
+        print(
+            f"DEBUG main.py: About to call crud.save_product with product_id={product.product_id}"
+        )
+        result = crud.save_product(db, product)
+        print(f"DEBUG main.py: crud.save_product returned: {result}")
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         db.close()
-
-    return result
 
 
 @app.get("/products/{product_id}")
@@ -144,9 +110,9 @@ def suggest_tags(q: str = Query(..., min_length=1, max_length=50)):
     db: Session = SessionLocal()
     try:
         return tag_utils.suggest_tags(db, q, limit=10)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
-        db.close()
-
         db.close()
 
 
@@ -167,6 +133,9 @@ def update_tag(tag_name: str, tag_update: schemas.TagUpdate):
                 db.query(models.Tag).filter(models.Tag.name == tag_update.name).first()
             )
             if existing:
+                raise HTTPException(status_code=400, detail="Tag name already exists")
+
+            tag.name = tag_update.name
 
         return {
             "name": tag.name,
@@ -201,6 +170,16 @@ def delete_tag(tag_name: str):
                 detail=f"Tag is used by {usage_count} product(s) and cannot be deleted",
             )
 
+        db.delete(tag)
+        db.commit()
+
+        return {"message": "Tag deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
         db.close()
 
 
@@ -231,6 +210,38 @@ def create_material(material: schemas.MaterialCreate):
         }
     except HTTPException:
         raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@app.put("/materials/{material_name}")
+def update_material(material_name: str, material_update: schemas.MaterialUpdate):
+    """
+    Update an existing material
+    """
+    db: Session = SessionLocal()
+    try:
+        # Find material
+        material = (
+            db.query(models.Material)
+            .filter(models.Material.name == material_name)
+            .first()
+        )
+        if not material:
+            raise HTTPException(status_code=404, detail="Material not found")
+
+        # Check if new name exists
+        if material_update.name:
+            existing = (
+                db.query(models.Material)
+                .filter(models.Material.name == material_update.name)
+                .first()
+            )
+            if existing:
+                raise HTTPException(
                     status_code=400, detail="Material name already exists"
                 )
 
@@ -261,6 +272,36 @@ def delete_material(material_name: str):
     try:
         # Find material
         material = (
+            db.query(models.Material)
+            .filter(models.Material.name == material_name)
+            .first()
+        )
+        if not material:
+            raise HTTPException(status_code=404, detail="Material not found")
+
+        # Check if material is used by any products
+        usage_count = len(material.products)
+        if usage_count > 0:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Material is used by {usage_count} product(s) and cannot be deleted",
+            )
+
+        db.delete(material)
+        db.commit()
+
+        return {"message": "Material deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@app.get("/categories")
+def get_categories():
     """
     Get all categories
     Returns: [{"id": 1, "name": "Guitars", "sku_initials": "GUI", "description": "..."}, ...]
@@ -291,7 +332,31 @@ def create_category(category: schemas.CategoryCreate):
     db: Session = SessionLocal()
     try:
         # Validate SKU initials (must be 3 uppercase letters)
-        )
+        if (
+            len(category.sku_initials) != 3
+            or not category.sku_initials.isalpha()
+            or not category.sku_initials.isupper()
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="SKU initials must be exactly 3 uppercase letters",
+            )
+
+        db.add(category)
+        db.commit()
+        db.refresh(category)
+
+        return {
+            "id": category.id,
+            "name": category.name,
+            "sku_initials": category.sku_initials,
+            "description": category.description,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         db.close()
 
@@ -341,6 +406,55 @@ def update_category(category_id: int, category_update: schemas.CategoryUpdate):
             if existing:
                 if existing.name == category_update.name:
                     raise HTTPException(
+                        status_code=400, detail="Category name already exists"
+                    )
+                if existing.sku_initials == category_update.sku_initials:
+                    raise HTTPException(
+                        status_code=400, detail="Category SKU initials already exist"
+                    )
+
+        # Update fields if provided
+        if category_update.name is not None:
+            existing_category.name = category_update.name
+        if category_update.sku_initials is not None:
+            existing_category.sku_initials = category_update.sku_initials
+        if category_update.description is not None:
+            existing_category.description = category_update.description
+
+        db.commit()
+        db.refresh(existing_category)
+
+        return {
+            "id": existing_category.id,
+            "name": existing_category.name,
+            "sku_initials": existing_category.sku_initials,
+            "description": existing_category.description,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@app.delete("/categories/{category_id}")
+def delete_category(category_id: int):
+    """
+    Delete a category if it's not used by any products
+    """
+    db: Session = SessionLocal()
+    try:
+        # Check if category exists
+        category = (
+            db.query(crud.models.Category)
+            .filter(crud.models.Category.id == category_id)
+            .first()
+        )
+        if not category:
+            raise HTTPException(status_code=404, detail="Category not found")
+
         # Check if any products use this category
         product_count = (
             db.query(crud.models.Product)
@@ -392,6 +506,34 @@ def delete_product(
             try:
                 import shutil
 
+                shutil.rmtree(folder_path)
+            except Exception as e:
+                # Log error but don't fail the deletion
+                print(f"Warning: Could not delete folder {folder_path}: {e}")
+
+        return {"message": "Product deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@app.get("/products/search")
+def search_products(search_term: str = Query(..., min_length=1, max_length=100)):
+    """
+    Search products by name, SKU, or tags
+    Returns: List of matching products with match counts
+    """
+    db: Session = SessionLocal()
+    try:
+        # If no search term, return all products with zero matches
+        if not search_term.strip():
+            all_products = db.query(crud.models.Product).all()
+            results = []
+            for p in all_products:
                 product_tags = [t.name for t in p.tags]
                 product_materials = [m.name for m in p.materials]
                 results.append(
@@ -441,8 +583,73 @@ def delete_product(
 
             total_matches = name_matches + sku_matches + tag_matches
 
+            if total_matches > 0:
+                product_tags = [t.name for t in p.tags]
+                product_materials = [m.name for m in p.materials]
+                results.append(
+                    {
+                        "id": p.id,
+                        "sku": p.sku,
+                        "name": p.name,
+                        "description": p.description,
+                        "production": p.production,
+                        "tags": product_tags,
+                        "material": product_materials,
+                        "color": p.color,
+                        "print_time": p.print_time,
+                        "weight": p.weight,
+                        "stock_quantity": p.stock_quantity,
+                        "reorder_point": p.reorder_point,
+                        "unit_cost": p.unit_cost,
+                        "selling_price": p.selling_price,
+                        "matches": {
+                            "total": total_matches,
+                            "name": name_matches,
+                            "sku": sku_matches,
+                            "tags": tag_matches,
+                        },
+                    }
+                )
+
+        return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@app.put("/inventory/{sku}")
+def update_inventory(sku: str, inventory: dict):
+    """
+    Update inventory information for a product
+    """
+    db: Session = SessionLocal()
+    try:
+        product = (
+            db.query(crud.models.Product).filter(crud.models.Product.sku == sku).first()
+        )
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+
+        # Update inventory fields
+        if "stock_quantity" in inventory:
+            product.stock_quantity = inventory["stock_quantity"]
+        if "reorder_point" in inventory:
+            product.reorder_point = inventory["reorder_point"]
+        if "unit_cost" in inventory:
+            product.unit_cost = inventory["unit_cost"]
+        if "selling_price" in inventory:
+            product.selling_price = inventory["selling_price"]
+
+        db.commit()
+        db.refresh(product)
 
         return {"sku": sku, "message": "Inventory updated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         db.close()
 
@@ -491,3 +698,9 @@ def get_inventory_status():
                     "production": p.production,
                 }
             )
+
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()

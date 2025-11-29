@@ -25,11 +25,11 @@ This document provides coding guidelines and requirements for AI agents working 
 - **Type check**: `cd Code/backend && mypy .`
 - **All tests**: `cd Code/backend && python -m pytest tests/ -v`
 - **Single test**: `cd Code/backend && python -m pytest tests/test_api.py::test_create_product_api -v`
-- **Rust format**: `cd Code/frontend && cargo fmt` (if rustfmt.toml exists)
+- **Rust format**: `cd Code/frontend && cargo fmt`
 - **Rust clippy**: `cd Code/frontend && cargo clippy -- -D warnings`
 
 ## Code Style Guidelines
-- **Languages**: Python 3.11+ (FastAPI, SQLAlchemy, Pydantic, Tkinter), Rust 2024 (ratatui, tokio, reqwest)
+- **Languages**: Python 3.11+ (FastAPI, SQLAlchemy, Pydantic), Rust 2021 (ratatui, tokio, reqwest)
 - **Formatting**: Black (88-char lines, 4-space indent, trailing commas), rustfmt standard for Rust
 - **Linting**: flake8 (ignores: E203, W503, E501), clippy with -D warnings for Rust
 - **Type checking**: mypy strict mode (no implicit optional, required on all public functions)

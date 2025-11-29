@@ -62,6 +62,21 @@ def save_product(db: Session, product: schemas.ProductBase) -> dict:
         tag_names = get_tag_names_by_ids(db, product.tag_ids)
         material_names = get_material_names_by_ids(db, product.material_ids)
 
+        # Get category details for folder creation
+        category_details = None
+        if product.category_id:
+            category_obj = (
+                db.query(models.Category)
+                .filter(models.Category.id == product.category_id)
+                .first()
+            )
+            if category_obj:
+                category_details = {
+                    "name": category_obj.name,
+                    "sku_initials": category_obj.sku_initials,
+                    "description": category_obj.description,
+                }
+
         # Create folder & metadata first
         folder_path, _ = create_product_folder(
             sku=sku,
@@ -70,7 +85,7 @@ def save_product(db: Session, product: schemas.ProductBase) -> dict:
             tags=tag_names,
             production=product.production,
             materials=material_names,
-            category=None,
+            category=category_details,
         )
 
         # Save product to DB with folder_path
@@ -323,5 +338,3 @@ def update_product_materials_by_ids(
     """
     product.materials.clear()
     associate_materials_with_product_by_ids(db, product, material_ids)
-
-
