@@ -84,10 +84,12 @@ pub struct Category {
 pub struct Product {
     // Basic product fields
     pub id: i32,
+    #[serde(default)]
     pub product_id: i32,
     pub sku: String,
     pub name: String,
     pub description: Option<String>,
+    #[serde(default)]
     pub folder_path: String,
     
     // Production settings
@@ -97,17 +99,26 @@ pub struct Product {
     pub weight: Option<i32>,
     
     // Relationships (nested objects from backend)
+    #[serde(default)]
     pub tags: Vec<Tag>,
+    #[serde(default)]
     pub materials: Vec<Material>,
+    #[serde(default)]
     pub category: Option<Category>,
     pub category_id: Option<i32>,
     
     // Inventory management
+    #[serde(default)]
     pub stock_quantity: Option<i32>,
+    #[serde(default)]
     pub reorder_point: Option<i32>,
+    #[serde(default)]
     pub unit_cost: Option<i32>,  // Cost in cents
+    #[serde(default)]
     pub selling_price: Option<i32>,  // Price in cents
     
     // ✅ NEW: Active status field
+    #[serde(default)]
     pub active: bool,
 }
+

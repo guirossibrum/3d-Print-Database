@@ -5,6 +5,8 @@ mod handlers;
 mod ui;
 
 use anyhow::Result;
+
+const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 use crossterm::{
     cursor::{Hide, Show},
     event::{self},
@@ -45,7 +47,7 @@ fn setup_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>, TerminalEr
     }
 
     let mut stdout = io::stdout();
-    execute!(stdout, SetTitle("3D Print Database TUI"))?;
+    execute!(stdout, SetTitle(&format!("3D Print Database TUI v{}", APP_VERSION)))?;
     execute!(stdout, Clear(ClearType::All))?;
     execute!(stdout, Hide)?;
     execute!(stdout, EnterAlternateScreen)?;
@@ -65,6 +67,7 @@ fn print_usage_instructions() {
     println!("✗ No interactive terminal detected!");
     println!();
     println!("This is a Terminal User Interface (TUI) application that requires an interactive terminal.");
+    println!("Version: {}", APP_VERSION);
     println!();
     println!("To run application:");
     println!("1. Open a terminal/command prompt");
@@ -91,8 +94,8 @@ async fn main() -> Result<()> {
             return Ok(());
         }
         Err(TerminalError::SetupFailed(e)) => {
-            eprintln!("✗ Failed to setup terminal: {:?}", e);
-            return Err(anyhow::anyhow!("Terminal setup failed: {}", e));
+            eprintln!("✗ Failed to setup terminal: {:?} (v{})", e, APP_VERSION);
+            return Err(anyhow::anyhow!("Terminal setup failed: {} (v{})", e, APP_VERSION));
         }
     };
 
@@ -119,9 +122,9 @@ async fn main() -> Result<()> {
     let _ = execute!(io::stdout(), Show);
 
     match res {
-        Ok(()) => println!("✓ TUI exited normally."),
+        Ok(()) => println!("✓ TUI exited normally. (v{})", APP_VERSION),
         Err(err) => {
-            eprintln!("✗ TUI error: {:?}", err);
+            eprintln!("✗ TUI error: {:?} (v{})", err, APP_VERSION);
             return Err(err);
         }
     }

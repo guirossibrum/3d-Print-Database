@@ -47,6 +47,8 @@ services:
       - ../backend:/app
       - /home/grbrum/Work/3d_print/Products:/Products
     user: "1000:1000"
+    environment:
+      DATABASE_URL: "postgresql://admin:admin@db:5432/products"
     depends_on:
       - db
       - search

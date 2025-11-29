@@ -4,6 +4,8 @@ use anyhow::Result;
 use crate::api::ApiClient;
 use crate::models::{Product, Tag, Material, Category, Tab, InputMode};
 
+const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 pub struct App {
     // ✅ API CLIENT INTEGRATION
     api_client: ApiClient,
@@ -43,7 +45,7 @@ impl App {
             selected_product_id: None,
             selected_index: 0,
             search_query: String::new(),
-            status_message: String::new(),
+            status_message: format!("3D Print Database TUI v{}", APP_VERSION),
         })
     }
     
