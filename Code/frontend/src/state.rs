@@ -64,11 +64,8 @@ impl App {
         // ✅ NEW: FILTER ONLY ACTIVE PRODUCTS
         self.products.retain(|p| p.active);
         
-        // ✅ INITIALIZE SELECTION
-        if self.selected_product_id.is_none() && !self.products.is_empty() {
-            self.selected_index = 0;
-            self.selected_product_id = self.products.first().map(|p| p.id);
-        }
+        // ✅ UNIVERSAL SELECTION LOGIC
+        self.ensure_valid_selection();
         
         Ok(())
     }
@@ -79,6 +76,23 @@ impl App {
         self.selected_index = self.products.iter()
             .position(|p| p.id == product_id)
             .unwrap_or(0);
+    }
+    
+    pub fn update_selected_product_id(&mut self) {
+        self.selected_product_id = self.products
+            .get(self.selected_index)
+            .map(|p| p.id);
+    }
+    
+    pub fn ensure_valid_selection(&mut self) {
+        if self.selected_product_id.is_none() && !self.products.is_empty() {
+            self.selected_index = 0;
+        } else {
+            if self.selected_index >= self.products.len() {
+                self.selected_index = self.products.len().saturating_sub(1);
+            }
+        }
+        self.update_selected_product_id();
     }
     
     pub fn set_status(&mut self, message: String) {

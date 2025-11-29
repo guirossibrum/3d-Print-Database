@@ -73,10 +73,10 @@ cargo init --bin frontend_tui_rust
 Step 2: Define Folder/File Structure
 frontend/
 ├─ src/
-│  ├─ main.rs              # Entry point, terminal setup, app loop
+│  ├─ main.rs   (DONE)           # Entry point, terminal setup, app loop
 │  ├─ app.rs               # App struct, global state, selection functions
-│  ├─ models.rs            # Enums, Product struct, InputMode, Tab, etc.
-│  ├─ api.rs               # Backend API calls (create, edit, delete)
+│  ├─ models.rs   (DONE)         # Enums, Product struct, InputMode, Tab, etc.
+│  ├─ api.rs    (DONE)           # Backend API calls (create, edit, delete)
 │  ├─ utils.rs             # Helper functions, file tree builder, misc
 │  ├─ handlers/
 │  │  ├─ mod.rs
