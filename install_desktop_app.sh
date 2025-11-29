@@ -8,10 +8,10 @@ APPS_DIR="$HOME/.local/share/applications"
 echo "Setting up 3D Print Database TUI (Rust) desktop application..."
 
 # Check if Rust binary exists
-RUST_BINARY="$HOME/Work/3d_print/frontend_tui_rust/target/debug/frontend_tui_rust"
+RUST_BINARY="$HOME/Work/3d_print/Code/frontend/target/debug/printdb"
 if [ ! -f "$RUST_BINARY" ]; then
     echo "Warning: Rust binary not found. Building it now..."
-    cd "$HOME/Work/3d_print/frontend_tui_rust" || {
+    cd "$HOME/Work/3d_print/Code/frontend" || {
         echo "Error: Could not find Rust TUI directory"
         exit 1
     }

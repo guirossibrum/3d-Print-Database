@@ -66,7 +66,7 @@ The application uses **omarchy** (not Walker) as the launcher system. The launch
 3. **Main launcher**: `~/.local/share/omarchy/bin/omarchy-launch-3d-print-database-tui`
    - Uses: `setsid uwsm-app -- xdg-terminal-exec --app-id=org.omarchy.$APP_NAME -e /path/to/binary`
 
-4. **Binary path**: `/home/grbrum/Work/3d_print/Code/frontend/target/release/frontend_tui_rust`
+4. **Binary path**: `/home/grbrum/Work/3d_print/Code/frontend/target/release/printdb`
 
 ### Common Launcher Issues & Fixes:
 - **Problem**: Desktop file calls binary directly instead of using omarchy
@@ -87,7 +87,7 @@ cat ~/.local/share/applications/3D_Print_Database_TUI.desktop
 ls -la ~/.local/share/omarchy/bin/omarchy-launch-*3d-print*
 
 # Test binary directly (will fail in non-terminal - this is expected)
-cd Code/frontend && ./target/release/frontend_tui_rust --version
+cd Code/frontend && ./target/release/printdb --version
 ```
 
 ## Key Behavior Specification

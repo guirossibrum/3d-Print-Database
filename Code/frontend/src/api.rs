@@ -52,7 +52,7 @@ impl ApiClient {
     pub async fn delete_product(&self, product_id: i32, delete_files: bool) -> Result<String> {
         let url = format!("{}/products/{}?delete_files={}", self.base_url, product_id, delete_files);
         let response = self.client.delete(&url).send().await?;
-        let result = response.json().await?;
+        let result: serde_json::Value = response.json().await?;
         Ok(result["message"].as_str().unwrap_or("Deleted").to_string())
     }
     

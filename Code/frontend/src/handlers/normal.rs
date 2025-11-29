@@ -1,6 +1,6 @@
 // handlers/normal.rs - Normal mode handlers for navigation and basic operations
 
-use crate::models::{Tab, InputMode};
+use crate::models::InputMode;
 use crate::state::App;
 use crossterm::event::KeyEvent;
 use anyhow::Result;
@@ -36,7 +36,6 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
                 app.update_selected_product_id();
                 app.set_status(format!("Selected: {}", app.products[app.selected_index].name));
             }
-        }
         }
         
         // Enter edit mode with Tab key

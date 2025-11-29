@@ -6,7 +6,7 @@ This document outlines the comprehensive test routine for verifying the function
 ## Pre-Test Setup
 1. Ensure backend API is running: `cd Code/backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
 2. Ensure database has test data: `cd Code/backend && python -m pytest tests/ -v`
-3. Compile latest Rust TUI: `cd frontend_tui_rust && cargo build --release`
+3. Compile latest Rust TUI: `cd Code/frontend && cargo build --release`
 4. Verify only one binary exists: Check for single executable in target/release/
 
 ## Core Functionality Tests

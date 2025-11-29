@@ -68,7 +68,7 @@ Create a new frontend folder:
 
 mkdir Code/frontend
 cd Code/frontend
-cargo init --bin frontend_tui_rust
+cargo init --bin printdb
 
 Step 2: Define Folder/File Structure
 frontend/
