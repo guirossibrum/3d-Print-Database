@@ -61,11 +61,9 @@ def update_metadata(
     sku: str,
     name=None,
     description=None,
-    category=None,  # Add category parameter
     tags=None,
     production=None,
-    material=None,  # Keep for backward compatibility
-    materials=None,  # New materials array
+    material=None,
     color=None,
     print_time=None,
     weight=None,
@@ -89,16 +87,12 @@ def update_metadata(
         data["name"] = name
     if description is not None:
         data["description"] = description
-    if category is not None:
-        data["category"] = category  # Store category object
     if tags is not None:
         data["tags"] = tags
     if production is not None:
         data["production"] = production
-    if materials is not None:
-        data["materials"] = materials  # Store materials array
-    elif material is not None:
-        data["material"] = material  # Backward compatibility
+    if material is not None:
+        data["material"] = material
     if color is not None:
         data["color"] = color
     if print_time is not None:
