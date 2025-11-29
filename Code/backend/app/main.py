@@ -42,6 +42,130 @@ def save_product(product: schemas.ProductBase):
         db.close()
 
 
+@app.get("/products/search")
+def search_products(search_term: str = Query("", min_length=0, max_length=100)):
+    """
+    Search products by name, SKU, or tags
+    Returns: List of matching products with full nested structure
+    If no search term, returns all products
+    """
+    db: Session = SessionLocal()
+    try:
+        # Get all products first
+        all_products = db.query(crud.models.Product).all()
+
+        # If no search term, return all products
+        if not search_term.strip():
+            results = []
+            for p in all_products:
+                # Build nested tag objects
+                product_tags = [{"id": t.id, "name": t.name} for t in p.tags]
+
+                # Build nested material objects
+                product_materials = [{"id": m.id, "name": m.name} for m in p.materials]
+
+                # Build nested category object
+                product_category = None
+                if p.category:
+                    product_category = {
+                        "id": p.category.id,
+                        "name": p.category.name,
+                        "sku_initials": p.category.sku_initials,
+                        "description": p.category.description,
+                    }
+
+                results.append(
+                    {
+                        "id": p.id,
+                        "product_id": p.id,
+                        "sku": p.sku,
+                        "name": p.name,
+                        "description": p.description,
+                        "folder_path": p.folder_path or "",
+                        "production": p.production,
+                        "tags": product_tags,
+                        "materials": product_materials,
+                        "category": product_category,
+                        "category_id": p.category_id,
+                        "color": p.color,
+                        "print_time": p.print_time,
+                        "weight": p.weight,
+                        "stock_quantity": p.stock_quantity,
+                        "reorder_point": p.reorder_point,
+                        "unit_cost": p.unit_cost,
+                        "selling_price": p.selling_price,
+                        "active": True,  # Default to active for now
+                    }
+                )
+            return results
+
+        # Perform search with query terms
+        search_terms = [term.strip() for term in search_term.split() if term.strip()]
+
+        results = []
+        for p in all_products:
+            product_tags = [t.name for t in p.tags]
+
+            # Count matches in different fields
+            name_matches = sum(
+                1 for term in search_terms if term.lower() in p.name.lower()
+            )
+            sku_matches = sum(
+                1 for term in search_terms if term.lower() in p.sku.lower()
+            )
+            tag_matches = sum(
+                1
+                for term in search_terms
+                for tag in product_tags
+                if term.lower() in tag.lower()
+            )
+
+            total_matches = name_matches + sku_matches + tag_matches
+
+            if total_matches > 0:
+                # Build nested structures for matching products
+                product_tags = [{"id": t.id, "name": t.name} for t in p.tags]
+                product_materials = [{"id": m.id, "name": m.name} for m in p.materials]
+                product_category = None
+                if p.category:
+                    product_category = {
+                        "id": p.category.id,
+                        "name": p.category.name,
+                        "sku_initials": p.category.sku_initials,
+                        "description": p.category.description,
+                    }
+
+                results.append(
+                    {
+                        "id": p.id,
+                        "product_id": p.id,
+                        "sku": p.sku,
+                        "name": p.name,
+                        "description": p.description,
+                        "folder_path": p.folder_path or "",
+                        "production": p.production,
+                        "tags": product_tags,
+                        "materials": product_materials,
+                        "category": product_category,
+                        "category_id": p.category_id,
+                        "color": p.color,
+                        "print_time": p.print_time,
+                        "weight": p.weight,
+                        "stock_quantity": p.stock_quantity,
+                        "reorder_point": p.reorder_point,
+                        "unit_cost": p.unit_cost,
+                        "selling_price": p.selling_price,
+                        "active": True,  # Default to active for now
+                    }
+                )
+
+        return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
 @app.get("/products/{product_id}")
 def get_product(product_id: int = Path(...)):
     """
@@ -123,14 +247,16 @@ def update_tag(tag_name: str, tag_update: schemas.TagUpdate):
     """
     db: Session = SessionLocal()
     try:
-        tag = db.query(models.Tag).filter(models.Tag.name == tag_name).first()
+        tag = db.query(crud.models.Tag).filter(models.Tag.name == tag_name).first()
         if not tag:
             raise HTTPException(status_code=404, detail="Tag not found")
 
         if tag_update.name:
             # Check if new name exists
             existing = (
-                db.query(models.Tag).filter(models.Tag.name == tag_update.name).first()
+                db.query(crud.models.Tag)
+                .filter(models.Tag.name == tag_update.name)
+                .first()
             )
             if existing:
                 raise HTTPException(status_code=400, detail="Tag name already exists")
@@ -158,7 +284,7 @@ def delete_tag(tag_name: str):
     db: Session = SessionLocal()
     try:
         # Find the tag
-        tag = db.query(models.Tag).filter(models.Tag.name == tag_name).first()
+        tag = db.query(crud.models.Tag).filter(models.Tag.name == tag_name).first()
         if not tag:
             raise HTTPException(status_code=404, detail="Tag not found")
 
@@ -192,7 +318,7 @@ def create_material(material: schemas.MaterialCreate):
     try:
         # Check if material exists
         existing = (
-            db.query(models.Material)
+            db.query(crud.models.Material)
             .filter(models.Material.name == material.name)
             .first()
         )
@@ -226,7 +352,7 @@ def update_material(material_name: str, material_update: schemas.MaterialUpdate)
     try:
         # Find material
         material = (
-            db.query(models.Material)
+            db.query(crud.models.Material)
             .filter(models.Material.name == material_name)
             .first()
         )
@@ -236,7 +362,7 @@ def update_material(material_name: str, material_update: schemas.MaterialUpdate)
         # Check if new name exists
         if material_update.name:
             existing = (
-                db.query(models.Material)
+                db.query(crud.models.Material)
                 .filter(models.Material.name == material_update.name)
                 .first()
             )
@@ -272,7 +398,7 @@ def delete_material(material_name: str):
     try:
         # Find material
         material = (
-            db.query(models.Material)
+            db.query(crud.models.Material)
             .filter(models.Material.name == material_name)
             .first()
         )
@@ -320,6 +446,36 @@ def get_categories():
             }
             for c in categories
         ]
+    finally:
+        db.close()
+
+
+@app.get("/tags")
+def get_tags():
+    """
+    Get all tags
+    Returns: [{"id": 1, "name": "tag_name"}, ...]
+    """
+    db: Session = SessionLocal()
+    try:
+        tags = db.query(crud.models.Tag).order_by(crud.models.Tag.name).all()
+        return [{"id": t.id, "name": t.name} for t in tags]
+    finally:
+        db.close()
+
+
+@app.get("/materials")
+def get_materials():
+    """
+    Get all materials
+    Returns: [{"id": 1, "name": "material_name"}, ...]
+    """
+    db: Session = SessionLocal()
+    try:
+        materials = (
+            db.query(crud.models.Material).order_by(crud.models.Material.name).all()
+        )
+        return [{"id": m.id, "name": m.name} for m in materials]
     finally:
         db.close()
 
@@ -516,103 +672,6 @@ def delete_product(
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db.close()
-
-
-@app.get("/products/search")
-def search_products(search_term: str = Query(..., min_length=1, max_length=100)):
-    """
-    Search products by name, SKU, or tags
-    Returns: List of matching products with match counts
-    """
-    db: Session = SessionLocal()
-    try:
-        # If no search term, return all products with zero matches
-        if not search_term.strip():
-            all_products = db.query(crud.models.Product).all()
-            results = []
-            for p in all_products:
-                product_tags = [t.name for t in p.tags]
-                product_materials = [m.name for m in p.materials]
-                results.append(
-                    {
-                        "id": p.id,
-                        "sku": p.sku,
-                        "name": p.name,
-                        "description": p.description,
-                        "production": p.production,
-                        "tags": product_tags,
-                        "material": product_materials,
-                        "color": p.color,
-                        "print_time": p.print_time,
-                        "weight": p.weight,
-                        "stock_quantity": p.stock_quantity,
-                        "reorder_point": p.reorder_point,
-                        "unit_cost": p.unit_cost,
-                        "selling_price": p.selling_price,
-                        "matches": {"total": 0, "name": 0, "sku": 0, "tags": 0},
-                    }
-                )
-            return results
-
-        # Perform search with query terms
-        search_terms = [term.strip() for term in search_term.split() if term.strip()]
-
-        # Get all products first, then filter in Python for complex matching
-        all_products = db.query(crud.models.Product).all()
-
-        results = []
-        for p in all_products:
-            product_tags = [t.name for t in p.tags]
-
-            # Count matches in different fields
-            name_matches = sum(
-                1 for term in search_terms if term.lower() in p.name.lower()
-            )
-            sku_matches = sum(
-                1 for term in search_terms if term.lower() in p.sku.lower()
-            )
-            tag_matches = sum(
-                1
-                for term in search_terms
-                for tag in product_tags
-                if term.lower() in tag.lower()
-            )
-
-            total_matches = name_matches + sku_matches + tag_matches
-
-            if total_matches > 0:
-                product_tags = [t.name for t in p.tags]
-                product_materials = [m.name for m in p.materials]
-                results.append(
-                    {
-                        "id": p.id,
-                        "sku": p.sku,
-                        "name": p.name,
-                        "description": p.description,
-                        "production": p.production,
-                        "tags": product_tags,
-                        "material": product_materials,
-                        "color": p.color,
-                        "print_time": p.print_time,
-                        "weight": p.weight,
-                        "stock_quantity": p.stock_quantity,
-                        "reorder_point": p.reorder_point,
-                        "unit_cost": p.unit_cost,
-                        "selling_price": p.selling_price,
-                        "matches": {
-                            "total": total_matches,
-                            "name": name_matches,
-                            "sku": sku_matches,
-                            "tags": tag_matches,
-                        },
-                    }
-                )
-
-        return results
-    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db.close()
