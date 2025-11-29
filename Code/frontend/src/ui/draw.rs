@@ -66,7 +66,7 @@ fn create_main_layout(area: Rect) -> Vec<Rect> {
             Constraint::Min(10),   // Content
             Constraint::Length(3), // Footer
         ])
-        .split(area)
+        .split(area).to_vec()
 }
 
 /// Create horizontal content panes (left/right split)
@@ -281,9 +281,9 @@ fn draw_product_details(f: &mut Frame, area: Rect, product: &crate::models::Prod
         Line::from(format!("SKU: {}", product.sku)),
         Line::from(format!("Description: {}", product.description.as_deref().unwrap_or("None"))),
         Line::from(format!("Production: {}", if product.production { "Yes" } else { "No" })),
-        Line::from(format!("Category: {}", product.category.as_ref().map(|c| &c.name).unwrap_or("None"))),
-        Line::from(format!("Tags: {}", product.tags.iter().map(|t| &t.name).collect::<Vec<_>>().join(", "))),
-        Line::from(format!("Materials: {}", product.materials.iter().map(|m| &m.name).collect::<Vec<_>>().join(", "))),
+        Line::from(format!("Category: {}", product.category.as_ref().map(|c| &c.name).map_or("None", |v| v.as_str()))),
+        Line::from(format!("Tags: {}", product.tags.iter().map(|t| t.name.as_str()).collect::<Vec<_>>().join(", "))),
+        Line::from(format!("Materials: {}", product.materials.iter().map(|m| m.name.as_str()).collect::<Vec<_>>().join(", "))),
     ];
 
     let details_widget = Paragraph::new(details)
@@ -584,7 +584,7 @@ fn draw_selection_popup(f: &mut Frame, area: Rect, app: &App) {
     
     f.render_widget(popup, popup_area);
     
-    let list_area = popup_area.inner(&ratatui::layout::Margin::new(1, 1));
+    let list_area = popup_area.inner(ratatui::layout::Margin::new(1, 1));
     let selection_text = vec![
         Line::from("Use UP/DOWN to navigate"),
         Line::from("Use SPACE to select/deselect"),

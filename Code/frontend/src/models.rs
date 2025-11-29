@@ -44,6 +44,16 @@ pub enum InputMode {
     Select,
     /// Delete confirmation mode
     Delete,
+    /// Edit specific field modes
+    EditName,
+    EditDescription,
+    EditCategory,
+    EditProduction,
+    EditTags,
+    EditMaterials,
+    /// Delete confirmation with file options
+    DeleteConfirm,
+    DeleteFileConfirm,
 }
 
 /// Tag structure matching backend TagResponse schema

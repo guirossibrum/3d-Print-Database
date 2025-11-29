@@ -101,4 +101,66 @@ impl App {
     pub fn quit(&mut self) {
         self.running = false;
     }
+    
+    // ✅ PUBLIC ACCESSORS FOR UI AND HANDLERS
+    pub fn current_tab(&self) -> Tab {
+        self.current_tab
+    }
+    
+    pub fn set_current_tab(&mut self, tab: Tab) {
+        self.current_tab = tab;
+    }
+    
+    pub fn input_mode(&self) -> InputMode {
+        self.input_mode
+    }
+    
+    pub fn set_input_mode(&mut self, mode: InputMode) {
+        self.input_mode = mode;
+    }
+    
+    pub fn products(&self) -> &[Product] {
+        &self.products
+    }
+    
+    pub fn selected_index(&self) -> usize {
+        self.selected_index
+    }
+    
+    pub fn set_selected_index(&mut self, index: usize) {
+        self.selected_index = index;
+        self.update_selected_product_id();
+    }
+    
+    pub fn selected_product(&self) -> Option<&Product> {
+        self.products.get(self.selected_index)
+    }
+    
+    pub fn selected_product_id(&self) -> Option<i32> {
+        self.selected_product_id
+    }
+    
+    pub fn status_message(&self) -> &str {
+        &self.status_message
+    }
+    
+    pub fn categories(&self) -> &[Category] {
+        &self.categories
+    }
+    
+    pub fn tags(&self) -> &[Tag] {
+        &self.tags
+    }
+    
+    pub fn materials(&self) -> &[Material] {
+        &self.materials
+    }
+    
+    pub fn search_query(&self) -> &str {
+        &self.search_query
+    }
+    
+    pub fn set_search_query(&mut self, query: String) {
+        self.search_query = query;
+    }
 }

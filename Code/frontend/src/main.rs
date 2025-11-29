@@ -20,7 +20,13 @@ use std::io;
 #[derive(Debug)]
 enum TerminalError {
     NotInteractive,
-    SetupFailed(Box<dyn std::error::Error>),
+    SetupFailed(String),
+}
+
+impl From<std::io::Error> for TerminalError {
+    fn from(error: std::io::Error) -> Self {
+        TerminalError::SetupFailed(error.to_string())
+    }
 }
 
 fn setup_terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>, TerminalError> {
@@ -86,12 +92,12 @@ async fn main() -> Result<()> {
         }
         Err(TerminalError::SetupFailed(e)) => {
             eprintln!("✗ Failed to setup terminal: {:?}", e);
-            return Err(e.into());
+            return Err(anyhow::anyhow!("Terminal setup failed: {}", e));
         }
     };
 
     // Main application loop
-    let res = try {
+    let res = (|| -> Result<()> {
         while app.running {
             // Draw UI
             terminal.draw(|f| {
@@ -104,7 +110,8 @@ async fn main() -> Result<()> {
                 handlers::handle_event(&mut app, event)?;
             }
         }
-    };
+        Ok(())
+    })();
 
     // Cleanup terminal
     let _ = disable_raw_mode();
