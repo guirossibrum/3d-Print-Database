@@ -1000,7 +1000,12 @@ def show_edit_product_dialog(product):
     # Set global state
     current_product_data = product
     edit_mode = True
-    edit_current_tags = product.get("tags", []).copy()
+    # Handle tags as list of strings or dicts
+    tags_list = product.get("tags", [])
+    if tags_list and isinstance(tags_list[0], dict):
+        edit_current_tags = [tag["name"] for tag in tags_list]
+    else:
+        edit_current_tags = tags_list.copy()
 
     # Create edit dialog
     dialog = tk.Toplevel(root)

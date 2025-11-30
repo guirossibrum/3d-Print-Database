@@ -10,8 +10,8 @@ def search_products(search_query_entry, results_text_widget, search_results_list
     # Get search query (allow empty for "show all")
     query = search_query_entry.get().strip()
 
-    # Build query parameters (empty q parameter will show all products)
-    params = {"q": query}
+    # Build query parameters (empty search_term parameter will show all products)
+    params = {"search_term": query}
 
     try:
         response = requests.get(SEARCH_URL, params=params)
@@ -40,7 +40,12 @@ def display_search_results(results_text_widget, search_results_list):
         sku = product.get("sku", "N/A")
         name = product.get("name", "N/A")
         description = product.get("description", "")
-        tags = ", ".join(product.get("tags", []))
+        # Handle tags as list of strings or dicts
+        tags_list = product.get("tags", [])
+        if tags_list and isinstance(tags_list[0], dict):
+            tags = ", ".join(tag.get("name", "") for tag in tags_list)
+        else:
+            tags = ", ".join(tags_list)
         production = "Production" if product.get("production") else "Prototype"
 
         results_text_widget.insert(tk.END, f"{i + 1}. {sku} - {name}\n")
