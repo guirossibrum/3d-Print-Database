@@ -245,15 +245,15 @@ fn draw_create_search_tab(f: &mut Frame, area: Rect, _app: &App) {
     draw_creation_options(f, options_area, _app);
 }
 
-/// Draw create tab in create mode (create new items)
-fn draw_create_create_tab(f: &mut Frame, area: Rect, _app: &App) {
-    let (form_area, list_area) = create_content_panes(area);
-    
-    // Left: Form for creating new tags/materials/categories
-    draw_item_creation_form(f, form_area, _app);
-    
-    // Right: List of existing items
-    draw_existing_items_list(f, list_area, _app);
+/// Draw create tab in create mode (create new product)
+fn draw_create_create_tab(f: &mut Frame, area: Rect, app: &App) {
+    let (form_area, options_area) = create_content_panes(area);
+
+    // Left: Product creation form
+    draw_product_creation_form(f, form_area, app);
+
+    // Right: Available tags/materials/categories
+    draw_creation_options(f, options_area, app);
 }
 
 /// Draw inventory tab in create mode (add inventory items)
@@ -474,22 +474,30 @@ fn draw_product_creation_form(f: &mut Frame, area: Rect, _app: &App) {
 }
 
 /// Draw creation options
-fn draw_creation_options(f: &mut Frame, area: Rect, _app: &App) {
-    let options = vec![
+fn draw_creation_options(f: &mut Frame, area: Rect, app: &App) {
+    let mut options = vec![
         Line::from("Creation Options:"),
         Line::from(""),
         Line::from("Available Categories:"),
-        Line::from("• Category 1"),
-        Line::from("• Category 2"),
-        Line::from(""),
-        Line::from("Available Tags:"),
-        Line::from("• Tag 1"),
-        Line::from("• Tag 2"),
-        Line::from(""),
-        Line::from("Available Materials:"),
-        Line::from("• Material 1"),
-        Line::from("• Material 2"),
     ];
+
+    for category in app.categories() {
+        options.push(Line::from(format!("• {}", category.name)));
+    }
+
+    options.push(Line::from(""));
+    options.push(Line::from("Available Tags:"));
+
+    for tag in app.tags() {
+        options.push(Line::from(format!("• {}", tag.name)));
+    }
+
+    options.push(Line::from(""));
+    options.push(Line::from("Available Materials:"));
+
+    for material in app.materials() {
+        options.push(Line::from(format!("• {}", material.name)));
+    }
 
     let options_widget = Paragraph::new(options)
         .block(Block::default().borders(Borders::ALL).title("Options"))
@@ -630,19 +638,33 @@ fn draw_delete_popup(f: &mut Frame, area: Rect, _app: &App) {
 
 /// Draw footer with status and instructions
 fn draw_footer(f: &mut Frame, area: Rect, app: &App) {
-    let footer_text = format!(
-        "Status: {} | Tab: {:?} | Mode: {:?} | v{}",
+    let left_text = format!(
+        "Status: {} | Tab: {:?} | Mode: {:?}",
         app.status_message(),
         app.current_tab(),
-        app.input_mode(),
-        env!("CARGO_PKG_VERSION")
+        app.input_mode()
     );
 
-    let footer = Paragraph::new(footer_text)
-        .style(FOOTER_STYLE)
-        .block(Block::default().borders(Borders::ALL));
+    let right_text = format!("v{}", env!("CARGO_PKG_VERSION"));
 
-    f.render_widget(footer, area);
+    let footer_block = Block::default().borders(Borders::ALL);
+
+    let inner_area = footer_block.inner(area);
+    f.render_widget(footer_block, area);
+
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Min(10), Constraint::Length(right_text.len() as u16 + 2)])
+        .split(inner_area);
+
+    let left = Paragraph::new(left_text)
+        .style(FOOTER_STYLE);
+    f.render_widget(left, chunks[0]);
+
+    let right = Paragraph::new(right_text)
+        .style(FOOTER_STYLE)
+        .alignment(Alignment::Right);
+    f.render_widget(right, chunks[1]);
 }
 
 /// Helper function to create centered rectangle for popups
