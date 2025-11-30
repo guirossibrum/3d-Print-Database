@@ -49,12 +49,15 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
             app.set_status("Product saved".to_string());
         }
 
-        // TAB or Down to next field
-        KeyCode::Tab | KeyCode::Down => {
+        // Down to next field
+        KeyCode::Down => {
             let next_mode = next_field(app.input_mode());
             app.set_input_mode(next_mode);
             app.set_status(format!("Editing {:?}", next_mode));
         }
+
+        // Tab does nothing (forbidden to navigate with Tab)
+        KeyCode::Tab => {}
 
         // Up to previous field
         KeyCode::Up => {
@@ -65,6 +68,7 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
 
         // Character input for text fields
         KeyCode::Char(c) => {
+            app.set_status(format!("Char event: {}", c));
             let mode = app.input_mode();
             if let Some(product) = app.get_current_product_mut() {
                 match mode {
@@ -76,7 +80,7 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Result<()> {
                     }
                     _ => {} // Other fields handled via selection
                 }
-                app.set_status(format!("Input: {}", c));
+                app.set_status(format!("Input: {} in {:?}", c, mode));
             }
         }
 

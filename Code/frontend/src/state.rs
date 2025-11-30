@@ -188,9 +188,16 @@ impl App {
         if self.is_create_mode() {
             self.new_product.as_mut()
         } else {
-            // For edit mode, we need to modify the product in the list
-            // This is complex, for now return None
-            None
+            // For edit mode, modify the product in the products list
+            if let Some(selected_id) = self.selected_product_id {
+                if let Some(idx) = self.products.iter().position(|p| p.id == selected_id) {
+                    Some(&mut self.products[idx])
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
         }
     }
 
