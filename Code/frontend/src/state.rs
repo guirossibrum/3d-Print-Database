@@ -20,6 +20,9 @@ pub struct App {
     tags: Vec<Tag>,
     materials: Vec<Material>,
     categories: Vec<Category>,
+
+    // ✅ TEMPORARY PRODUCT FOR CREATION
+    new_product: Option<Product>,
     
     // ✅ UI STATE
     selected_product_id: Option<i32>,
@@ -42,6 +45,7 @@ impl App {
             tags: Vec::new(),
             materials: Vec::new(),
             categories: Vec::new(),
+            new_product: None,
             selected_product_id: None,
             selected_index: 0,
             search_query: String::new(),
@@ -164,5 +168,37 @@ impl App {
     
     pub fn set_search_query(&mut self, query: String) {
         self.search_query = query;
+    }
+
+    // ✅ NEW PRODUCT CREATION METHODS
+    pub fn start_new_product(&mut self) {
+        self.new_product = Some(Product::default());
+        self.set_input_mode(InputMode::EditName);
+    }
+
+    pub fn get_current_product(&self) -> Option<&Product> {
+        if self.is_create_mode() {
+            self.new_product.as_ref()
+        } else {
+            self.selected_product()
+        }
+    }
+
+    pub fn get_current_product_mut(&mut self) -> Option<&mut Product> {
+        if self.is_create_mode() {
+            self.new_product.as_mut()
+        } else {
+            // For edit mode, we need to modify the product in the list
+            // This is complex, for now return None
+            None
+        }
+    }
+
+    pub fn is_create_mode(&self) -> bool {
+        self.selected_product_id().is_none()
+    }
+
+    pub fn clear_new_product(&mut self) {
+        self.new_product = None;
     }
 }

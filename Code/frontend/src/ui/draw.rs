@@ -212,12 +212,12 @@ fn draw_edit_search_tab(f: &mut Frame, area: Rect, app: &App) {
     draw_product_preview(f, preview_area, app);
 }
 
-/// Draw create tab in edit mode (create new product)
+/// Draw create tab in edit mode (create or edit product)
 fn draw_edit_create_tab(f: &mut Frame, area: Rect, app: &App) {
     let (form_area, options_area) = create_content_panes(area);
 
-    // Left: Product creation form
-    draw_product_creation_form(f, form_area, app);
+    // Left: Unified product form
+    draw_product_form(f, form_area, app);
 
     // Right: Available tags/materials/categories
     draw_creation_options(f, options_area, app);
@@ -235,22 +235,22 @@ fn draw_edit_inventory_tab(f: &mut Frame, area: Rect, _app: &App) {
 }
 
 /// Draw search tab in create mode (create product form)
-fn draw_create_search_tab(f: &mut Frame, area: Rect, _app: &App) {
+fn draw_create_search_tab(f: &mut Frame, area: Rect, app: &App) {
     let (form_area, options_area) = create_content_panes(area);
-    
-    // Left: Product creation form
-    draw_product_creation_form(f, form_area, _app);
-    
+
+    // Left: Unified product form
+    draw_product_form(f, form_area, app);
+
     // Right: Available tags/materials/categories
-    draw_creation_options(f, options_area, _app);
+    draw_creation_options(f, options_area, app);
 }
 
 /// Draw create tab in create mode (create new product)
 fn draw_create_create_tab(f: &mut Frame, area: Rect, app: &App) {
     let (form_area, options_area) = create_content_panes(area);
 
-    // Left: Product creation form
-    draw_product_creation_form(f, form_area, app);
+    // Left: Unified product form
+    draw_product_form(f, form_area, app);
 
     // Right: Available tags/materials/categories
     draw_creation_options(f, options_area, app);
@@ -452,21 +452,49 @@ fn draw_inventory_preview(f: &mut Frame, area: Rect, _app: &App) {
     f.render_widget(preview_widget, area);
 }
 
-/// Draw product creation form
-fn draw_product_creation_form(f: &mut Frame, area: Rect, _app: &App) {
-    let form_text = vec![
-        Line::from("Create New Product:"),
+/// Draw unified product form (create or edit)
+fn draw_product_form(f: &mut Frame, area: Rect, app: &App) {
+    use crate::models::InputMode;
+
+    let product = match app.get_current_product() {
+        Some(p) => p,
+        None => return,
+    };
+
+    let title = if app.is_create_mode() { "Create Product" } else { "Edit Product" };
+
+    // Map input mode to field index
+    let current_field = match app.input_mode() {
+        InputMode::EditName => 0,
+        InputMode::EditDescription => 1,
+        InputMode::EditCategory => 2,
+        InputMode::EditProduction => 3,
+        InputMode::EditTags => 4,
+        InputMode::EditMaterials => 5,
+        _ => 0,
+    };
+
+    let mut form_lines = vec![
+        Line::from(format!("{}:", if app.is_create_mode() { "Create New Product" } else { "Edit Product" })),
         Line::from(""),
-        Line::from("Name: [required field]"),
-        Line::from("Description: [optional field]"),
-        Line::from("Category: [required selection]"),
-        Line::from("Production: [toggle Yes/No]"),
-        Line::from("Tags: [multi-select]"),
-        Line::from("Materials: [multi-select]"),
     ];
 
-    let form_widget = Paragraph::new(form_text)
-        .block(Block::default().borders(Borders::ALL).title("Create Product"))
+    let fields = vec![
+        ("Name", format!("{}", product.name)),
+        ("Description", product.description.as_deref().unwrap_or("").to_string()),
+        ("Category", product.category.as_ref().map(|c| c.name.as_str()).unwrap_or("None").to_string()),
+        ("Production", if product.production { "Yes" } else { "No" }.to_string()),
+        ("Tags", product.tags.iter().map(|t| t.name.as_str()).collect::<Vec<_>>().join(", ")),
+        ("Materials", product.materials.iter().map(|m| m.name.as_str()).collect::<Vec<_>>().join(", ")),
+    ];
+
+    for (i, (label, value)) in fields.iter().enumerate() {
+        let style = if i == current_field { SELECTED_ITEM_STYLE } else { NORMAL_STYLE };
+        form_lines.push(Line::from(format!("{}: {}", label, value)).style(style));
+    }
+
+    let form_widget = Paragraph::new(form_lines)
+        .block(Block::default().borders(Borders::ALL).title(title))
         .style(NORMAL_STYLE)
         .wrap(Wrap { trim: true });
 

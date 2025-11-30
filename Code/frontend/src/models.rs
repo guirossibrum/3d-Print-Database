@@ -80,7 +80,7 @@ pub struct Category {
 }
 
 /// Complete product structure matching backend Product schema
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]
 pub struct Product {
     // Basic product fields
     pub id: i32,
