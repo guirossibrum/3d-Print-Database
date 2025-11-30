@@ -203,14 +203,16 @@ def get_product(product_id: int = Path(...)):
                 schemas.MaterialResponse(id=material.id, name=material.name)
                 for material in product_db.materials
             ],
-            category=schemas.CategoryResponse(
-                id=product_db.category.id,
-                name=product_db.category.name,
-                sku_initials=product_db.category.sku_initials,
-                description=product_db.category.description,
-            )
-            if product_db.category
-            else None,
+            category=(
+                schemas.CategoryResponse(
+                    id=product_db.category.id,
+                    name=product_db.category.name,
+                    sku_initials=product_db.category.sku_initials,
+                    description=product_db.category.description,
+                )
+                if product_db.category
+                else None
+            ),
         )
         return product
     finally:
@@ -498,15 +500,20 @@ def create_category(category: schemas.CategoryCreate):
                 detail="SKU initials must be exactly 3 uppercase letters",
             )
 
-        db.add(category)
+        db_category = models.Category(
+            name=category.name,
+            sku_initials=category.sku_initials,
+            description=category.description,
+        )
+        db.add(db_category)
         db.commit()
-        db.refresh(category)
+        db.refresh(db_category)
 
         return {
-            "id": category.id,
-            "name": category.name,
-            "sku_initials": category.sku_initials,
-            "description": category.description,
+            "id": db_category.id,
+            "name": db_category.name,
+            "sku_initials": db_category.sku_initials,
+            "description": db_category.description,
         }
     except HTTPException:
         raise
@@ -654,15 +661,26 @@ def delete_product(
         if not product:
             raise HTTPException(status_code=404, detail="Product not found")
 
-        # Store folder path for file deletion
-        folder_path = product.folder_path
-
         # Delete files if requested
-        if delete_files and folder_path:
-            try:
-                import shutil
+        if delete_files:
+            # Reconstruct folder path from SKU to ensure it's correct
+            import os
+            from ensure_file_structure import BASE_DIR
 
-                shutil.rmtree(folder_path)
+            folder_path = os.path.join(BASE_DIR, product.sku)
+            print(
+                f"DEBUG: delete_files requested, reconstructed folder_path = {folder_path}"
+            )
+
+            try:
+                if os.path.exists(folder_path):
+                    print(f"DEBUG: Folder exists, deleting: {folder_path}")
+                    import shutil
+
+                    shutil.rmtree(folder_path)
+                    print(f"DEBUG: Successfully deleted folder: {folder_path}")
+                else:
+                    print(f"DEBUG: Folder does not exist: {folder_path}")
             except Exception as e:
                 # Log error but don't fail the deletion
                 print(f"Warning: Could not delete folder {folder_path}: {e}")

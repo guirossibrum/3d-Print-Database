@@ -7,6 +7,13 @@ import json
 import threading
 import time
 import subprocess
+import sys
+import os
+
+# Ensure modules can be imported regardless of current directory
+script_dir = os.path.dirname(os.path.abspath(__file__))
+if script_dir not in sys.path:
+    sys.path.insert(0, script_dir)
 
 # FastAPI endpoints
 API_URL = "http://localhost:8000/products/"
@@ -507,7 +514,7 @@ def create_item():
         response = requests.post(API_URL, json=payload)
         if response.status_code == 200:
             messagebox.showinfo(
-                "Success", f"Product created: {response.json().get('id')}"
+                "Success", f"Product created: {response.json().get('sku')}"
             )
             update_available_tags(current_tags)
             clear_form()
@@ -1297,7 +1304,8 @@ def show_edit_product_dialog(product):
             )
             if response.status_code == 200:
                 messagebox.showinfo(
-                    "Success", f"Product {product['id']} deleted successfully!"
+                    "Success",
+                    f"Product {product['sku']} ({product['name']}) deleted successfully!",
                 )
                 global dialog_open
                 dialog_open = False
@@ -1475,9 +1483,7 @@ try:
                     ["hyprctl", "dispatch", "togglefloating", f"address:{address}"]
                 )
                 break
-
-    threading.Thread(target=toggle_float, daemon=True).start()
-except subprocess.CalledProcessError:
+except Exception:
     pass  # Ignore if hyprctl not available or fails
 
 # Check if we can actually display a GUI (catch tkinter errors)
@@ -1508,6 +1514,9 @@ inventory_tab = ttk.Frame(tab_control)
 tab_control.add(create_tab, text="Create Product")
 tab_control.add(update_tab, text="Search")
 tab_control.add(inventory_tab, text="Inventory")
+
+# Make Search tab the default
+tab_control.select(update_tab)
 
 
 # Refresh available tags when switching tabs

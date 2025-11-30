@@ -11,7 +11,7 @@ if [ -z "$DISPLAY" ]; then
 fi
 
 # Check if the Python script exists
-SCRIPT_PATH="$HOME/Work/3d_print/Code/frontend/3dPrintDB.py"
+SCRIPT_PATH="$(pwd)/Code/frontend/3dPrintDB.py"
 if [ ! -f "$SCRIPT_PATH" ]; then
     echo "Error: GUI script not found at $SCRIPT_PATH"
     exit 1
@@ -38,6 +38,6 @@ else
     echo "  - Display server issues"
     echo "  - Python environment problems"
     echo ""
-    echo "  Try running directly: python3 $SCRIPT_PATH"
+    echo "  Try running directly: python3 "$(pwd)/Code/frontend/3dPrintDB.py""
     exit 1
 fi

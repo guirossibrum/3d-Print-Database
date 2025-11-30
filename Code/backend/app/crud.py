@@ -338,3 +338,16 @@ def update_product_materials_by_ids(
     """
     product.materials.clear()
     associate_materials_with_product_by_ids(db, product, material_ids)
+
+
+def delete_product_by_id(db: Session, product_id: int) -> Optional[models.Product]:
+    """
+    Delete a product by product_id and return the product object (for folder path access).
+    Returns None if product not found.
+    """
+    product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if product:
+        db.delete(product)
+        db.commit()
+        return product
+    return None

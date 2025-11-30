@@ -81,5 +81,3 @@ class ProductBase(BaseModel):
     reorder_point: Optional[int] = 0
     unit_cost: Optional[int] = None  # Cost in cents
     selling_price: Optional[int] = None  # Price in cents
-
-

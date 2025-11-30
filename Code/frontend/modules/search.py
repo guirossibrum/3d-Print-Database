@@ -39,7 +39,7 @@ def display_search_results(results_text_widget, search_results_list):
         return
 
     for i, product in enumerate(search_results_list):
-        sku = str(product.get("id", "N/A"))
+        sku = str(product.get("sku", "N/A"))
         name = product.get("name", "N/A")
         description = product.get("description", "")
         # Handle tags as list of strings or dicts
