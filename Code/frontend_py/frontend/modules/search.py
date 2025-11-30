@@ -17,6 +17,8 @@ def search_products(search_query_entry, results_text_widget, search_results_list
         response = requests.get(SEARCH_URL, params=params)
         if response.status_code == 200:
             search_results_list[:] = response.json()
+            # Sort alphabetically by name
+            search_results_list.sort(key=lambda x: x.get("name", "").lower())
             display_search_results(results_text_widget, search_results_list)
         else:
             results_text_widget.delete(1.0, tk.END)
@@ -37,7 +39,7 @@ def display_search_results(results_text_widget, search_results_list):
         return
 
     for i, product in enumerate(search_results_list):
-        sku = product.get("sku", "N/A")
+        sku = str(product.get("id", "N/A"))
         name = product.get("name", "N/A")
         description = product.get("description", "")
         # Handle tags as list of strings or dicts

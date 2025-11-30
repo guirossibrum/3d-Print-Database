@@ -49,6 +49,7 @@ services:
     user: "1000:1000"
     environment:
       DATABASE_URL: "postgresql://admin:admin@db:5432/products"
+      PRODUCTS_DIR: "/Products"
     depends_on:
       - db
       - search

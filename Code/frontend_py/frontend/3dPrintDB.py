@@ -6,6 +6,7 @@ import requests
 import json
 import threading
 import time
+import subprocess
 
 # FastAPI endpoints
 API_URL = "http://localhost:8000/products/"
@@ -506,7 +507,7 @@ def create_item():
         response = requests.post(API_URL, json=payload)
         if response.status_code == 200:
             messagebox.showinfo(
-                "Success", f"Product created: {response.json().get('sku')}"
+                "Success", f"Product created: {response.json().get('id')}"
             )
             update_available_tags(current_tags)
             clear_form()
@@ -842,7 +843,7 @@ def load_inventory_status():
                     "",
                     tk.END,
                     values=(
-                        item["sku"],
+                        item["id"],
                         item["name"],
                         item["stock_quantity"],
                         item["reorder_point"],
@@ -1009,7 +1010,7 @@ def show_edit_product_dialog(product):
 
     # Create edit dialog
     dialog = tk.Toplevel(root)
-    dialog.title(f"Edit Product - {product['sku']}")
+    dialog.title(f"Edit Product - {product['id']}")
     dialog.geometry("600x700")
 
     # Product info header
@@ -1292,11 +1293,11 @@ def show_edit_product_dialog(product):
 
             # Delete product
             response = requests.delete(
-                f"{API_URL}{product['sku']}?delete_files={delete_files}"
+                f"{API_URL}{product['id']}?delete_files={delete_files}"
             )
             if response.status_code == 200:
                 messagebox.showinfo(
-                    "Success", f"Product {product['sku']} deleted successfully!"
+                    "Success", f"Product {product['id']} deleted successfully!"
                 )
                 global dialog_open
                 dialog_open = False
@@ -1453,6 +1454,32 @@ root = tk.Tk()
 root.title("3D Print Database")
 root.geometry("1000x800")  # Made wider for inventory tab
 
+# Make window float in Hyprland (Wayland)
+try:
+    subprocess.run(
+        ["hyprctl", "keyword", "windowrulev2", "float,title:(3D Print Database)"],
+        check=True,
+    )
+
+    # Also try to toggle floating for the current window after a short delay
+    def toggle_float():
+        time.sleep(1)  # Increased delay
+        # Find the window by title and toggle floating
+        clients_output = subprocess.run(
+            ["hyprctl", "clients"], capture_output=True, text=True, check=True
+        )
+        for line in clients_output.stdout.split("\n"):
+            if "3D Print Database" in line and "Window" in line and "->" in line:
+                address = line.split()[1]
+                subprocess.run(
+                    ["hyprctl", "dispatch", "togglefloating", f"address:{address}"]
+                )
+                break
+
+    threading.Thread(target=toggle_float, daemon=True).start()
+except subprocess.CalledProcessError:
+    pass  # Ignore if hyprctl not available or fails
+
 # Check if we can actually display a GUI (catch tkinter errors)
 try:
     # Force tkinter to initialize and check display
@@ -1479,7 +1506,7 @@ update_tab = ttk.Frame(tab_control)
 inventory_tab = ttk.Frame(tab_control)
 
 tab_control.add(create_tab, text="Create Product")
-tab_control.add(update_tab, text="Update Product")
+tab_control.add(update_tab, text="Search")
 tab_control.add(inventory_tab, text="Inventory")
 
 
@@ -1503,8 +1530,8 @@ def on_tab_change(event):
     if tab_text == "Create Product":
         # Load all existing tags for the list when Create Product tab is selected
         load_all_tags_for_list()
-    elif tab_text == "Update Product":
-        # Auto-load all products when Update Product tab is selected
+    elif tab_text == "Search":
+        # Auto-load all products when Search tab is selected
         search_query.delete(0, tk.END)  # Clear search field
         search_products()  # Load all products
     elif tab_text == "Inventory":
@@ -1686,7 +1713,7 @@ inventory_tree = ttk.Treeview(
 )
 
 # Configure columns
-inventory_tree.heading("sku", text="SKU")
+inventory_tree.heading("sku", text="ID")
 inventory_tree.heading("name", text="Product Name")
 inventory_tree.heading("stock", text="Stock")
 inventory_tree.heading("reorder", text="Reorder Point")

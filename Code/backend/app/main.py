@@ -677,15 +677,17 @@ def delete_product(
         db.close()
 
 
-@app.put("/inventory/{sku}")
-def update_inventory(sku: str, inventory: dict):
+@app.put("/inventory/{product_id}")
+def update_inventory(product_id: int, inventory: dict):
     """
     Update inventory information for a product
     """
     db: Session = SessionLocal()
     try:
         product = (
-            db.query(crud.models.Product).filter(crud.models.Product.sku == sku).first()
+            db.query(crud.models.Product)
+            .filter(crud.models.Product.id == product_id)
+            .first()
         )
         if not product:
             raise HTTPException(status_code=404, detail="Product not found")
@@ -745,7 +747,7 @@ def get_inventory_status():
 
             result.append(
                 {
-                    "sku": p.sku,
+                    "id": p.id,
                     "name": p.name,
                     "stock_quantity": p.stock_quantity,
                     "reorder_point": p.reorder_point,
