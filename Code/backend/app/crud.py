@@ -1,4 +1,6 @@
 # backend/app/crud.py
+import os
+import json
 from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -7,8 +9,7 @@ from . import models, schemas
 from . import tag_utils
 from ensure_file_structure import (
     create_product_folder,
-    update_metadata,
-)  # import both functions
+)  # import function
 
 
 def generate_sku(db: Session, category_id: int) -> str:
@@ -86,6 +87,7 @@ def save_product(db: Session, product: schemas.ProductBase) -> dict:
             production=product.production,
             materials=material_names,
             category=category_details,
+            rating=product.rating,
         )
 
         # Save product to DB with folder_path
@@ -99,6 +101,7 @@ def save_product(db: Session, product: schemas.ProductBase) -> dict:
             color=product.color,
             print_time=product.print_time,
             weight=product.weight,
+            rating=product.rating,
             stock_quantity=product.stock_quantity or 0,
             reorder_point=product.reorder_point or 0,
             unit_cost=product.unit_cost,
@@ -141,6 +144,7 @@ def save_product(db: Session, product: schemas.ProductBase) -> dict:
             raise ValueError(f"Product with ID {product.product_id} not found")
 
         # Update fields if provided
+        old_name = product_db.name
         if product.name is not None:
             product_db.name = product.name
         if product.description is not None:
@@ -161,6 +165,17 @@ def save_product(db: Session, product: schemas.ProductBase) -> dict:
             product_db.unit_cost = product.unit_cost
         if product.selling_price is not None:
             product_db.selling_price = product.selling_price
+        if product.rating is not None:
+            product_db.rating = product.rating
+
+        # Rename folder if name changed
+        if product.name is not None and old_name != product.name:
+            old_folder = product_db.folder_path
+            new_folder = os.path.join(
+                os.path.dirname(old_folder), f"{product_db.sku} - {product_db.name}"
+            )
+            os.rename(old_folder, new_folder)
+            product_db.folder_path = new_folder
 
         # Update relationships
         if product.tag_ids is not None:
@@ -178,6 +193,41 @@ def save_product(db: Session, product: schemas.ProductBase) -> dict:
 
         db.commit()
         db.refresh(product_db)
+
+        # Update metadata
+        tag_names = [t.name for t in product_db.tags]
+        material_names = [m.name for m in product_db.materials]
+        category_details = None
+        if product_db.category:
+            category_details = {
+                "name": product_db.category.name,
+                "sku_initials": product_db.category.sku_initials,
+                "description": product_db.category.description,
+            }
+        metadata = {
+            "sku": product_db.sku,
+            "name": product_db.name,
+            "description": product_db.description,
+            "category": category_details,
+            "tags": tag_names,
+            "materials": material_names,
+            "production": product_db.production,
+            "color": product_db.color,
+            "print_time": product_db.print_time,
+            "weight": product_db.weight,
+            "stock_quantity": product_db.stock_quantity,
+            "reorder_point": product_db.reorder_point,
+            "unit_cost": product_db.unit_cost,
+            "selling_price": product_db.selling_price,
+        }
+        # Convert host path to container path for Docker volume access
+        # Host path: /home/grbrum/Work/3d_print/Products/... -> Container path: /Products/...
+        container_folder_path = product_db.folder_path.replace(
+            "/home/grbrum/Work/3d_print/Products", "/Products", 1
+        )
+        metadata_file = os.path.join(container_folder_path, "metadata.json")
+        with open(metadata_file, "w") as f:
+            json.dump(metadata, f, indent=4)
 
         return {
             "sku": product_db.sku,

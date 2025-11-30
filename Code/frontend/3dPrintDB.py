@@ -1,19 +1,186 @@
 #!/usr/bin/env python3
 
 import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext
+from tkinter import ttk, scrolledtext
+from tkinter import messagebox
+from tkinter import filedialog
 import requests
 import json
-import threading
-import time
-import subprocess
-import sys
 import os
+import sys
+import subprocess
+import time
+
+
+import tkinter as tk
+from pathlib import Path
+
+
+class CheckRating(tk.Frame):
+    """5-point rating using [ x ] style — perfectly aligned, no layout jump"""
+
+    def __init__(self, parent, initial_rating=0, callback=None):
+        super().__init__(parent)
+        self.rating = initial_rating
+        self.callback = callback
+        self.buttons = []
+
+        # Use a monospaced font so [   ] and [ x ] have identical width
+        self.font = ("DejaVu Sans Mono", 18, "bold")  # or "Consolas", "Courier New"
+        # Alternative great fonts: "Fira Code", "Source Code Pro", "Ubuntu Mono"
+
+        for i in range(1, 6):  # ratings 1 to 5
+            btn = tk.Label(
+                self,
+                text="     ",
+                font=self.font,
+                fg="black",
+                bg="#f0f0f0",
+                relief="solid",
+                borderwidth=1,
+                width=5,  # Fixed width in characters
+                cursor="hand2",
+            )
+            btn.pack(side=tk.LEFT, padx=2)
+
+            # Hover effect
+            btn.bind("<Enter>", lambda e, b=btn: b.config(bg="#ffffe0"))
+            btn.bind("<Leave>", lambda e, b=btn: b.config(bg="#f0f0f0"))
+
+            # Click handling
+            btn.bind("<Button-1>", lambda e, n=i: self.set_rating(n))
+
+            self.buttons.append(btn)
+
+        self.update_display()
+
+    def set_rating(self, rating):
+        # Toggle behavior: click same rating → decrease by 1 (like stars)
+        if self.rating == rating:
+            self.rating = max(0, rating - 1)
+        else:
+            self.rating = rating
+
+        self.update_display()
+        if self.callback:
+            self.callback(self.rating)
+
+    def update_display(self):
+        for i, btn in enumerate(self.buttons):
+            if i < self.rating:
+                btn.config(text="  X  ", fg="black")
+            else:
+                btn.config(text="     ", fg="black")
+
+    def get_rating(self):
+        return self.rating
+
+    def set_rating_direct(self, rating):
+        self.rating = max(0, min(5, int(rating)))
+        self.update_display()
+
 
 # Ensure modules can be imported regardless of current directory
 script_dir = os.path.dirname(os.path.abspath(__file__))
 if script_dir not in sys.path:
     sys.path.insert(0, script_dir)
+
+
+def show_copyable_error(title, message):
+    """Show error dialog with copyable text using Text widget"""
+    dialog = tk.Toplevel(root)
+    dialog.title(title)
+    dialog.geometry("500x300")
+
+    # Error icon and title
+    header_frame = tk.Frame(dialog)
+    header_frame.pack(pady=10, padx=10, fill="x")
+
+    # Simple error icon using text
+    tk.Label(header_frame, text="⚠", font=("Arial", 24), fg="red").pack(
+        side=tk.LEFT, padx=5
+    )
+    tk.Label(header_frame, text=title, font=("Arial", 14, "bold")).pack(
+        side=tk.LEFT, padx=10
+    )
+
+    # Text widget for copyable message
+    text_frame = tk.Frame(dialog)
+    text_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+
+    text_widget = tk.Text(text_frame, wrap=tk.WORD, height=10, padx=5, pady=5)
+    scrollbar = tk.Scrollbar(text_frame, command=text_widget.yview)
+    text_widget.config(yscrollcommand=scrollbar.set)
+
+    text_widget.pack(side=tk.LEFT, fill="both", expand=True)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    text_widget.insert(tk.END, message)
+    text_widget.config(state=tk.DISABLED)  # Make read-only but selectable
+
+    # Button frame
+    button_frame = tk.Frame(dialog)
+    button_frame.pack(pady=10)
+
+    def copy_to_clipboard():
+        """Copy the error message to clipboard"""
+        root.clipboard_clear()
+        root.clipboard_append(message)
+        # Optional: show brief feedback
+        copy_btn.config(text="Copied!")
+        dialog.after(1000, lambda: copy_btn.config(text="Copy"))
+
+    copy_btn = tk.Button(button_frame, text="Copy", command=copy_to_clipboard)
+    copy_btn.pack(side=tk.LEFT, padx=5)
+
+    tk.Button(button_frame, text="OK", command=dialog.destroy).pack(
+        side=tk.LEFT, padx=5
+    )
+
+    # Make dialog modal
+    dialog.transient(root)
+    dialog.grab_set()
+    root.wait_window(dialog)
+
+
+def add_copy_menu_to_entry(entry_widget):
+    """Add right-click context menu and keyboard shortcuts to Entry widget for copying/pasting text"""
+    menu = tk.Menu(entry_widget, tearoff=0)
+    menu.add_command(
+        label="Copy (Ctrl+C)", command=lambda: copy_entry_text(entry_widget)
+    )
+    menu.add_command(
+        label="Paste (Ctrl+V)", command=lambda: paste_to_entry(entry_widget)
+    )
+
+    def show_menu(event):
+        menu.post(event.x_root, event.y_root)
+
+    entry_widget.bind("<Button-3>", show_menu)  # Right-click
+    entry_widget.bind("<Control-c>", lambda e: copy_entry_text(entry_widget))  # Ctrl+C
+    entry_widget.bind("<Control-v>", lambda e: paste_to_entry(entry_widget))  # Ctrl+V
+
+
+def copy_entry_text(entry_widget):
+    """Copy the text from an Entry widget to clipboard"""
+    text = entry_widget.get()
+    if text:
+        root.clipboard_clear()
+        root.clipboard_append(text)
+
+
+def paste_to_entry(entry_widget):
+    """Paste text from clipboard to Entry widget"""
+    try:
+        text = root.clipboard_get()
+        if text:
+            # Clear current selection and insert clipboard content
+            entry_widget.delete(0, tk.END)
+            entry_widget.insert(0, text)
+    except tk.TclError:
+        # Clipboard empty or unavailable
+        pass
+
 
 # FastAPI endpoints
 API_URL = "http://localhost:8000/products/"
@@ -65,11 +232,82 @@ def update_tag_display(tags_list, display_frame, layout="pack"):
         remove_btn.pack(side=tk.LEFT)
 
 
-def add_popup_tag(widget, tags_list, display_frame, listbox=None):
-    """Add a tag to the popup dialog"""
-    tag_text = widget.get().strip()
-    if tag_text and tag_text not in tags_list:
-        tags_list.append(tag_text)
+def update_material_display(materials_list, display_frame, layout="pack"):
+    """Update the display of materials with configurable layout"""
+    # Clear existing
+    for widget in display_frame.winfo_children():
+        widget.destroy()
+
+    if not materials_list:
+        label = tk.Label(display_frame, text="(no materials)", fg="gray")
+        if layout == "pack":
+            label.pack(anchor="w")
+        else:
+            label.grid(row=0, column=0, sticky="w")
+        return
+
+    bg_color = "lightblue" if layout == "pack" else "lightgreen"
+
+    for i, material in enumerate(materials_list):
+        material_frame = tk.Frame(display_frame)
+
+        if layout == "pack":
+            material_frame.pack(anchor="w", pady=1)
+        else:
+            material_frame.grid(
+                row=i // 4, column=(i % 4) * 2, padx=2, pady=2, sticky="w"
+            )
+
+        tk.Label(material_frame, text=material, bg=bg_color, padx=5, pady=2).pack(
+            side=tk.LEFT
+        )
+
+        remove_btn = tk.Button(
+            material_frame,
+            text="×",
+            font=("Arial", 8),
+            command=lambda m=material: remove_popup_tag(
+                m, materials_list, display_frame
+            )
+            if layout == "grid"
+            else remove_material(m),
+        )
+        remove_btn.pack(side=tk.LEFT)
+
+
+def add_popup_tag(widget, tags_list, display_frame, listbox=None, item_type="tag"):
+    """Add a tag/material to the popup dialog"""
+    item_text = widget.get().strip()
+    if item_text and item_text not in tags_list:
+        # Check if it exists in available items, if not, create it
+        global all_available_tags, all_available_materials
+        if item_type == "tag":
+            available_items = all_available_tags
+            create_func = create_tag
+        else:  # material
+            available_items = all_available_materials
+            create_func = create_material
+
+        # Check if item exists
+        existing = next(
+            (item for item in available_items if item["name"] == item_text), None
+        )
+        if not existing:
+            try:
+                # Create new item in DB
+                new_item = create_func(item_text)
+                available_items.append(new_item)
+                available_items.sort(key=lambda x: x["name"])
+                # Update listbox if provided
+                if listbox:
+                    listbox.delete(0, tk.END)
+                    for item in available_items:
+                        listbox.insert(tk.END, item["name"])
+            except Exception as e:
+                show_copyable_error("Error", f"Failed to create {item_type}: {str(e)}")
+                return
+
+        tags_list.append(item_text)
         update_tag_display(tags_list, display_frame, "grid")
         if hasattr(widget, "set"):
             widget.set("")
@@ -97,25 +335,30 @@ def add_tag_from_listbox(listbox, current_tags, update_func):
 def update_available_tags(new_tags_list):
     """Update available tags list and refresh listboxes"""
     global all_available_tags
-    for tag in new_tags_list:
-        if tag not in all_available_tags:
-            all_available_tags.append(tag)
-    all_available_tags.sort()
+    for tag_name in new_tags_list:
+        # Check if tag already exists (by name)
+        existing = next((t for t in all_available_tags if t["name"] == tag_name), None)
+        if not existing:
+            # Add new tag with dummy ID
+            all_available_tags.append({"id": None, "name": tag_name})
+    all_available_tags.sort(key=lambda x: x["name"])
     # Update main listbox
     tag_listbox.delete(0, tk.END)
     for tag in all_available_tags:
-        tag_listbox.insert(tk.END, tag)
+        tag_listbox.insert(tk.END, tag["name"])
     # Update edit listbox if exists
     if "edit_tag_listbox" in globals():
         edit_tag_listbox.delete(0, tk.END)
         for tag in all_available_tags:
-            edit_tag_listbox.insert(tk.END, tag)
+            edit_tag_listbox.insert(tk.END, tag["name"])
 
 
 # Global variables
 current_tags = []
+current_materials = []
 tag_suggestions = []
 all_available_tags = []  # All existing tags for the list
+all_available_materials = []  # All existing materials for the list
 categories = []
 edit_mode = False
 current_product_data = None
@@ -381,6 +624,9 @@ def clear_form():
     current_tags.clear()
     update_tag_display(current_tags, tags_frame, "pack")
     tag_entry.delete(0, tk.END)
+    current_materials.clear()
+    update_material_display(current_materials, materials_frame, "pack")
+    material_entry.delete(0, tk.END)
 
 
 def cancel():
@@ -404,6 +650,23 @@ def remove_tag(tag_to_remove):
         update_tag_display(current_tags, tags_frame, "pack")
 
 
+def add_material():
+    """Add a material to the current materials list"""
+    material_text = material_entry.get().strip()
+    if material_text and material_text not in current_materials:
+        current_materials.append(material_text)
+        update_material_display(current_materials, materials_frame, "pack")
+        material_entry.delete(0, tk.END)  # Clear the input
+        material_entry.focus()
+
+
+def remove_material(material_to_remove):
+    """Remove a material from the current materials list"""
+    if material_to_remove in current_materials:
+        current_materials.remove(material_to_remove)
+        update_material_display(current_materials, materials_frame, "pack")
+
+
 # Removed autocomplete functions - using list-based tag selection now
 
 
@@ -415,18 +678,63 @@ def load_all_tags_for_list():
         response = requests.get(TAGS_URL, timeout=5)  # Synchronous for debugging
         if response.status_code == 200:
             data = response.json()
-            all_available_tags = sorted([tag["name"] for tag in data if "name" in tag])
+            all_available_tags = sorted(data, key=lambda x: x["name"])
             # Update listbox immediately
             filter_tag_list()
         else:
             # Show error for debugging
-            messagebox.showerror(
+            show_copyable_error(
                 "Tags Error",
                 f"Failed to load tags: {response.status_code} - {response.text[:200]}",
             )
     except Exception as e:
         # Show error for debugging
-        messagebox.showerror("Tags Error", f"Error loading tags: {str(e)}")
+        show_copyable_error("Tags Error", f"Error loading tags: {str(e)}")
+
+
+def load_all_materials_for_list():
+    """Load all existing materials to populate the listbox"""
+    global all_available_materials
+
+    try:
+        response = requests.get("http://localhost:8000/materials", timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            all_available_materials = sorted(data, key=lambda x: x["name"])
+            # Update listboxes if exist
+            if "edit_material_listbox" in globals():
+                edit_material_listbox.delete(0, tk.END)
+                for m in all_available_materials:
+                    edit_material_listbox.insert(tk.END, m["name"])
+            if "material_listbox" in globals():
+                material_listbox.delete(0, tk.END)
+                for m in all_available_materials:
+                    material_listbox.insert(tk.END, m["name"])
+        else:
+            show_copyable_error(
+                "Materials Error",
+                f"Failed to load materials: {response.status_code} - {response.text[:200]}",
+            )
+    except Exception as e:
+        show_copyable_error("Materials Error", f"Error loading materials: {str(e)}")
+
+
+def get_tag_ids_from_names(tag_names):
+    """Convert tag names to tag IDs"""
+    return [
+        tag["id"]
+        for tag in all_available_tags
+        if tag["name"] in tag_names and tag["id"] is not None
+    ]
+
+
+def get_material_ids_from_names(material_names):
+    """Convert material names to material IDs"""
+    return [
+        mat["id"]
+        for mat in all_available_materials
+        if mat["name"] in material_names and mat["id"] is not None
+    ]
 
 
 def filter_tag_list(event=None):
@@ -438,8 +746,21 @@ def filter_tag_list(event=None):
 
     # Filter and add matching tags
     for tag in all_available_tags:
-        if not filter_text or filter_text in tag.lower():
-            tag_listbox.insert(tk.END, tag)
+        if not filter_text or filter_text in tag["name"].lower():
+            tag_listbox.insert(tk.END, tag["name"])
+
+
+def filter_material_list(event=None):
+    """Filter the material list based on input text"""
+    filter_text = material_entry.get().strip().lower()
+
+    # Clear current list
+    material_listbox.delete(0, tk.END)
+
+    # Filter and add matching materials
+    for material in all_available_materials:
+        if not filter_text or filter_text in material["name"].lower():
+            material_listbox.insert(tk.END, material["name"])
 
 
 def add_tag_from_list(event=None):
@@ -451,6 +772,17 @@ def add_tag_from_list(event=None):
     )
     tag_entry.delete(0, tk.END)  # Clear input
     tag_entry.focus()
+
+
+def add_material_from_list(event=None):
+    """Add selected material from the listbox"""
+    add_tag_from_listbox(
+        material_listbox,
+        current_materials,
+        lambda materials: update_material_display(materials, materials_frame, "pack"),
+    )
+    material_entry.delete(0, tk.END)  # Clear input
+    material_entry.focus()
 
 
 def delete_unused_tag():
@@ -477,15 +809,52 @@ def delete_unused_tag():
             # Refresh the tag list
             load_all_tags_for_list()
         elif response.status_code == 400:
-            messagebox.showerror(
+            show_copyable_error(
                 "Cannot Delete",
                 f"Tag '{selected_tag}' is still used by products and cannot be deleted.",
             )
         else:
-            messagebox.showerror("Error", f"Failed to delete tag: {response.text}")
+            show_copyable_error("Error", f"Failed to delete tag: {response.text}")
     except Exception as e:
-        messagebox.showerror("Error", f"Error deleting tag: {str(e)}")
+        show_copyable_error("Error", f"Error deleting tag: {str(e)}")
         # No need to refresh list since we're using existing tags
+
+
+def delete_unused_material():
+    """Delete the selected material if it's not used by any products"""
+    selection = material_listbox.curselection()
+    if not selection:
+        messagebox.showwarning("No Selection", "Please select a material to delete.")
+        return
+
+    selected_material = material_listbox.get(selection[0])
+
+    # Confirm deletion
+    if not messagebox.askyesno(
+        "Confirm Deletion",
+        f"Are you sure you want to delete the material '{selected_material}'?\n\n"
+        "This will only work if the material is not used by any products.",
+    ):
+        return
+
+    try:
+        # Check if material is used and delete if unused
+        response = requests.delete(
+            f"http://localhost:8000/materials/{selected_material}"
+        )
+        if response.status_code == 200:
+            # Refresh the material list
+            load_all_materials_for_list()
+        elif response.status_code == 400:
+            show_copyable_error(
+                "Cannot Delete",
+                f"Material '{selected_material}' is still used by products and cannot be deleted.",
+            )
+        else:
+            show_copyable_error("Error", f"Failed to delete material: {response.text}")
+    except Exception as e:
+        show_copyable_error("Error", f"Error deleting material: {str(e)}")
+        # No need to refresh list since we're using existing materials
 
 
 def create_item():
@@ -494,11 +863,11 @@ def create_item():
     production = var_production.get()
 
     if not name:
-        messagebox.showerror("Error", "Name is required")
+        show_copyable_error("Error", "Name is required")
         return
 
     if not selected_category_id:
-        messagebox.showerror("Error", "Please select a category")
+        show_copyable_error("Error", "Please select a category")
         return
 
     # Build JSON payload
@@ -506,8 +875,10 @@ def create_item():
         "name": name,
         "description": description,
         "tags": current_tags.copy(),  # Use current tags list
+        "materials": current_materials.copy(),  # Use current materials list
         "production": production,
         "category_id": selected_category_id,
+        "rating": rating_widget.get_rating(),
     }
 
     try:
@@ -519,9 +890,9 @@ def create_item():
             update_available_tags(current_tags)
             clear_form()
         else:
-            messagebox.showerror("Error", f"Failed to create product\n{response.text}")
+            show_copyable_error("Error", f"Failed to create product\n{response.text}")
     except Exception as e:
-        messagebox.showerror("Error", str(e))
+        show_copyable_error("Error", str(e))
 
 
 # --- Update/Search Functions ---
@@ -559,9 +930,9 @@ def load_categories():
             categories = response.json()
             update_category_dropdown()
         else:
-            messagebox.showerror("Error", f"Failed to load categories: {response.text}")
+            show_copyable_error("Error", f"Failed to load categories: {response.text}")
     except Exception as e:
-        messagebox.showerror("Error", f"Error loading categories: {str(e)}")
+        show_copyable_error("Error", f"Error loading categories: {str(e)}")
 
 
 def update_category_dropdown():
@@ -594,12 +965,14 @@ def create_new_category():
     )
     name_entry = tk.Entry(dialog, width=30)
     name_entry.grid(row=0, column=1, padx=5, pady=5)
+    add_copy_menu_to_entry(name_entry)
 
     tk.Label(dialog, text="SKU Initials (3 letters):").grid(
         row=1, column=0, sticky="e", padx=5, pady=5
     )
     initials_entry = tk.Entry(dialog, width=10)
     initials_entry.grid(row=1, column=1, sticky="w", padx=5, pady=5)
+    add_copy_menu_to_entry(initials_entry)
 
     tk.Label(dialog, text="Description:").grid(
         row=2, column=0, sticky="ne", padx=5, pady=5
@@ -613,11 +986,11 @@ def create_new_category():
         description = desc_text.get("1.0", tk.END).strip()
 
         if not name or not initials:
-            messagebox.showerror("Error", "Name and SKU initials are required")
+            show_copyable_error("Error", "Name and SKU initials are required")
             return
 
         if len(initials) != 3 or not initials.isalpha():
-            messagebox.showerror("Error", "SKU initials must be exactly 3 letters")
+            show_copyable_error("Error", "SKU initials must be exactly 3 letters")
             return
 
         try:
@@ -635,7 +1008,7 @@ def create_new_category():
 
             dialog.destroy()
         except Exception as e:
-            messagebox.showerror("Error", f"Error creating category: {str(e)}")
+            show_copyable_error("Error", f"Error creating category: {str(e)}")
 
     def cancel():
         dialog.destroy()
@@ -664,7 +1037,7 @@ def edit_category():
     # Find category
     category = next((c for c in categories if c["name"] == category_name), None)
     if not category:
-        messagebox.showerror("Error", "Category not found")
+        show_copyable_error("Error", "Category not found")
         return
 
     # Create a dialog for editing category
@@ -683,6 +1056,7 @@ def edit_category():
     name_entry = tk.Entry(dialog, width=30)
     name_entry.insert(0, category["name"])
     name_entry.grid(row=0, column=1, padx=5, pady=5)
+    add_copy_menu_to_entry(name_entry)
 
     tk.Label(dialog, text="SKU Initials (3 letters):").grid(
         row=1, column=0, sticky="e", padx=5, pady=5
@@ -690,6 +1064,7 @@ def edit_category():
     initials_entry = tk.Entry(dialog, width=10)
     initials_entry.insert(0, category["sku_initials"])
     initials_entry.grid(row=1, column=1, sticky="w", padx=5, pady=5)
+    add_copy_menu_to_entry(initials_entry)
 
     tk.Label(dialog, text="Description:").grid(
         row=2, column=0, sticky="ne", padx=5, pady=5
@@ -704,11 +1079,11 @@ def edit_category():
         description = desc_text.get("1.0", tk.END).strip()
 
         if not name or not initials:
-            messagebox.showerror("Error", "Name and SKU initials are required")
+            show_copyable_error("Error", "Name and SKU initials are required")
             return
 
         if len(initials) != 3 or not initials.isalpha():
-            messagebox.showerror("Error", "SKU initials must be exactly 3 letters")
+            show_copyable_error("Error", "SKU initials must be exactly 3 letters")
             return
 
         try:
@@ -726,7 +1101,7 @@ def edit_category():
 
             dialog.destroy()
         except Exception as e:
-            messagebox.showerror("Error", f"Error updating category: {str(e)}")
+            show_copyable_error("Error", f"Error updating category: {str(e)}")
 
     def cancel():
         dialog.destroy()
@@ -753,7 +1128,7 @@ def delete_category():
     # Find category
     category = next((c for c in categories if c["name"] == category_name), None)
     if not category:
-        messagebox.showerror("Error", "Category not found")
+        show_copyable_error("Error", "Category not found")
         return
 
     # Confirm deletion
@@ -774,9 +1149,9 @@ def delete_category():
             category_combo.set("")
             load_categories()  # Refresh categories
         else:
-            messagebox.showerror("Error", f"Failed to delete category: {response.text}")
+            show_copyable_error("Error", f"Failed to delete category: {response.text}")
     except Exception as e:
-        messagebox.showerror("Error", f"Error deleting category: {str(e)}")
+        show_copyable_error("Error", f"Error deleting category: {str(e)}")
 
 
 def on_category_select(event):
@@ -878,9 +1253,9 @@ def load_inventory_status():
             summary_text.config(state=tk.DISABLED)
 
         else:
-            messagebox.showerror("Error", f"Failed to load inventory: {response.text}")
+            show_copyable_error("Error", f"Failed to load inventory: {response.text}")
     except Exception as e:
-        messagebox.showerror("Error", f"Error loading inventory: {str(e)}")
+        show_copyable_error("Error", f"Error loading inventory: {str(e)}")
 
 
 # Global flag to prevent multiple dialogs
@@ -890,25 +1265,6 @@ dialog_open = False
 def load_product_from_search():
     """Load product from search results for editing (double-click)"""
     search.load_product_from_search(results_text, search_results, show_edit_callback)
-
-
-def add_popup_tag(widget, tags_list, display_frame, listbox=None):
-    """Add a tag to the popup dialog"""
-    tag_text = widget.get().strip()
-    if tag_text and tag_text not in tags_list:
-        tags_list.append(tag_text)
-        update_tag_display(tags_list, display_frame, "grid")
-        if hasattr(widget, "set"):
-            widget.set("")
-        else:
-            widget.delete(0, tk.END)
-
-
-def remove_popup_tag(tag_to_remove, tags_list, display_frame):
-    """Remove a tag from the popup dialog"""
-    if tag_to_remove in tags_list:
-        tags_list.remove(tag_to_remove)
-        update_tag_display(tags_list, display_frame, "grid")
 
 
 def add_tag_from_listbox(listbox, current_tags, update_func):
@@ -938,7 +1294,7 @@ def apply_inventory_adjustment(
     )
 
     payload = {"stock_quantity": new_stock}
-    response = requests.put(f"{API_URL}{sku}/inventory", json=payload)
+    response = requests.put(f"http://localhost:8000/inventory/{sku}", json=payload)
     if response.status_code == 200:
         operation_text = "added to" if operation == "printed" else "removed from"
         return f"{quantity} items {operation_text} inventory for {sku}"
@@ -986,12 +1342,13 @@ def update_category_via_api(
         raise Exception(f"Failed to update category: {response.text}")
 
 
-def save_product_changes(product_sku: str, payload: dict):
+def save_product_changes(product_id: int, payload: dict):
     """
     Save product changes via API.
     Returns True on success, raises Exception on failure.
     """
-    response = requests.put(f"{API_URL}{product_sku}", json=payload)
+    payload["product_id"] = product_id
+    response = requests.post(API_URL, json=payload)
     if response.status_code == 200:
         return True
     else:
@@ -1000,10 +1357,11 @@ def save_product_changes(product_sku: str, payload: dict):
 
 def show_edit_product_dialog(product):
     """Show popup dialog for editing a product"""
-    global edit_current_tags, current_product_data, edit_mode
+    global edit_current_tags, edit_current_materials, current_product_data, edit_mode
 
-    # Refresh available tags from database
+    # Refresh available tags and materials from database
     load_all_tags_for_list()
+    load_all_materials_for_list()
 
     # Set global state
     current_product_data = product
@@ -1014,6 +1372,13 @@ def show_edit_product_dialog(product):
         edit_current_tags = [tag["name"] for tag in tags_list]
     else:
         edit_current_tags = tags_list.copy()
+
+    # Handle materials
+    materials_list = product.get("materials", [])
+    if materials_list and isinstance(materials_list[0], dict):
+        edit_current_materials = [m["name"] for m in materials_list]
+    else:
+        edit_current_materials = materials_list.copy()
 
     # Create edit dialog
     dialog = tk.Toplevel(root)
@@ -1042,6 +1407,7 @@ def show_edit_product_dialog(product):
     if name_value is not None:
         edit_name.insert(0, str(name_value))
     edit_name.grid(row=0, column=1, columnspan=3, pady=5, padx=5, sticky="w")
+    add_copy_menu_to_entry(edit_name)
 
     # Description
     tk.Label(main_frame, text="Description:").grid(
@@ -1052,6 +1418,7 @@ def show_edit_product_dialog(product):
     if desc_value is not None:
         edit_description.insert(0, str(desc_value))
     edit_description.grid(row=1, column=1, columnspan=3, pady=5, padx=5, sticky="w")
+    add_copy_menu_to_entry(edit_description)
 
     # Production checkbox
     edit_var_production = tk.BooleanVar(value=product["production"])
@@ -1059,28 +1426,29 @@ def show_edit_product_dialog(product):
         main_frame, text="Production Ready", variable=edit_var_production
     ).grid(row=2, column=1, sticky="w", pady=5, padx=5)
 
-    # Material and Color
-    tk.Label(main_frame, text="Material:").grid(
-        row=3, column=0, sticky="e", padx=5, pady=2
+    # Rating
+    tk.Label(main_frame, text="Rating:").grid(
+        row=3, column=0, sticky="e", pady=5, padx=5
     )
-    edit_material = tk.Entry(main_frame, width=20)
-    material_value = product.get("material")
-    if material_value is not None:
-        edit_material.insert(0, str(material_value))
-    edit_material.grid(row=3, column=1, pady=2, padx=5, sticky="w")
+    edit_rating_widget = CheckRating(
+        main_frame, initial_rating=product.get("rating", 0)
+    )
+    edit_rating_widget.grid(row=3, column=1, sticky="w", pady=5, padx=5)
 
+    # Color
     tk.Label(main_frame, text="Color:").grid(
-        row=3, column=2, sticky="e", padx=5, pady=2
+        row=4, column=2, sticky="e", padx=5, pady=2
     )
     edit_color = tk.Entry(main_frame, width=20)
     color_value = product.get("color")
     if color_value is not None:
         edit_color.insert(0, str(color_value))
-    edit_color.grid(row=3, column=3, pady=2, padx=5, sticky="w")
+    edit_color.grid(row=4, column=3, pady=2, padx=5, sticky="w")
+    add_copy_menu_to_entry(edit_color)
 
     # Print time and Weight
     tk.Label(main_frame, text="Print Time:").grid(
-        row=4, column=0, sticky="e", padx=5, pady=2
+        row=5, column=0, sticky="e", padx=5, pady=2
     )
     edit_print_time = tk.Entry(main_frame, width=20)
     print_time_value = product.get("print_time")
@@ -1108,42 +1476,39 @@ def show_edit_product_dialog(product):
     edit_print_time.bind("<FocusIn>", lambda e: on_time_focus_in(e))
     edit_print_time.bind("<FocusOut>", lambda e: on_time_focus_out(e))
     edit_print_time.bind("<KeyRelease>", on_time_key_release_popup)
-    edit_print_time.grid(row=4, column=1, pady=2, padx=5, sticky="w")
+    edit_print_time.grid(row=5, column=1, pady=2, padx=5, sticky="w")
+    add_copy_menu_to_entry(edit_print_time)
 
     tk.Label(main_frame, text="Weight (g):").grid(
-        row=4, column=2, sticky="e", padx=5, pady=2
+        row=5, column=2, sticky="e", padx=5, pady=2
     )
     edit_weight = tk.Entry(main_frame, width=20)
     weight_value = product.get("weight")
     if weight_value is not None:
         edit_weight.insert(0, str(weight_value))
-    edit_weight.grid(row=4, column=3, pady=2, padx=5, sticky="w")
+    edit_weight.grid(row=5, column=3, pady=2, padx=5, sticky="w")
+    add_copy_menu_to_entry(edit_weight)
 
     # Tags section
     tk.Label(main_frame, text="Tags:").grid(
-        row=5, column=0, sticky="ne", pady=5, padx=5
+        row=6, column=0, sticky="ne", pady=5, padx=5
     )
 
     edit_tag_frame = tk.Frame(main_frame)
-    edit_tag_frame.grid(row=5, column=1, columnspan=3, pady=5, padx=5, sticky="w")
+    edit_tag_frame.grid(row=6, column=1, columnspan=3, pady=5, padx=5, sticky="w")
 
     edit_tag_entry = tk.Entry(edit_tag_frame, width=30)
     edit_tag_entry.pack(side=tk.LEFT, padx=(0, 5))
+    add_copy_menu_to_entry(edit_tag_entry)
 
     edit_add_btn = tk.Button(
         edit_tag_frame,
         text="Add Tag",
         command=lambda: add_popup_tag(
-            edit_tag_entry, edit_current_tags, edit_tags_frame, edit_tag_listbox
+            edit_tag_entry, edit_current_tags, edit_tags_frame, edit_tag_listbox, "tag"
         ),
     )
     edit_add_btn.pack(side=tk.LEFT)
-
-    edit_tags_frame = tk.Frame(main_frame)
-    edit_tags_frame.grid(row=6, column=0, columnspan=4, pady=5, padx=5, sticky="w")
-
-    # Initialize tag display
-    update_tag_display(edit_current_tags, edit_tags_frame, "grid")
 
     # Available tags list
     tk.Label(main_frame, text="Available Tags:").grid(
@@ -1152,6 +1517,12 @@ def show_edit_product_dialog(product):
 
     edit_tag_list_frame = tk.Frame(main_frame)
     edit_tag_list_frame.grid(row=7, column=1, columnspan=3, pady=5, padx=5, sticky="w")
+
+    edit_tags_frame = tk.Frame(main_frame)
+    edit_tags_frame.grid(row=8, column=0, columnspan=4, pady=5, padx=5, sticky="w")
+
+    # Initialize tag display
+    update_tag_display(edit_current_tags, edit_tags_frame, "grid")
 
     edit_tag_listbox = tk.Listbox(edit_tag_list_frame, height=6, width=40)
     edit_tag_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -1164,7 +1535,7 @@ def show_edit_product_dialog(product):
 
     # Populate listbox
     for tag in all_available_tags:
-        edit_tag_listbox.insert(tk.END, tag)
+        edit_tag_listbox.insert(tk.END, tag["name"])
 
     # Bind double-click to add
     edit_tag_listbox.bind(
@@ -1173,6 +1544,72 @@ def show_edit_product_dialog(product):
             edit_tag_listbox,
             edit_current_tags,
             lambda tags: update_tag_display(tags, edit_tags_frame, "grid"),
+        ),
+    )
+
+    # Materials section
+    tk.Label(main_frame, text="Materials:").grid(
+        row=9, column=0, sticky="ne", pady=5, padx=5
+    )
+
+    edit_material_frame = tk.Frame(main_frame)
+    edit_material_frame.grid(row=9, column=1, columnspan=3, pady=5, padx=5, sticky="w")
+
+    edit_material_entry = tk.Entry(edit_material_frame, width=30)
+    edit_material_entry.pack(side=tk.LEFT, padx=(0, 5))
+    add_copy_menu_to_entry(edit_material_entry)
+
+    edit_add_material_btn = tk.Button(
+        edit_material_frame,
+        text="Add Material",
+        command=lambda: add_popup_tag(
+            edit_material_entry,
+            edit_current_materials,
+            edit_materials_frame,
+            edit_material_listbox,
+            "material",
+        ),
+    )
+    edit_add_material_btn.pack(side=tk.LEFT)
+
+    # Available materials list
+    tk.Label(main_frame, text="Available Materials:").grid(
+        row=10, column=0, sticky="ne", pady=5, padx=5
+    )
+
+    edit_material_list_frame = tk.Frame(main_frame)
+    edit_material_list_frame.grid(
+        row=10, column=1, columnspan=3, pady=5, padx=5, sticky="w"
+    )
+
+    edit_materials_frame = tk.Frame(main_frame)
+    edit_materials_frame.grid(
+        row=11, column=0, columnspan=4, pady=5, padx=5, sticky="w"
+    )
+
+    # Initialize material display
+    update_material_display(edit_current_materials, edit_materials_frame, "grid")
+
+    edit_material_listbox = tk.Listbox(edit_material_list_frame, height=6, width=40)
+    edit_material_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+    edit_material_scrollbar = tk.Scrollbar(edit_material_list_frame)
+    edit_material_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    edit_material_listbox.config(yscrollcommand=edit_material_scrollbar.set)
+    edit_material_scrollbar.config(command=edit_material_listbox.yview)
+
+    # Populate listbox
+    for m in all_available_materials:
+        edit_material_listbox.insert(tk.END, m["name"])
+
+    # Bind double-click to add
+    edit_material_listbox.bind(
+        "<Double-1>",
+        lambda e: add_tag_from_listbox(
+            edit_material_listbox,
+            edit_current_materials,
+            lambda mats: update_tag_display(mats, edit_materials_frame, "grid"),
         ),
     )
 
@@ -1186,29 +1623,29 @@ def show_edit_product_dialog(product):
             name = edit_name.get().strip()
             description = edit_description.get().strip()
             production = edit_var_production.get()
-            material = edit_material.get().strip()
             color = edit_color.get().strip()
             print_time = edit_print_time.get().strip()
             weight_text = edit_weight.get().strip()
 
             if not name:
-                messagebox.showerror("Error", "Name is required")
+                show_copyable_error("Error", "Name is required")
                 return
 
             # Build payload - submit complete form state
             payload = {
                 "name": name,
                 "description": description,
-                "tags": edit_current_tags,
+                "tag_ids": get_tag_ids_from_names(edit_current_tags),
+                "material_ids": get_material_ids_from_names(edit_current_materials),
                 "production": production,
-                "material": material or None,
                 "color": color or None,
                 "print_time": print_time or None,
                 "weight": int(weight_text) if weight_text else None,
+                "rating": edit_rating_widget.get_rating(),
             }
 
             # Update product
-            save_product_changes(product["sku"], payload)
+            save_product_changes(product["id"], payload)
             # Add new tags to available tags (not saved to DB)
             original_tags = product.get("tags", [])
             new_tags = [t for t in edit_current_tags if t not in original_tags]
@@ -1220,18 +1657,45 @@ def show_edit_product_dialog(product):
             search_products()
 
         except Exception as e:
-            messagebox.showerror("Error", f"Error updating product: {str(e)}")
+            show_copyable_error("Error", f"Error updating product: {str(e)}")
 
     def open_folder():
         """Open the product folder"""
         try:
-            # Find the product in search results to get folder path
-            folder_path = f"/home/grbrum/Work/3d_print/Products/{product['sku']}"
-
             import os
 
+            # Use stored folder path first
+            folder_path = product.get("folder_path")
+
+            # If stored path doesn't exist, try to construct the expected path
+            if not folder_path or not os.path.exists(folder_path):
+                # Try the new naming scheme: SKU - Name
+                products_dir = os.environ.get(
+                    "PRODUCTS_DIR",
+                    os.path.join(
+                        os.path.expanduser("~"), "Work", "3d_print", "Products"
+                    ),
+                )
+                sku = product.get("sku", "")
+                name = product.get("name", "")
+                expected_path = os.path.join(products_dir, f"{sku} - {name}")
+
+                if os.path.exists(expected_path):
+                    folder_path = expected_path
+                else:
+                    # Try old naming scheme: just SKU
+                    old_path = os.path.join(products_dir, sku)
+                    if os.path.exists(old_path):
+                        folder_path = old_path
+                    else:
+                        show_copyable_error(
+                            "Folder Not Found",
+                            f"The folder for product '{sku}' does not exist at any expected location.",
+                        )
+                        return
+
             if not os.path.exists(folder_path):
-                messagebox.showerror(
+                show_copyable_error(
                     "Folder Not Found",
                     f"The folder for product '{product['sku']}' does not exist.",
                 )
@@ -1278,7 +1742,7 @@ def show_edit_product_dialog(product):
                 )
 
         except Exception as e:
-            messagebox.showerror("Error", f"Could not open folder: {str(e)}")
+            show_copyable_error("Error", f"Could not open folder: {str(e)}")
 
     def delete_record():
         """Delete the product record"""
@@ -1313,12 +1777,12 @@ def show_edit_product_dialog(product):
                 # Refresh search results
                 search_products()
             else:
-                messagebox.showerror(
+                show_copyable_error(
                     "Error", f"Failed to delete product: {response.text}"
                 )
 
         except Exception as e:
-            messagebox.showerror("Error", f"Error deleting product: {str(e)}")
+            show_copyable_error("Error", f"Error deleting product: {str(e)}")
 
     tk.Button(
         button_frame, text="Save Changes", command=save_changes, bg="lightgreen"
@@ -1389,6 +1853,7 @@ def adjust_inventory_dialog():
     quantity_entry.insert(0, "1")
     quantity_entry.pack(pady=5)
     quantity_entry.focus()
+    add_copy_menu_to_entry(quantity_entry)
 
     # Operation selection
     operation_var = tk.StringVar(value="printed")
@@ -1423,9 +1888,9 @@ def adjust_inventory_dialog():
             load_inventory_status()  # Refresh inventory display
 
         except ValueError as e:
-            messagebox.showerror("Invalid Input", str(e))
+            show_copyable_error("Invalid Input", str(e))
         except Exception as e:
-            messagebox.showerror("Error", f"Error updating inventory: {str(e)}")
+            show_copyable_error("Error", f"Error updating inventory: {str(e)}")
 
     # Buttons
     button_frame = tk.Frame(dialog)
@@ -1537,8 +2002,9 @@ def on_tab_change(event):
     tab_text = tab_control.tab(selected_tab, "text")
 
     if tab_text == "Create Product":
-        # Load all existing tags for the list when Create Product tab is selected
+        # Load all existing tags and materials for the list when Create Product tab is selected
         load_all_tags_for_list()
+        load_all_materials_for_list()
     elif tab_text == "Search":
         # Auto-load all products when Search tab is selected
         search_query.delete(0, tk.END)  # Clear search field
@@ -1556,6 +2022,7 @@ tab_control.bind("<<NotebookTabChanged>>", on_tab_change)
 tk.Label(create_tab, text="Name:").grid(row=0, column=0, sticky="e", padx=5, pady=5)
 entry_name = tk.Entry(create_tab, width=50)
 entry_name.grid(row=0, column=1, columnspan=3, pady=5, padx=5, sticky="w")
+add_copy_menu_to_entry(entry_name)
 
 # Description field (longer field)
 tk.Label(create_tab, text="Description:").grid(
@@ -1563,6 +2030,7 @@ tk.Label(create_tab, text="Description:").grid(
 )
 entry_description = tk.Entry(create_tab, width=50)
 entry_description.grid(row=1, column=1, columnspan=3, pady=5, padx=5, sticky="w")
+add_copy_menu_to_entry(entry_description)
 
 # Category section (important for SKU generation)
 tk.Label(create_tab, text="Category:").grid(row=2, column=0, sticky="e", padx=5, pady=5)
@@ -1589,19 +2057,25 @@ tk.Checkbutton(create_tab, text="Production Ready", variable=var_production).gri
     row=3, column=1, sticky="w", pady=5, padx=5
 )
 
+# Rating section
+tk.Label(create_tab, text="Rating:").grid(row=4, column=0, sticky="e", pady=5, padx=5)
+rating_widget = CheckRating(create_tab, initial_rating=0)
+rating_widget.grid(row=4, column=1, sticky="w", pady=5, padx=5)
+
 # Tags section
 tk.Label(create_tab, text="Tags:", font=("Arial", 10, "bold")).grid(
-    row=5, column=0, sticky="e", pady=5, padx=5
+    row=6, column=0, sticky="e", pady=5, padx=5
 )
 
 # Tag input frame (left side)
 tag_input_frame = tk.Frame(create_tab)
-tag_input_frame.grid(row=5, column=1, columnspan=2, pady=5, padx=5, sticky="w")
+tag_input_frame.grid(row=6, column=1, columnspan=2, pady=5, padx=5, sticky="w")
 
 # Tag input entry (simple text field)
 tag_entry = tk.Entry(tag_input_frame, width=30)
 tag_entry.pack(side=tk.LEFT, padx=(0, 10))
 tag_entry.bind("<KeyRelease>", filter_tag_list)
+add_copy_menu_to_entry(tag_entry)
 
 # Add tag button
 add_btn = tk.Button(tag_input_frame, text="Add Tag", command=add_tag)
@@ -1626,9 +2100,53 @@ delete_tag_btn.pack(pady=(5, 0))
 tags_frame = tk.Frame(create_tab)
 tags_frame.grid(row=6, column=0, columnspan=6, pady=10, padx=5, sticky="w")
 
+# Materials section
+tk.Label(create_tab, text="Materials:", font=("Arial", 10, "bold")).grid(
+    row=7, column=0, sticky="e", pady=5, padx=5
+)
+
+# Material input frame (left side)
+material_input_frame = tk.Frame(create_tab)
+material_input_frame.grid(row=7, column=1, columnspan=2, pady=5, padx=5, sticky="w")
+
+# Material input entry (simple text field)
+material_entry = tk.Entry(material_input_frame, width=30)
+material_entry.pack(side=tk.LEFT, padx=(0, 10))
+material_entry.bind("<KeyRelease>", lambda e: filter_material_list())
+add_copy_menu_to_entry(material_entry)
+
+# Add material button
+add_material_btn = tk.Button(
+    material_input_frame, text="Add Material", command=add_material
+)
+add_material_btn.pack(side=tk.LEFT)
+
+# Available materials list (positioned to the right)
+material_list_frame = tk.Frame(create_tab)
+material_list_frame.grid(row=7, column=3, columnspan=2, pady=5, padx=5, sticky="w")
+
+tk.Label(
+    material_list_frame, text="Available Materials:", font=("Arial", 9, "bold")
+).pack(anchor="w")
+material_listbox = tk.Listbox(
+    material_list_frame, width=30, height=8, selectmode=tk.SINGLE
+)
+material_listbox.pack(fill=tk.BOTH, expand=True)
+material_listbox.bind("<Double-1>", add_material_from_list)
+
+# Delete material button
+delete_material_btn = tk.Button(
+    material_list_frame, text="Delete Material", command=delete_unused_material
+)
+delete_material_btn.pack(pady=(5, 0))
+
+# Current materials display frame
+materials_frame = tk.Frame(create_tab)
+materials_frame.grid(row=8, column=0, columnspan=6, pady=10, padx=5, sticky="w")
+
 # Create tab buttons
 create_button_frame = tk.Frame(create_tab)
-create_button_frame.grid(row=7, column=0, columnspan=6, pady=15)
+create_button_frame.grid(row=9, column=0, columnspan=6, pady=15)
 
 tk.Button(create_button_frame, text="Clear", command=clear_form).pack(
     side=tk.LEFT, padx=5
@@ -1647,6 +2165,7 @@ tk.Label(search_frame, text="Search:").grid(row=0, column=0, sticky="e", padx=5,
 search_query = tk.Entry(search_frame, width=50)
 search_query.grid(row=0, column=1, padx=5, pady=2)
 search_query.bind("<KeyRelease>", lambda e: search_products())  # Active filtering
+add_copy_menu_to_entry(search_query)
 tk.Label(search_frame, text="(searches name, SKU, and tags)").grid(
     row=0, column=2, padx=5, pady=2
 )

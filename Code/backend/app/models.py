@@ -63,6 +63,7 @@ class Product(Base):
     color = Column(Text)  # Color of print
     print_time = Column(Text)  # Print time (HH:MM or HH:MM:SS format)
     weight = Column(Integer)  # Weight in grams
+    rating = Column(Integer, default=0, nullable=False)  # 0-5 star rating
 
     # Inventory management fields (sales-focused)
     stock_quantity = Column(Integer, default=0)  # Current stock count

@@ -8,8 +8,7 @@ from .database import SessionLocal, create_tables
 from . import tag_utils
 from ensure_file_structure import (
     create_product_folder,
-    update_metadata,
-)  # <-- fixed import
+)  # import function
 
 app = FastAPI()
 
@@ -90,6 +89,7 @@ def search_products(search_term: str = Query("", min_length=0, max_length=100)):
                         "color": p.color,
                         "print_time": p.print_time,
                         "weight": p.weight,
+                        "rating": p.rating,
                         "stock_quantity": p.stock_quantity,
                         "reorder_point": p.reorder_point,
                         "unit_cost": p.unit_cost,
@@ -151,6 +151,7 @@ def search_products(search_term: str = Query("", min_length=0, max_length=100)):
                         "color": p.color,
                         "print_time": p.print_time,
                         "weight": p.weight,
+                        "rating": p.rating,
                         "stock_quantity": p.stock_quantity,
                         "reorder_point": p.reorder_point,
                         "unit_cost": p.unit_cost,
@@ -236,6 +237,31 @@ def suggest_tags(q: str = Query(..., min_length=1, max_length=50)):
     db: Session = SessionLocal()
     try:
         return tag_utils.suggest_tags(db, q, limit=10)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@app.post("/tags")
+def create_tag(tag: schemas.TagCreate):
+    """
+    Create a new tag
+    """
+    db: Session = SessionLocal()
+    try:
+        # Check if tag exists
+        existing = db.query(crud.models.Tag).filter(models.Tag.name == tag.name).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Tag already exists")
+
+        db_tag = models.Tag(name=tag.name)
+        db.add(db_tag)
+        db.commit()
+        db.refresh(db_tag)
+        return {"id": db_tag.id, "name": db_tag.name}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
@@ -663,14 +689,14 @@ def delete_product(
 
         # Delete files if requested
         if delete_files:
-            # Reconstruct folder path from SKU to ensure it's correct
+            # Use stored folder path
             import os
-            from ensure_file_structure import BASE_DIR
 
-            folder_path = os.path.join(BASE_DIR, product.sku)
-            print(
-                f"DEBUG: delete_files requested, reconstructed folder_path = {folder_path}"
+            # Convert host path to container path for Docker volume access
+            folder_path = product.folder_path.replace(
+                "/home/grbrum/Work/3d_print/Products", "/Products", 1
             )
+            print(f"DEBUG: delete_files requested, folder_path = {folder_path}")
 
             try:
                 if os.path.exists(folder_path):
@@ -723,7 +749,7 @@ def update_inventory(product_id: int, inventory: dict):
         db.commit()
         db.refresh(product)
 
-        return {"sku": sku, "message": "Inventory updated successfully"}
+        return {"sku": product.sku, "message": "Inventory updated successfully"}
     except HTTPException:
         raise
     except Exception as e:

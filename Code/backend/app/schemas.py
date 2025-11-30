@@ -76,6 +76,7 @@ class ProductBase(BaseModel):
     color: Optional[str] = None
     print_time: Optional[str] = None
     weight: Optional[int] = None
+    rating: int = 0  # 0-5 star rating
     # Inventory management fields
     stock_quantity: Optional[int] = 0
     reorder_point: Optional[int] = 0

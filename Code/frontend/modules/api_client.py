@@ -1,6 +1,6 @@
 # frontend/modules/api_client.py
 import requests
-from .constants import API_URL, CATEGORIES_URL
+from .constants import API_URL, TAGS_URL, MATERIALS_URL
 
 
 def api_request(method: str, url: str, data=None):
@@ -18,13 +18,32 @@ def api_request(method: str, url: str, data=None):
         raise Exception(f"API error: {str(e)}")
 
 
-def save_product_changes(product_sku: str, payload: dict):
+def save_product_changes(product_id: int, payload: dict):
     """
     Save product changes via API.
     Returns True on success, raises Exception on failure.
     """
-    api_request("PUT", f"{API_URL}{product_sku}", payload)
+    payload["product_id"] = product_id
+    api_request("POST", f"{API_URL}", payload)
     return True
+
+
+def create_tag(tag_name: str):
+    """
+    Create a new tag via API.
+    Returns the created tag dict on success, raises Exception on failure.
+    """
+    payload = {"name": tag_name}
+    return api_request("POST", f"{TAGS_URL}", payload)
+
+
+def create_material(material_name: str):
+    """
+    Create a new material via API.
+    Returns the created material dict on success, raises Exception on failure.
+    """
+    payload = {"name": material_name}
+    return api_request("POST", f"{MATERIALS_URL}", payload)
 
 
 def apply_inventory_adjustment(

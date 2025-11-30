@@ -48,6 +48,18 @@ def display_search_results(results_text_widget, search_results_list):
             tags = ", ".join(tag.get("name", "") for tag in tags_list)
         else:
             tags = ", ".join(tags_list)
+
+        # Handle materials as list of strings or dicts
+        materials_list = product.get("materials", [])
+        if materials_list and isinstance(materials_list[0], dict):
+            materials = ", ".join(mat.get("name", "") for mat in materials_list)
+        else:
+            materials = ", ".join(materials_list)
+
+        # Handle rating
+        rating = product.get("rating", 0)
+        rating_display = " ".join("X" if i < rating else " " for i in range(5))
+
         production = "Production" if product.get("production") else "Prototype"
 
         results_text_widget.insert(tk.END, f"{i + 1}. {sku} - {name}\n")
@@ -55,6 +67,9 @@ def display_search_results(results_text_widget, search_results_list):
             results_text_widget.insert(tk.END, f"   Description: {description}\n")
         if tags:
             results_text_widget.insert(tk.END, f"   Tags: {tags}\n")
+        if materials:
+            results_text_widget.insert(tk.END, f"   Materials: {materials}\n")
+        results_text_widget.insert(tk.END, f"   Rating: {rating_display}\n")
         results_text_widget.insert(tk.END, f"   Status: {production}\n\n")
 
 

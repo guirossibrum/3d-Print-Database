@@ -5,8 +5,7 @@ from app import crud, schemas
 from app.database import SessionLocal
 from ensure_file_structure import (
     create_product_folder,
-    update_metadata,
-)  # <-- fixed import
+)  # import function
 
 PRODUCTS_DIR = "/Products"
 
