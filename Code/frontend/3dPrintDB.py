@@ -618,9 +618,10 @@ def load_all_materials_for_list():
                 for m in all_available_materials:
                     material_listbox.insert(tk.END, m["name"])
         else:
-            show_copyable_error(
+            ErrorDialog(
+                root,
                 "Materials Error",
-                f"Failed to load materials: {response.status_code} - {response.text[:200]}",
+                f"Error loading materials: {response.status_code} - {response.text[:200]}",
             )
     except Exception as e:
         show_copyable_error("Materials Error", f"Error loading materials: {str(e)}")
