@@ -794,8 +794,8 @@ def build_product_payload(
 def create_item():
     name = entry_name.get().strip()
     description = entry_description.get().strip()
-    production = var_production.get()
-    active = var_active.get()
+    production = production_toggles["production"].get()
+    active = production_toggles["active"].get()
 
     if not name:
         show_copyable_error("Error", "Name is required")
