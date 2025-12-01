@@ -282,3 +282,75 @@ class MultiSelectionWidget:
 
         if self.callback:
             self.callback(self.current_items)
+
+  # This was probably deprecated - replaced by code above. Needs checking          
+def delete_unused_tag():
+    """Delete the selected tag if it's not used by any products"""
+    selection = tag_listbox.curselection()
+    if not selection:
+        messagebox.showwarning("No Selection", "Please select a tag to delete.")
+        return
+
+    selected_tag = tag_listbox.get(selection[0])
+
+    # Confirm deletion
+    if not messagebox.askyesno(
+        "Confirm Deletion",
+        f"Are you sure you want to delete the tag '{selected_tag}'?\n\n"
+        "This will only work if the tag is not used by any products.",
+    ):
+        return
+
+    try:
+        # Check if tag is used and delete if unused
+        response = requests.delete(f"{API_URL}../tags/{selected_tag}")
+        if response.status_code == 200:
+            # Refresh the tag list
+            load_all_tags_for_list()
+        elif response.status_code == 400:
+            show_copyable_error(
+                "Cannot Delete",
+                f"Tag '{selected_tag}' is still used by products and cannot be deleted.",
+            )
+        else:
+            show_copyable_error("Error", f"Failed to delete tag: {response.text}")
+    except Exception as e:
+        show_copyable_error("Error", f"Error deleting tag: {str(e)}")
+        # No need to refresh list since we're using existing tags
+
+
+def delete_unused_material():
+    """Delete the selected material if it's not used by any products"""
+    selection = material_listbox.curselection()
+    if not selection:
+        messagebox.showwarning("No Selection", "Please select a material to delete.")
+        return
+
+    selected_material = material_listbox.get(selection[0])
+
+    # Confirm deletion
+    if not messagebox.askyesno(
+        "Confirm Deletion",
+        f"Are you sure you want to delete the material '{selected_material}'?\n\n"
+        "This will only work if the material is not used by any products.",
+    ):
+        return
+
+    try:
+        # Check if material is used and delete if unused
+        response = requests.delete(
+            f"http://localhost:8000/materials/{selected_material}"
+        )
+        if response.status_code == 200:
+            # Refresh the material list
+            load_all_materials_for_list()
+        elif response.status_code == 400:
+            show_copyable_error(
+                "Cannot Delete",
+                f"Material '{selected_material}' is still used by products and cannot be deleted.",
+            )
+        else:
+            show_copyable_error("Error", f"Failed to delete material: {response.text}")
+    except Exception as e:
+        show_copyable_error("Error", f"Error deleting material: {str(e)}")
+        # No need to refresh list since we're using existing materials

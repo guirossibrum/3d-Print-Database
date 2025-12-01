@@ -209,3 +209,133 @@ def add_copy_menu_to_entry(entry_widget, root):
     entry_widget.bind("<Button-3>", show_menu)  # Right-click
     entry_widget.bind("<Control-c>", lambda e: copy_entry_text(entry_widget))  # Ctrl+C
     entry_widget.bind("<Control-v>", lambda e: paste_to_entry(entry_widget))  # Ctrl+V
+
+def get_tag_ids_from_names(tag_names):
+    """Convert tag names to tag IDs"""
+    return [
+        tag["id"]
+        for tag in all_available_tags
+        if tag["name"] in tag_names and tag["id"] is not None
+    ]
+
+
+def get_material_ids_from_names(material_names):
+    """Convert material names to material IDs"""
+    return [
+        mat["id"]
+        for mat in all_available_materials
+        if mat["name"] in material_names and mat["id"] is not None
+
+def build_product_payload(
+    name,
+    description,
+    production,
+    active,
+    category_id,
+    rating,
+    tag_names,
+    material_names,
+    **extra_fields,
+):
+    """Build product payload for create/update operations"""
+    payload = {
+        "name": name,
+        "description": description,
+        "tag_ids": get_tag_ids_from_names(tag_names),
+        "material_ids": get_material_ids_from_names(material_names),
+        "production": production,
+        "active": active,
+        "category_id": category_id,
+        "rating": rating,
+    }
+    payload.update(extra_fields)  # Add any additional fields
+    return payload
+
+
+def create_item():
+    name = entry_name.get().strip()
+    description = entry_description.get().strip()
+    production = production_toggles["production"].get()
+    active = production_toggles["active"].get()
+
+    if not name:
+        show_copyable_error("Error", "Name is required")
+        return
+
+    if not selected_category_id:
+        show_copyable_error("Error", "Please select a category")
+        return
+
+    # Build JSON payload using shared function
+    payload = build_product_payload(
+        name=name,
+        description=description,
+        production=production,
+        active=active,
+        category_id=selected_category_id,
+        rating=rating_widget.get_rating(),
+        tag_names=current_tags,
+        material_names=current_materials,
+    )
+
+    try:
+        response = requests.post(API_URL, json=payload)
+        if response.status_code == 200:
+            messagebox.showinfo(
+                "Success", f"Product created: {response.json().get('sku')}"
+            )
+            update_available_tags(current_tags)
+            clear_form()
+        else:
+            show_copyable_error("Error", f"Failed to create product\n{response.text}")
+    except Exception as e:
+        show_copyable_error("Error", str(e))
+
+
+def load_all_tags_for_list():
+    """Load all existing tags to populate the listbox"""
+    global all_available_tags
+
+    try:
+        response = requests.get(TAGS_URL, timeout=5)  # Synchronous for debugging
+        if response.status_code == 200:
+            data = response.json()
+            all_available_tags = sorted(data, key=lambda x: x["name"])
+            # Update listbox immediately
+            filter_tag_list()
+        else:
+            # Show error for debugging
+            show_copyable_error(
+                "Tags Error",
+                f"Failed to load tags: {response.status_code} - {response.text[:200]}",
+            )
+    except Exception as e:
+        # Show error for debugging
+        show_copyable_error("Tags Error", f"Error loading tags: {str(e)}")
+
+
+def load_all_materials_for_list():
+    """Load all existing materials to populate the listbox"""
+    global all_available_materials
+
+    try:
+        response = requests.get("http://localhost:8000/materials", timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            all_available_materials = sorted(data, key=lambda x: x["name"])
+            # Update listboxes if exist
+            if "edit_material_listbox" in globals():
+                edit_material_listbox.delete(0, tk.END)
+                for m in all_available_materials:
+                    edit_material_listbox.insert(tk.END, m["name"])
+            if "material_listbox" in globals():
+                material_listbox.delete(0, tk.END)
+                for m in all_available_materials:
+                    material_listbox.insert(tk.END, m["name"])
+        else:
+            show_copyable_error(
+                "Materials Error",
+                f"Failed to load materials: {response.status_code} - {response.text[:200]}",
+            )
+    except Exception as e:
+        show_copyable_error("Materials Error", f"Error loading materials: {str(e)}")

@@ -156,3 +156,48 @@ def load_product_from_search(
             )
     except Exception as e:
         messagebox.showerror("Error", f"Error loading product: {str(e)}")
+
+def update_available_tags(new_tags_list):
+    """Update available tags list and refresh listboxes"""
+    global all_available_tags
+    for tag_name in new_tags_list:
+        # Check if tag already exists (by name)
+        existing = next((t for t in all_available_tags if t["name"] == tag_name), None)
+        if not existing:
+            # Add new tag with dummy ID
+            all_available_tags.append({"id": None, "name": tag_name})
+    all_available_tags.sort(key=lambda x: x["name"])
+    # Update main listbox
+    tag_listbox.delete(0, tk.END)
+    for tag in all_available_tags:
+        tag_listbox.insert(tk.END, tag["name"])
+    # Update edit listbox if exists
+    if "edit_tag_listbox" in globals():
+        edit_tag_listbox.delete(0, tk.END)
+        for tag in all_available_tags:
+            edit_tag_listbox.insert(tk.END, tag["name"])
+
+def filter_tag_list(event=None):
+    """Filter the tag list based on input text"""
+    filter_text = tag_entry.get().strip().lower()
+
+    # Clear current list
+    tag_listbox.delete(0, tk.END)
+
+    # Filter and add matching tags
+    for tag in all_available_tags:
+        if not filter_text or filter_text in tag["name"].lower():
+            tag_listbox.insert(tk.END, tag["name"])
+
+
+def filter_material_list(event=None):
+    """Filter the material list based on input text"""
+    filter_text = material_entry.get().strip().lower()
+
+    # Clear current list
+    material_listbox.delete(0, tk.END)
+
+    # Filter and add matching materials
+    for material in all_available_materials:
+        if not filter_text or filter_text in material["name"].lower():
+            material_listbox.insert(tk.END, material["name"])

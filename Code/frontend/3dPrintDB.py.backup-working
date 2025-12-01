@@ -1,8 +1,16 @@
-# frontend/modules/ui_components.py
-"""Reusable UI components"""
+#!/usr/bin/env python3
 
 import tkinter as tk
+from tkinter import ttk, scrolledtext
 from tkinter import messagebox
+from tkinter import filedialog
+import requests
+import json
+import os
+import sys
+import subprocess
+import time
+from pathlib import Path
 
 
 class CheckRating(tk.Frame):
@@ -69,126 +77,67 @@ class CheckRating(tk.Frame):
         self.update_display()
 
 
-class TimeEntry(tk.Frame):
-    """Enhanced time entry widget with smart formatting"""
-
-    def __init__(self, parent, placeholder="__:__"):
-        super().__init__(parent)
-        self.placeholder = placeholder
-
-        self.entry = tk.Entry(self, width=10)
-        self.entry.pack(side="left")
-
-        # Set placeholder
-        self.entry.insert(0, placeholder)
-        self.entry.config(fg="gray")
-
-        # Bind events
-        self.entry.bind("<FocusIn>", self.on_focus_in)
-        self.entry.bind("<FocusOut>", self.on_focus_out)
-        self.entry.bind("<KeyRelease>", self.on_key_release)
-
-    def on_focus_in(self, event):
-        """Handle focus in"""
-        current_text = self.entry.get()
-        if current_text == self.placeholder:
-            self.entry.delete(0, tk.END)
-            self.entry.config(fg="black")
-
-    def on_focus_out(self, event):
-        """Handle focus out with formatting"""
-        from .utils import format_time_complete
-
-        format_time_complete(self.entry)
-
-    def on_key_release(self, event):
-        """Handle key release for live formatting"""
-        from .utils import format_time_input_live
-
-        # Schedule formatting to avoid interfering with typing
-        self.after(100, lambda: format_time_input_live(self.entry))
-
-    def get(self):
-        """Get entry value"""
-        return self.entry.get()
-
-    def delete(self, start, end=None):
-        """Delete entry content"""
-        self.entry.delete(start, end)
-
-    def insert(self, index, text):
-        """Insert text into entry"""
-        self.entry.insert(index, text)
-
-    def config(self, **kwargs):
-        """Configure entry widget"""
-        self.entry.config(**kwargs)
-
-    def focus(self):
-        """Set focus to entry"""
-        self.entry.focus()
+# Ensure modules can be imported regardless of current directory
+script_dir = os.path.dirname(os.path.abspath(__file__))
+if script_dir not in sys.path:
+    sys.path.insert(0, script_dir)
 
 
-class ErrorDialog:
-    """Reusable error dialog with copyable text"""
+def show_copyable_error(title, message):
+    """Show error dialog with copyable text using Text widget"""
+    dialog = tk.Toplevel(root)
+    dialog.title(title)
+    dialog.geometry("500x300")
 
-    def __init__(self, parent, title, message):
-        self.dialog = tk.Toplevel(parent)
-        self.dialog.title(title)
-        self.dialog.geometry("500x300")
+    # Error icon and title
+    header_frame = tk.Frame(dialog)
+    header_frame.pack(pady=10, padx=10, fill="x")
 
-        # Error icon and title
-        header_frame = tk.Frame(self.dialog)
-        header_frame.pack(pady=10, padx=10, fill="x")
+    # Simple error icon using text
+    tk.Label(header_frame, text="⚠", font=("Arial", 24), fg="red").pack(
+        side=tk.LEFT, padx=5
+    )
+    tk.Label(header_frame, text=title, font=("Arial", 14, "bold")).pack(
+        side=tk.LEFT, padx=10
+    )
 
-        # Simple error icon using text
-        tk.Label(header_frame, text="⚠", font=("Arial", 24), fg="red").pack(
-            side=tk.LEFT, padx=5
-        )
-        tk.Label(header_frame, text=title, font=("Arial", 14, "bold")).pack(
-            side=tk.LEFT, padx=10
-        )
+    # Text widget for copyable message
+    text_frame = tk.Frame(dialog)
+    text_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
-        # Text widget for copyable message
-        text_frame = tk.Frame(self.dialog)
-        text_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+    text_widget = tk.Text(text_frame, wrap=tk.WORD, height=10, padx=5, pady=5)
+    scrollbar = tk.Scrollbar(text_frame, command=text_widget.yview)
+    text_widget.config(yscrollcommand=scrollbar.set)
 
-        self.text_widget = tk.Text(text_frame, wrap=tk.WORD, height=10, padx=5, pady=5)
-        scrollbar = tk.Scrollbar(text_frame, command=self.text_widget.yview)
-        self.text_widget.config(yscrollcommand=scrollbar.set)
+    text_widget.pack(side=tk.LEFT, fill="both", expand=True)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        self.text_widget.pack(side=tk.LEFT, fill="both", expand=True)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    text_widget.insert(tk.END, message)
+    text_widget.config(state=tk.DISABLED)  # Make read-only but selectable
 
-        self.text_widget.insert(tk.END, message)
-        self.text_widget.config(state=tk.DISABLED)  # Make read-only but selectable
+    # Button frame
+    button_frame = tk.Frame(dialog)
+    button_frame.pack(pady=10)
 
-        # Button frame
-        button_frame = tk.Frame(self.dialog)
-        button_frame.pack(pady=10)
+    def copy_to_clipboard():
+        """Copy the error message to clipboard"""
+        root.clipboard_clear()
+        root.clipboard_append(message)
+        # Optional: show brief feedback
+        copy_btn.config(text="Copied!")
+        dialog.after(1000, lambda: copy_btn.config(text="Copy"))
 
-        def copy_to_clipboard():
-            """Copy the error message to clipboard"""
-            parent.clipboard_clear()
-            parent.clipboard_append(message)
-            # Optional: show brief feedback
-            copy_btn.config(text="Copied!")
-            self.dialog.after(1000, lambda: copy_btn.config(text="Copy"))
+    copy_btn = tk.Button(button_frame, text="Copy", command=copy_to_clipboard)
+    copy_btn.pack(side=tk.LEFT, padx=5)
 
-        copy_btn = tk.Button(button_frame, text="Copy", command=copy_to_clipboard)
-        copy_btn.pack(side=tk.LEFT, padx=5)
+    tk.Button(button_frame, text="OK", command=dialog.destroy).pack(
+        side=tk.LEFT, padx=5
+    )
 
-        tk.Button(button_frame, text="OK", command=self.dialog.destroy).pack(
-            side=tk.LEFT, padx=5
-        )
-
-        # Make dialog modal
-        self.dialog.transient(parent)
-        self.dialog.grab_set()
-
-    def show(self):
-        """Show the dialog"""
-        self.dialog.wait_window()
+    # Make dialog modal
+    dialog.transient(root)
+    dialog.grab_set()
+    root.wait_window(dialog)
 
 
 def add_copy_menu_to_entry(entry_widget):
@@ -209,15 +158,15 @@ def add_copy_menu_to_entry(entry_widget):
     entry_widget.bind("<Control-v>", lambda e: paste_to_entry(entry_widget))  # Ctrl+V
 
 
-def copy_entry_text(entry_widget, root):
-    """Copy text from an Entry widget to clipboard"""
+def copy_entry_text(entry_widget):
+    """Copy the text from an Entry widget to clipboard"""
     text = entry_widget.get()
     if text:
         root.clipboard_clear()
         root.clipboard_append(text)
 
 
-def paste_to_entry(entry_widget, root):
+def paste_to_entry(entry_widget):
     """Paste text from clipboard to Entry widget"""
     try:
         text = root.clipboard_get()
@@ -228,6 +177,20 @@ def paste_to_entry(entry_widget, root):
     except tk.TclError:
         # Clipboard empty or unavailable
         pass
+
+
+# FastAPI endpoints
+API_URL = "http://localhost:8000/products/"
+TAGS_URL = "http://localhost:8000/tags"
+TAGS_SUGGEST_URL = "http://localhost:8000/tags/suggest"
+SEARCH_URL = "http://localhost:8000/products/search"
+CATEGORIES_URL = "http://localhost:8000/categories"
+INVENTORY_URL = "http://localhost:8000/inventory/status"
+
+from modules.api_client import *
+from modules import search
+from modules.toggles import create_production_active_group
+
 
 # Tag display functions (copied from modules for compatibility)
 def update_tag_display(tags_list, display_frame, layout="pack"):
@@ -339,7 +302,7 @@ def add_popup_tag(widget, tags_list, display_frame, listbox=None, item_type="tag
                     for item in available_items:
                         listbox.insert(tk.END, item["name"])
             except Exception as e:
-                ErrorDialog(root, "Error", f"Failed to create {item_type}: {str(e)}")
+                show_copyable_error("Error", f"Failed to create {item_type}: {str(e)}")
                 return
 
         tags_list.append(item_text)
@@ -367,25 +330,7 @@ def add_tag_from_listbox(listbox, current_tags, update_func):
             update_func(current_tags)
 
 
-def update_available_tags(new_tags_list):
-    """Update available tags list and refresh listboxes"""
-    global all_available_tags
-    for tag_name in new_tags_list:
-        # Check if tag already exists (by name)
-        existing = next((t for t in all_available_tags if t["name"] == tag_name), None)
-        if not existing:
-            # Add new tag with dummy ID
-            all_available_tags.append({"id": None, "name": tag_name})
-    all_available_tags.sort(key=lambda x: x["name"])
-    # Update main listbox
-    tag_listbox.delete(0, tk.END)
-    for tag in all_available_tags:
-        tag_listbox.insert(tk.END, tag["name"])
-    # Update edit listbox if exists
-    if "edit_tag_listbox" in globals():
-        edit_tag_listbox.delete(0, tk.END)
-        for tag in all_available_tags:
-            edit_tag_listbox.insert(tk.END, tag["name"])
+
 
 
 # Global variables
@@ -730,6 +675,56 @@ def remove_material(material_to_remove):
         update_material_display(current_materials, materials_frame, "grid")
 
 
+# Removed autocomplete functions - using list-based tag selection now
+
+
+
+
+
+def get_tag_ids_from_names(tag_names):
+    """Convert tag names to tag IDs"""
+    return [
+        tag["id"]
+        for tag in all_available_tags
+        if tag["name"] in tag_names and tag["id"] is not None
+    ]
+
+
+def get_material_ids_from_names(material_names):
+    """Convert material names to material IDs"""
+    return [
+        mat["id"]
+        for mat in all_available_materials
+        if mat["name"] in material_names and mat["id"] is not None
+    ]
+
+
+def filter_tag_list(event=None):
+    """Filter the tag list based on input text"""
+    filter_text = tag_entry.get().strip().lower()
+
+    # Clear current list
+    tag_listbox.delete(0, tk.END)
+
+    # Filter and add matching tags
+    for tag in all_available_tags:
+        if not filter_text or filter_text in tag["name"].lower():
+            tag_listbox.insert(tk.END, tag["name"])
+
+
+def filter_material_list(event=None):
+    """Filter the material list based on input text"""
+    filter_text = material_entry.get().strip().lower()
+
+    # Clear current list
+    material_listbox.delete(0, tk.END)
+
+    # Filter and add matching materials
+    for material in all_available_materials:
+        if not filter_text or filter_text in material["name"].lower():
+            material_listbox.insert(tk.END, material["name"])
+
+
 def add_tag_from_list(event=None):
     """Add selected tag from the listbox"""
     add_tag_from_listbox(
@@ -750,6 +745,113 @@ def add_material_from_list(event=None):
     )
     material_entry.delete(0, tk.END)  # Clear input
     material_entry.focus()
+
+
+
+
+
+def build_product_payload(
+    name,
+    description,
+    production,
+    active,
+    category_id,
+    rating,
+    tag_names,
+    material_names,
+    **extra_fields,
+):
+    """Build product payload for create/update operations"""
+    payload = {
+        "name": name,
+        "description": description,
+        "tag_ids": get_tag_ids_from_names(tag_names),
+        "material_ids": get_material_ids_from_names(material_names),
+        "production": production,
+        "active": active,
+        "category_id": category_id,
+        "rating": rating,
+    }
+    payload.update(extra_fields)  # Add any additional fields
+    return payload
+
+
+def create_item():
+    name = entry_name.get().strip()
+    description = entry_description.get().strip()
+    production = var_production.get()
+    active = var_active.get()
+
+    if not name:
+        show_copyable_error("Error", "Name is required")
+        return
+
+    if not selected_category_id:
+        show_copyable_error("Error", "Please select a category")
+        return
+
+    # Build JSON payload using shared function
+    payload = build_product_payload(
+        name=name,
+        description=description,
+        production=production,
+        active=active,
+        category_id=selected_category_id,
+        rating=rating_widget.get_rating(),
+        tag_names=current_tags,
+        material_names=current_materials,
+    )
+
+    try:
+        response = requests.post(API_URL, json=payload)
+        if response.status_code == 200:
+            messagebox.showinfo(
+                "Success", f"Product created: {response.json().get('sku')}"
+            )
+            update_available_tags(current_tags)
+            clear_form()
+        else:
+            show_copyable_error("Error", f"Failed to create product\n{response.text}")
+    except Exception as e:
+        show_copyable_error("Error", str(e))
+
+
+# --- Update/Search Functions ---
+
+
+def show_edit_callback(product):
+    """Callback to show edit dialog and set dialog_open"""
+    global dialog_open
+    dialog_open = True
+    show_edit_product_dialog(product)
+
+
+# load_product_for_edit function removed - now using popup dialogs
+
+
+# update_product function removed - now using popup dialogs
+
+
+# clear_edit_form function removed - now using popup dialogs
+
+
+# discard_edit function removed - now using popup dialogs
+
+
+# --- Category Management Functions ---
+def load_categories():
+    """Load categories from API"""
+    global categories
+    try:
+        response = requests.get(CATEGORIES_URL)
+        if response.status_code == 200:
+            categories = response.json()
+            update_category_dropdown()
+        else:
+            show_copyable_error("Error", f"Failed to load categories: {response.text}")
+    except Exception as e:
+        show_copyable_error("Error", f"Error loading categories: {str(e)}")
+
 
 def update_category_dropdown():
     """Update the category dropdown with current categories"""
@@ -840,6 +942,7 @@ def create_new_category():
     dialog.transient(root)
     dialog.grab_set()
     root.wait_window(dialog)
+
 
 def edit_category():
     """Edit selected category via dialog"""
@@ -983,11 +1086,176 @@ def on_category_select(event):
         if category:
             selected_category_id = category["id"]
 
-def show_edit_callback(product):
-    """Callback to show edit dialog and set dialog_open"""
-    global dialog_open
-    dialog_open = True
-    show_edit_product_dialog(product)
+
+# open_product_folder function updated to work with popup dialogs
+
+
+# delete_product function removed - now in popup dialogs
+
+
+# Edit tag management functions removed - now using popup dialogs
+
+
+# --- Inventory Management Functions ---
+def load_inventory_status():
+    """Load and display inventory status for all products"""
+    global inventory_tree, include_out_of_stock_var, need_to_produce_var
+    try:
+        response = requests.get(INVENTORY_URL)
+        if response.status_code == 200:
+            inventory_data = response.json()
+
+            # Filter data based on checkboxes
+            filtered_data = []
+            for item in inventory_data:
+                if (
+                    not include_out_of_stock_var.get()
+                    and item.get("status") == "out_of_stock"
+                    and item.get("reorder_point", 0) != 0
+                ):
+                    continue
+                if need_to_produce_var.get() and item.get(
+                    "stock_quantity", 0
+                ) > item.get("reorder_point", 0):
+                    continue
+                filtered_data.append(item)
+
+            # Clear existing items
+            for item in inventory_tree.get_children():
+                inventory_tree.delete(item)
+
+            # Add inventory items
+            total_value = 0
+            low_stock_count = 0
+            out_of_stock_count = 0
+
+            for item in filtered_data:
+                # Format values for display
+                unit_cost = (
+                    f"${item['unit_cost'] / 100:.2f}" if item["unit_cost"] else "N/A"
+                )
+                selling_price = (
+                    f"${item['selling_price'] / 100:.2f}"
+                    if item["selling_price"]
+                    else "N/A"
+                )
+                total_value_item = (
+                    f"${item['total_value'] / 100:.2f}"
+                    if item["total_value"]
+                    else "N/A"
+                )
+                profit_margin = (
+                    f"{item['profit_margin']:.1f}%"
+                    if item["profit_margin"] is not None
+                    else "N/A"
+                )
+
+                # Color code status
+                status = item["status"].replace("_", " ").title()
+                if item["status"] == "out_of_stock":
+                    status = "OUT OF STOCK"
+                    out_of_stock_count += 1
+                elif item["status"] == "low_stock":
+                    status = "LOW STOCK"
+                    low_stock_count += 1
+
+                inventory_tree.insert(
+                    "",
+                    tk.END,
+                    values=(
+                        item["sku"],
+                        item["name"],
+                        item["stock_quantity"],
+                        item["reorder_point"],
+                        unit_cost,
+                        selling_price,
+                        total_value_item,
+                        profit_margin,
+                        status,
+                    ),
+                    tags=(item["id"],),
+                )
+
+                if item["total_value"]:
+                    total_value += item["total_value"]
+
+            # Update summary
+            summary_text.config(state=tk.NORMAL)
+            summary_text.delete(1.0, tk.END)
+            summary_text.insert(
+                tk.END,
+                f"Total Products: {len(inventory_data)} | "
+                f"Total Value: ${total_value / 100:.2f} | "
+                f"Low Stock: {low_stock_count} | "
+                f"Out of Stock: {out_of_stock_count}",
+            )
+            summary_text.config(state=tk.DISABLED)
+
+        else:
+            show_copyable_error("Error", f"Failed to load inventory: {response.text}")
+    except Exception as e:
+        show_copyable_error("Error", f"Error loading inventory: {str(e)}")
+
+
+def sort_inventory_column(col):
+    """Sort inventory Treeview by column"""
+    global inventory_tree, inventory_sort_orders
+    if col not in inventory_sort_orders:
+        inventory_sort_orders[col] = True  # ascending first
+    else:
+        inventory_sort_orders[col] = not inventory_sort_orders[col]
+    ascending = inventory_sort_orders[col]
+
+    # Get all items with their values
+    items = []
+    for item in inventory_tree.get_children():
+        values = inventory_tree.item(item, "values")
+        items.append((values, item))
+
+    # Define column index
+    columns = (
+        "sku",
+        "name",
+        "stock",
+        "reorder",
+        "cost",
+        "price",
+        "value",
+        "margin",
+        "status",
+    )
+    col_index = columns.index(col)
+
+    def sort_key(item_values):
+        val = item_values[0][col_index]
+        if col in ("stock", "reorder", "cost", "price", "value"):
+            try:
+                return int(val) if val else 0
+            except ValueError:
+                return 0
+        elif col == "margin":
+            try:
+                return float(val) if val else 0.0
+            except ValueError:
+                return 0.0
+        else:
+            return str(val).lower()
+
+    items.sort(key=lambda x: sort_key(x), reverse=not ascending)
+
+    # Clear tree
+    for item in inventory_tree.get_children():
+        inventory_tree.delete(item)
+
+    # Reinsert sorted items
+    for values, item_id in items:
+        inventory_tree.insert("", "end", values=values)
+
+
+# Global flag to prevent multiple dialogs
+dialog_open = False
+
+
 def do_search():
     global \
         var_include_inactive, \
@@ -1017,6 +1285,110 @@ def add_tag_from_listbox(listbox, current_tags, update_func):
         if tag not in current_tags:
             current_tags.append(tag)
             update_func(current_tags)
+
+
+def apply_inventory_adjustment(
+    sku: str,
+    product_id: int,
+    operation,
+    quantity: int,
+    current_stock: int,
+    reorder_point=None,
+):
+    """
+    Apply inventory adjustment via API.
+    Returns success message on success, raises Exception on failure.
+    """
+    if operation == "sold" and quantity > current_stock:
+        raise ValueError(
+            f"Cannot sell {quantity} items. Only {current_stock} in stock."
+        )
+
+    payload = {}
+    if operation:
+        new_stock = (
+            current_stock + quantity
+            if operation == "printed"
+            else current_stock - quantity
+        )
+        payload["stock_quantity"] = new_stock
+
+    if reorder_point is not None:
+        payload["reorder_point"] = reorder_point
+
+    if not payload:
+        return "No changes made"
+
+    response = requests.put(
+        f"http://localhost:8000/inventory/{product_id}", json=payload
+    )
+    if response.status_code == 200:
+        operation_text = "added to" if operation == "printed" else "removed from"
+        msg = ""
+        if operation:
+            msg += f"{quantity} items {operation_text} inventory"
+        if reorder_point is not None:
+            if msg:
+                msg += f" and reorder point set to {reorder_point}"
+            else:
+                msg += f"Reorder point set to {reorder_point}"
+        return msg + f" for {sku}"
+    else:
+        raise Exception(f"Failed to update inventory: {response.text}")
+
+
+def create_category_via_api(name: str, initials: str, description: str):
+    """
+    Create category via API.
+    Returns the created category data on success, raises Exception on failure.
+    """
+    response = requests.post(
+        CATEGORIES_URL,
+        json={
+            "name": name,
+            "sku_initials": initials,
+            "description": description,
+        },
+    )
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"Failed to create category: {response.text}")
+
+
+def update_category_via_api(
+    category_id: int, name: str, initials: str, description: str
+):
+    """
+    Update category via API.
+    Returns True on success, raises Exception on failure.
+    """
+    response = requests.put(
+        f"{CATEGORIES_URL}/{category_id}",
+        json={
+            "name": name,
+            "sku_initials": initials,
+            "description": description,
+        },
+    )
+    if response.status_code == 200:
+        return True
+    else:
+        raise Exception(f"Failed to update category: {response.text}")
+
+
+def save_product_changes(product_id: int, payload: dict):
+    """
+    Save product changes via API.
+    Returns True on success, raises Exception on failure.
+    """
+    payload["product_id"] = product_id
+    response = requests.post(API_URL, json=payload)
+    if response.status_code == 200:
+        return True
+    else:
+        raise Exception(f"Failed to update product: {response.text}")
+
 
 def show_edit_product_dialog(product):
     """Show popup dialog for editing a product"""
@@ -1493,6 +1865,7 @@ def show_edit_product_dialog(product):
     dialog.transient(root)
     dialog.grab_set()
     root.wait_window(dialog)
+
 
 def adjust_inventory_dialog():
     """Simple dialog for quick inventory adjustments"""
@@ -1609,483 +1982,362 @@ def adjust_inventory_dialog():
     dialog.grab_set()
     root.wait_window(dialog)
 
-def show_edit_product_dialog(product):
-    """Show popup dialog for editing a product"""
-    global edit_current_tags, edit_current_materials, current_product_data, edit_mode
 
-    # Refresh available tags and materials from database
-    load_all_tags_for_list()
-    load_all_materials_for_list()
+# --- GUI ---
+root = tk.Tk()
+root.title("3D Print Database")
+root.attributes("-topmost", True)  # Make window always on top
 
-    # Set global state
-    current_product_data = product
-    edit_mode = True
-    # Handle tags as list of strings or dicts
-    tags_list = product.get("tags", [])
-    if tags_list and isinstance(tags_list[0], dict):
-        edit_current_tags = [tag["name"] for tag in tags_list]
-    else:
-        edit_current_tags = tags_list.copy()
+# Tkinter variables
+include_out_of_stock_var = tk.BooleanVar(value=False)
+need_to_produce_var = tk.BooleanVar(value=False)
+var_include_inactive = tk.BooleanVar(value=False)
+var_include_prototype = tk.BooleanVar(value=False)
 
-    # Handle materials
-    materials_list = product.get("materials", [])
-    if materials_list and isinstance(materials_list[0], dict):
-        edit_current_materials = [m["name"] for m in materials_list]
-    else:
-        edit_current_materials = materials_list.copy()
+tab_control = ttk.Notebook(root)
 
-    # Create edit dialog
-    dialog = tk.Toplevel(root)
-    dialog.title(f"Edit Product - {product['id']}")
-    dialog.geometry("800x700")
+# Create tab frames
+create_tab = ttk.Frame(tab_control)
+update_tab = ttk.Frame(tab_control)
+inventory_tab = ttk.Frame(tab_control)
 
-    # Product info header
-    header_frame = tk.Frame(dialog)
-    header_frame.pack(pady=10, padx=10, fill="x")
+tab_control.add(create_tab, text="Create Product")
+tab_control.add(update_tab, text="Search")
+tab_control.add(inventory_tab, text="Inventory")
 
-    tk.Label(
-        header_frame, text=f"SKU: {product['sku']}", font=("Arial", 12, "bold")
-    ).pack(anchor="w")
-    tk.Label(header_frame, text=f"Name: {product['name']}", font=("Arial", 10)).pack(
-        anchor="w"
-    )
+# Make Search tab the default
+tab_control.select(update_tab)
 
-    # Create main frame for form
-    main_frame = tk.Frame(dialog)
 
-    # Form fields
-    # Name
-    tk.Label(main_frame, text="Name:").grid(row=0, column=0, sticky="e", padx=5, pady=5)
-    edit_name = tk.Entry(main_frame, width=50)
-    name_value = product.get("name", "")
-    if name_value is not None:
-        edit_name.insert(0, str(name_value))
-    edit_name.grid(row=0, column=1, columnspan=3, pady=5, padx=5, sticky="w")
-    add_copy_menu_to_entry(edit_name)
-
-    # Description
-    tk.Label(main_frame, text="Description:").grid(
-        row=1, column=0, sticky="e", padx=5, pady=5
-    )
-    edit_description = tk.Entry(main_frame, width=50)
-    desc_value = product.get("description")
-    if desc_value is not None:
-        edit_description.insert(0, str(desc_value))
-    edit_description.grid(row=1, column=1, columnspan=3, pady=5, padx=5, sticky="w")
-    add_copy_menu_to_entry(edit_description)
-
-    # Production and Active checkboxes
-    edit_var_production = tk.BooleanVar(value=product["production"])
-    tk.Checkbutton(
-        main_frame, text="Production Ready", variable=edit_var_production
-    ).grid(row=2, column=1, sticky="w", pady=5, padx=5)
-
-    edit_var_active = tk.BooleanVar(value=product["active"])
-    tk.Checkbutton(main_frame, text="Active", variable=edit_var_active).grid(
-        row=2, column=2, sticky="w", pady=5, padx=5
-    )
-
-    # Rating
-    tk.Label(main_frame, text="Rating:").grid(
-        row=4, column=0, sticky="e", pady=5, padx=5
-    )
-    edit_rating_widget = CheckRating(
-        main_frame, initial_rating=product.get("rating", 0)
-    )
-    edit_rating_widget.grid(row=4, column=1, sticky="w", pady=5, padx=5)
-
-    # Color
-    tk.Label(main_frame, text="Color:").grid(
-        row=4, column=2, sticky="e", padx=5, pady=2
-    )
-    edit_color = tk.Entry(main_frame, width=20)
-    color_value = product.get("color")
-    if color_value is not None:
-        edit_color.insert(0, str(color_value))
-    edit_color.grid(row=4, column=3, pady=2, padx=5, sticky="w")
-    add_copy_menu_to_entry(edit_color)
-
-    # Print time and Weight
-    tk.Label(main_frame, text="Print Time:").grid(
-        row=5, column=0, sticky="e", padx=5, pady=2
-    )
-    edit_print_time = tk.Entry(main_frame, width=20)
-    print_time_value = product.get("print_time")
-    if print_time_value is not None and str(print_time_value).strip():
-        # Format existing time value
-        try:
-            # Try to parse and format the existing time
-            time_str = str(print_time_value).strip()
-            if ":" in time_str:
-                parts = time_str.split(":")
-                if len(parts) == 2:
-                    hours = parts[0].zfill(2)
-                    minutes = parts[1].zfill(2)
-                    edit_print_time.insert(0, f"{hours}:{minutes}")
-                else:
-                    edit_print_time.insert(0, "__:__")
-            else:
-                edit_print_time.insert(0, "__:__")
-        except:
-            edit_print_time.insert(0, "__:__")
-        edit_print_time.config(fg="black")
-    else:
-        edit_print_time.insert(0, "__:__")
-        edit_print_time.config(fg="gray")
-    edit_print_time.bind("<FocusIn>", lambda e: on_time_focus_in(e))
-    edit_print_time.bind("<FocusOut>", lambda e: on_time_focus_out(e))
-    edit_print_time.bind("<KeyRelease>", on_time_key_release_popup)
-    edit_print_time.grid(row=5, column=1, pady=2, padx=5, sticky="w")
-    add_copy_menu_to_entry(edit_print_time)
-
-    tk.Label(main_frame, text="Weight (g):").grid(
-        row=5, column=2, sticky="e", padx=5, pady=2
-    )
-    edit_weight = tk.Entry(main_frame, width=20)
-    weight_value = product.get("weight")
-    if weight_value is not None:
-        edit_weight.insert(0, str(weight_value))
-    edit_weight.grid(row=5, column=3, pady=2, padx=5, sticky="w")
-    add_copy_menu_to_entry(edit_weight)
-
-    # Tags section
-    tk.Label(main_frame, text="Tags:").grid(
-        row=6, column=0, sticky="ne", pady=5, padx=5
-    )
-
-    edit_tag_frame = tk.Frame(main_frame)
-    edit_tag_frame.grid(row=6, column=1, columnspan=3, pady=5, padx=5, sticky="w")
-
-    edit_tag_entry = tk.Entry(edit_tag_frame, width=30)
-    edit_tag_entry.pack(side=tk.LEFT, padx=(0, 5))
-    add_copy_menu_to_entry(edit_tag_entry)
-
-    edit_add_btn = tk.Button(
-        edit_tag_frame,
-        text="Add Tag(s)",
-        command=lambda: add_popup_tag(
-            edit_tag_entry, edit_current_tags, edit_tags_frame, edit_tag_listbox, "tag"
-        ),
-    )
-    edit_add_btn.pack(side=tk.LEFT)
-
-    # Available tags list
-    tk.Label(main_frame, text="Available Tags:").grid(
-        row=7, column=0, sticky="ne", pady=5, padx=5
-    )
-
-    edit_tag_list_frame = tk.Frame(main_frame)
-    edit_tag_list_frame.grid(row=7, column=1, pady=5, padx=5, sticky="nw")
-
-    tk.Label(main_frame, text="Selected Tags:").grid(
-        row=7, column=2, sticky="ne", pady=5, padx=5
-    )
-    edit_tags_frame = tk.Frame(main_frame)
-    edit_tags_frame.grid(row=7, column=3, pady=5, padx=5, sticky="nw")
-
-    # Initialize tag display
-    update_tag_display(edit_current_tags, edit_tags_frame, "grid")
-
-    edit_tag_listbox = tk.Listbox(edit_tag_list_frame, height=10, width=25)
-    edit_tag_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-    edit_tag_scrollbar = tk.Scrollbar(edit_tag_list_frame)
-    edit_tag_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-    edit_tag_listbox.config(yscrollcommand=edit_tag_scrollbar.set)
-    edit_tag_scrollbar.config(command=edit_tag_listbox.yview)
-
-    # Populate listbox
-    for tag in all_available_tags:
-        edit_tag_listbox.insert(tk.END, tag["name"])
-
-    # Bind double-click to add
-    edit_tag_listbox.bind(
-        "<Double-1>",
-        lambda e: add_tag_from_listbox(
-            edit_tag_listbox,
-            edit_current_tags,
-            lambda tags: update_tag_display(tags, edit_tags_frame, "grid"),
-        ),
-    )
-
-    # Materials section
-    tk.Label(main_frame, text="Materials:").grid(
-        row=9, column=0, sticky="ne", pady=5, padx=5
-    )
-
-    edit_material_frame = tk.Frame(main_frame)
-    edit_material_frame.grid(row=9, column=1, columnspan=3, pady=5, padx=5, sticky="w")
-
-    edit_material_entry = tk.Entry(edit_material_frame, width=30)
-    edit_material_entry.pack(side=tk.LEFT, padx=(0, 5))
-    add_copy_menu_to_entry(edit_material_entry)
-
-    edit_add_material_btn = tk.Button(
-        edit_material_frame,
-        text="Add Material(s)",
-        command=lambda: add_popup_tag(
-            edit_material_entry,
-            edit_current_materials,
-            edit_materials_frame,
-            edit_material_listbox,
-            "material",
-        ),
-    )
-    edit_add_material_btn.pack(side=tk.LEFT)
-
-    # Available materials list
-    tk.Label(main_frame, text="Available Materials:").grid(
-        row=10, column=0, sticky="ne", pady=5, padx=5
-    )
-
-    edit_material_list_frame = tk.Frame(main_frame)
-    edit_material_list_frame.grid(row=10, column=1, pady=5, padx=5, sticky="nw")
-
-    tk.Label(main_frame, text="Selected Materials:").grid(
-        row=10, column=2, sticky="ne", pady=5, padx=5
-    )
-    edit_materials_frame = tk.Frame(main_frame)
-    edit_materials_frame.grid(row=10, column=3, pady=5, padx=5, sticky="nw")
-
-    # Initialize material display
-    update_material_display(edit_current_materials, edit_materials_frame, "grid")
-
-    edit_material_listbox = tk.Listbox(edit_material_list_frame, height=10, width=25)
-    edit_material_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-    edit_material_scrollbar = tk.Scrollbar(edit_material_list_frame)
-    edit_material_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-    edit_material_listbox.config(yscrollcommand=edit_material_scrollbar.set)
-    edit_material_scrollbar.config(command=edit_material_listbox.yview)
-
-    # Populate listbox
-    for m in all_available_materials:
-        edit_material_listbox.insert(tk.END, m["name"])
-
-    # Bind double-click to add
-    edit_material_listbox.bind(
-        "<Double-1>",
-        lambda e: add_tag_from_listbox(
-            edit_material_listbox,
-            edit_current_materials,
-            lambda mats: update_tag_display(mats, edit_materials_frame, "grid"),
-        ),
-    )
-
-    # Action buttons
-    button_frame = tk.Frame(dialog)
-    button_frame.pack(pady=20)
-
-    def save_changes():
-        """Save the edited product"""
-        try:
-            name = edit_name.get().strip()
-            description = edit_description.get().strip()
-            production = edit_var_production.get()
-            active = edit_var_active.get()
-            color = edit_color.get().strip()
-            print_time = edit_print_time.get().strip()
-            weight_text = edit_weight.get().strip()
-
-            if not name:
-                show_copyable_error("Error", "Name is required")
-                return
-
-            # Build payload using shared function
-            payload = build_product_payload(
-                name=name,
-                description=description,
-                production=production,
-                active=active,
-                category_id=None,  # Not changing category in edit mode
-                rating=edit_rating_widget.get_rating(),
-                tag_names=edit_current_tags,
-                material_names=edit_current_materials,
-                color=color or None,
-                print_time=print_time or None,
-                weight=int(weight_text) if weight_text else None,
-                product_id=product["id"],  # Include product_id for update
-            )
-
-            # Update product
-            save_product_changes(product["id"], payload)
-            # Add new tags to available tags (not saved to DB)
-            original_tags = product.get("tags", [])
-            new_tags = [t for t in edit_current_tags if t not in original_tags]
-            update_available_tags(new_tags)
-            global dialog_open
-            dialog_open = False
-            dialog.destroy()
-            # Refresh search results
-            do_search()
-
-        except Exception as e:
-            show_copyable_error("Error", f"Error updating product: {str(e)}")
-
-    def open_folder():
-        """Open the product folder"""
-        try:
-            import os
-
-            # Use stored folder path first
-            folder_path = product.get("folder_path")
-
-            # If stored path doesn't exist, try to construct the expected path
-            if not folder_path or not os.path.exists(folder_path):
-                # Try the new naming scheme: SKU - Name
-                products_dir = os.environ.get(
-                    "PRODUCTS_DIR",
-                    os.path.join(
-                        os.path.expanduser("~"), "Work", "3d_print", "Products"
-                    ),
-                )
-                sku = product.get("sku", "")
-                name = product.get("name", "")
-                expected_path = os.path.join(products_dir, f"{sku} - {name}")
-
-                if os.path.exists(expected_path):
-                    folder_path = expected_path
-                else:
-                    # Try old naming scheme: just SKU
-                    old_path = os.path.join(products_dir, sku)
-                    if os.path.exists(old_path):
-                        folder_path = old_path
-                    else:
-                        show_copyable_error(
-                            "Folder Not Found",
-                            f"The folder for product '{sku}' does not exist at any expected location.",
-                        )
-                        return
-
-            if not os.path.exists(folder_path):
-                show_copyable_error(
-                    "Folder Not Found",
-                    f"The folder for product '{product['sku']}' does not exist.",
-                )
-                return
-
-            # Open folder using system default
-            import subprocess
-            import platform
-
-            system = platform.system()
-            if system == "Linux":
-                # Try different file managers for Linux
-                file_managers = ["dolphin", "nautilus", "thunar", "pcmanfm", "nemo"]
-                opened = False
-                for fm in file_managers:
-                    try:
-                        subprocess.Popen(
-                            [fm, folder_path],
-                            stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL,
-                        )
-                        opened = True
-                        break
-                    except FileNotFoundError:
-                        continue
-                if not opened:
-                    # Fallback to xdg-open
-                    subprocess.Popen(
-                        ["xdg-open", folder_path],
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL,
-                    )
-            elif system == "Darwin":  # macOS
-                subprocess.Popen(
-                    ["open", folder_path],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-            elif system == "Windows":
-                subprocess.Popen(
-                    ["explorer", folder_path],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-
-        except Exception as e:
-            show_copyable_error("Error", f"Could not open folder: {str(e)}")
-
-    def delete_record():
-        """Delete the product record"""
-        if not messagebox.askyesno(
-            "Confirm Deletion",
-            f"Are you sure you want to delete product:\n\nSKU: {product['sku']}\nName: {product['name']}\n\nThis action cannot be undone!",
-        ):
-            return
-
-        try:
-            # Ask for deletion scope
-            delete_choice = messagebox.askquestion(
-                "Deletion Options",
-                "Choose deletion method:\n\nYes = Delete from database AND file system\nNo = Delete from database only",
-                icon="question",
-            )
-
-            delete_files = delete_choice == "yes"
-
-            # Delete product
-            response = requests.delete(
-                f"{API_URL}{product['id']}?delete_files={delete_files}"
-            )
-            if response.status_code == 200:
-                messagebox.showinfo(
-                    "Success",
-                    f"Product {product['sku']} ({product['name']}) deleted successfully!",
-                )
-                global dialog_open
-                dialog_open = False
-                dialog.destroy()
-                # Refresh search results
-                do_search()
-            else:
-                show_copyable_error(
-                    "Error", f"Failed to delete product: {response.text}"
-                )
-
-        except Exception as e:
-            show_copyable_error("Error", f"Error deleting product: {str(e)}")
-
-    tk.Button(
-        button_frame, text="Save Changes", command=save_changes, bg="lightgreen"
-    ).pack(side=tk.LEFT, padx=5)
-    tk.Button(button_frame, text="Open Folder", command=open_folder).pack(
-        side=tk.LEFT, padx=5
-    )
-    tk.Button(button_frame, text="Delete Record", command=delete_record, fg="red").pack(
-        side=tk.LEFT, padx=5
-    )
-
-    def cancel_edit_dialog():
-        global dialog_open
-        dialog_open = False
-        dialog.destroy()
-
-    tk.Button(button_frame, text="Cancel", command=cancel_edit_dialog).pack(
-        side=tk.LEFT, padx=5
-    )
-
-    # Pack main frame
-    main_frame.pack(fill="both", expand=True, padx=10, pady=10)
-
-    # Reset flag when dialog closes
-    def on_dialog_close():
-        global dialog_open
-        dialog_open = False
-        dialog.destroy()
-
-    dialog.protocol("WM_DELETE_WINDOW", on_dialog_close)
-
-    # Make dialog visible first, then modal
-    dialog.update_idletasks()
-    dialog.transient(root)
-    dialog.grab_set()
-    root.wait_window(dialog)
-
+# Refresh available tags when switching tabs
 def on_tab_change(event):
     selected = tab_control.index(tab_control.select())
     if selected == 0:  # Create Product tab
         load_all_tags_for_list()
+
+
+tab_control.bind("<<NotebookTabChanged>>", on_tab_change)
+tab_control.pack(expand=1, fill="both")
+
+
+# Tab change handler
+def on_tab_change(event):
+    """Handle tab selection changes"""
+    selected_tab = tab_control.select()
+    tab_text = tab_control.tab(selected_tab, "text")
+
+    if tab_text == "Create Product":
+        # Load all existing tags and materials for the list when Create Product tab is selected
+        load_all_tags_for_list()
+        load_all_materials_for_list()
+    elif tab_text == "Search":
+        # Auto-load all products when Search tab is selected
+        search_query.delete(0, tk.END)  # Clear search field
+        do_search()  # Load all products
+    elif tab_text == "Inventory":
+        # Auto-load inventory status when Inventory tab is selected
+        load_inventory_status()
+
+
+# Bind tab change event
+tab_control.bind("<<NotebookTabChanged>>", on_tab_change)
+
+# --- CREATE TAB ---
+# Name field (short field, most important)
+tk.Label(create_tab, text="Name:").grid(row=0, column=0, sticky="e", padx=5, pady=5)
+entry_name = tk.Entry(create_tab, width=50)
+entry_name.grid(row=0, column=1, columnspan=3, pady=5, padx=5, sticky="w")
+add_copy_menu_to_entry(entry_name)
+
+# Description field (longer field)
+tk.Label(create_tab, text="Description:").grid(
+    row=1, column=0, sticky="e", padx=5, pady=5
+)
+entry_description = tk.Entry(create_tab, width=50)
+entry_description.grid(row=1, column=1, columnspan=3, pady=5, padx=5, sticky="w")
+add_copy_menu_to_entry(entry_description)
+
+# Category section (important for SKU generation)
+tk.Label(create_tab, text="Category:").grid(row=2, column=0, sticky="e", padx=5, pady=5)
+category_frame = tk.Frame(create_tab)
+category_frame.grid(row=2, column=1, columnspan=3, pady=5, padx=5, sticky="w")
+
+category_combo = ttk.Combobox(category_frame, width=25, state="readonly")
+category_combo.pack(side=tk.LEFT, padx=(0, 5))
+category_combo.bind("<<ComboboxSelected>>", on_category_select)
+
+tk.Button(category_frame, text="New", command=create_new_category).pack(
+    side=tk.LEFT, padx=(0, 5)
+)
+tk.Button(category_frame, text="Edit", command=edit_category).pack(
+    side=tk.LEFT, padx=(0, 5)
+)
+tk.Button(category_frame, text="Delete", command=delete_category, fg="red").pack(
+    side=tk.LEFT
+)
+
+# Production and Active toggles using new modular approach
+from modules.toggles import create_production_active_group
+
+production_active_group = create_production_active_group(create_tab, start_row=3)
+production_toggles = production_active_group.get_values()
+
+# Search filter toggles using modular approach
+from modules.toggles import create_search_filter_group
+
+search_filter_group = create_search_filter_group(create_tab, start_row=1)
+search_filters = search_filter_group.get_values()
+
+# Rating section
+tk.Label(create_tab, text="Rating:").grid(row=4, column=0, sticky="e", pady=5, padx=5)
+rating_widget = CheckRating(create_tab, initial_rating=0)
+rating_widget.grid(row=4, column=1, sticky="w", pady=5, padx=5)
+
+# Tags section
+tk.Label(create_tab, text="Tags:", font=("Arial", 10, "bold")).grid(
+    row=5, column=0, sticky="e", pady=5, padx=5
+)
+
+# Tag input frame (same row as Available Tags)
+tag_input_frame = tk.Frame(create_tab)
+tag_input_frame.grid(row=5, column=1, columnspan=2, pady=5, padx=5, sticky="w")
+
+# Tag input entry (simple text field)
+tag_entry = tk.Entry(tag_input_frame, width=30)
+tag_entry.pack(side=tk.LEFT, padx=(0, 10))
+tag_entry.bind("<KeyRelease>", filter_tag_list)
+add_copy_menu_to_entry(tag_entry)
+
+# Add tag button
+add_btn = tk.Button(tag_input_frame, text="Add Tag(s)", command=add_tag)
+add_btn.pack(side=tk.LEFT)
+
+# Available tags list
+tk.Label(create_tab, text="Available Tags:").grid(
+    row=6, column=0, sticky="ne", pady=5, padx=5
+)
+tag_list_frame = tk.Frame(create_tab)
+tag_list_frame.grid(row=6, column=1, pady=5, padx=5, sticky="nw")
+
+
+tag_listbox = tk.Listbox(tag_list_frame, width=25, height=10, selectmode=tk.SINGLE)
+tag_listbox.pack(fill=tk.BOTH, expand=True)
+tag_listbox.bind("<Double-1>", add_tag_from_list)
+
+# Delete tag button
+delete_tag_btn = tk.Button(tag_list_frame, text="Delete Tag", command=delete_unused_tag)
+delete_tag_btn.pack(pady=(5, 0))
+
+# Current tags display frame
+tk.Label(create_tab, text="Selected Tags:").grid(
+    row=6, column=2, sticky="ne", pady=5, padx=5
+)
+tags_frame = tk.Frame(create_tab)
+tags_frame.grid(row=6, column=3, pady=5, padx=5, sticky="nw")
+
+# Materials section
+tk.Label(create_tab, text="Materials:", font=("Arial", 10, "bold")).grid(
+    row=8, column=0, sticky="e", pady=5, padx=5
+)
+
+# Material input frame (same row as Available Materials)
+material_input_frame = tk.Frame(create_tab)
+material_input_frame.grid(row=8, column=1, columnspan=2, pady=5, padx=5, sticky="w")
+
+# Material input entry (simple text field)
+material_entry = tk.Entry(material_input_frame, width=30)
+material_entry.pack(side=tk.LEFT, padx=(0, 10))
+material_entry.bind("<KeyRelease>", lambda e: filter_material_list())
+add_copy_menu_to_entry(material_entry)
+
+# Add material button
+add_material_btn = tk.Button(
+    material_input_frame, text="Add Material(s)", command=add_material
+)
+add_material_btn.pack(side=tk.LEFT)
+
+# Available materials list
+tk.Label(create_tab, text="Available Materials:").grid(
+    row=9, column=0, sticky="ne", pady=5, padx=5
+)
+material_list_frame = tk.Frame(create_tab)
+material_list_frame.grid(row=9, column=1, pady=5, padx=5, sticky="nw")
+
+
+material_listbox = tk.Listbox(
+    material_list_frame, width=25, height=10, selectmode=tk.SINGLE
+)
+material_listbox.pack(fill=tk.BOTH, expand=True)
+material_listbox.bind("<Double-1>", add_material_from_list)
+
+# Delete material button
+delete_material_btn = tk.Button(
+    material_list_frame, text="Delete Material", command=delete_unused_material
+)
+delete_material_btn.pack(pady=(5, 0))
+
+# Current materials display frame
+tk.Label(create_tab, text="Selected Materials:").grid(
+    row=9, column=2, sticky="ne", pady=5, padx=5
+)
+materials_frame = tk.Frame(create_tab)
+materials_frame.grid(row=9, column=3, pady=5, padx=5, sticky="nw")
+
+# Create tab buttons
+create_button_frame = tk.Frame(create_tab)
+create_button_frame.grid(row=10, column=0, columnspan=6, pady=15)
+
+tk.Button(create_button_frame, text="Clear", command=clear_form).pack(
+    side=tk.LEFT, padx=5
+)
+tk.Button(create_button_frame, text="Cancel", command=cancel).pack(side=tk.LEFT, padx=5)
+tk.Button(create_button_frame, text="Create Item", command=create_item).pack(
+    side=tk.LEFT, padx=5
+)
+
+# --- UPDATE TAB ---
+# Search section
+search_frame = tk.LabelFrame(update_tab, text="Search Products", padx=10, pady=10)
+search_frame.pack(fill="x", padx=10, pady=5)
+
+tk.Label(search_frame, text="Search:").grid(row=0, column=0, sticky="e", padx=5, pady=2)
+search_query = tk.Entry(search_frame, width=50)
+search_query.grid(row=0, column=1, padx=5, pady=2)
+search_query.bind("<KeyRelease>", lambda e: do_search())  # Active filtering
+add_copy_menu_to_entry(search_query)
+tk.Label(search_frame, text="(searches name, SKU, and tags)").grid(
+    row=0, column=2, padx=5, pady=2
+)
+
+tk.Button(search_frame, text="Search", command=do_search).grid(
+    row=0, column=6, padx=10, pady=2
+)
+
+# Filter checkboxes
+tk.Checkbutton(
+    search_frame,
+    text="Include Inactive",
+    variable=var_include_inactive,
+    command=do_search,
+).grid(row=1, column=1, sticky="w", padx=5, pady=2)
+tk.Checkbutton(
+    search_frame,
+    text="Include Prototype",
+    variable=var_include_prototype,
+    command=do_search,
+).grid(row=1, column=2, sticky="w", padx=5, pady=2)
+
+# Results section
+results_frame = tk.LabelFrame(update_tab, text="Search Results", padx=10, pady=10)
+results_frame.pack(fill="both", expand=True, padx=10, pady=5)
+
+results_text = scrolledtext.ScrolledText(results_frame, height=8, wrap=tk.WORD)
+results_text.pack(fill="both", expand=True)
+
+# Bind double-click to load product for editing
+results_text.bind("<Double-1>", lambda e: load_product_from_search())
+
+# Inventory controls
+inventory_controls_frame = tk.Frame(inventory_tab)
+inventory_controls_frame.pack(pady=5)
+
+tk.Label(
+    inventory_controls_frame, text="Double-click a product to adjust inventory"
+).pack(side=tk.LEFT, padx=5)
+tk.Button(
+    inventory_controls_frame,
+    text="Refresh Inventory",
+    command=lambda: load_inventory_status(),
+).pack(side=tk.LEFT, padx=5)
+
+# Filter checkboxes
+tk.Checkbutton(
+    inventory_controls_frame,
+    text="Include out of stock items",
+    variable=include_out_of_stock_var,
+    command=lambda: load_inventory_status(),
+).pack(side=tk.LEFT, padx=10)
+
+tk.Checkbutton(
+    inventory_controls_frame,
+    text="Need to produce",
+    variable=need_to_produce_var,
+    command=lambda: load_inventory_status(),
+).pack(side=tk.LEFT, padx=10)
+
+# Inventory display
+inventory_tree = ttk.Treeview(
+    inventory_tab,
+    columns=(
+        "sku",
+        "name",
+        "stock",
+        "reorder",
+        "cost",
+        "price",
+        "value",
+        "margin",
+        "status",
+    ),
+    show="headings",
+    height=15,
+)
+
+# Configure columns
+inventory_tree.heading("sku", text="SKU", command=lambda: sort_inventory_column("sku"))
+inventory_tree.heading(
+    "name", text="Product Name", command=lambda: sort_inventory_column("name")
+)
+inventory_tree.heading(
+    "stock", text="Stock", command=lambda: sort_inventory_column("stock")
+)
+inventory_tree.heading(
+    "reorder", text="Reorder Point", command=lambda: sort_inventory_column("reorder")
+)
+inventory_tree.heading(
+    "cost", text="Unit Cost", command=lambda: sort_inventory_column("cost")
+)
+inventory_tree.heading(
+    "price", text="Selling Price", command=lambda: sort_inventory_column("price")
+)
+inventory_tree.heading(
+    "value", text="Total Value", command=lambda: sort_inventory_column("value")
+)
+inventory_tree.heading(
+    "margin", text="Profit %", command=lambda: sort_inventory_column("margin")
+)
+inventory_tree.heading(
+    "status", text="Status", command=lambda: sort_inventory_column("status")
+)
+
+# Set column widths
+inventory_tree.column("sku", width=80)
+inventory_tree.column("name", width=200)
+inventory_tree.column("stock", width=60)
+inventory_tree.column("reorder", width=80)
+inventory_tree.column("cost", width=80)
+inventory_tree.column("price", width=80)
+inventory_tree.column("value", width=80)
+inventory_tree.column("margin", width=70)
+inventory_tree.column("status", width=100)
+
+# Bind double-click to inventory adjustment
+inventory_tree.bind("<Double-1>", lambda e: adjust_inventory_dialog())
+
+inventory_tree.pack(fill="both", expand=True, padx=5, pady=5)
+
+# Inventory summary
+summary_frame = tk.LabelFrame(inventory_tab, text="Summary", padx=10, pady=10)
+summary_frame.pack(fill="x", padx=10, pady=5)
+
+summary_text = tk.Text(summary_frame, height=3, wrap=tk.WORD)
+summary_text.pack(fill="x")
+summary_text.insert(tk.END, "Click 'Refresh Inventory' to load current stock levels.")
+summary_text.config(state=tk.DISABLED)
+
+# Load initial data
+load_categories()
+load_all_tags_for_list()
+load_inventory_status()
+
+root.mainloop()
