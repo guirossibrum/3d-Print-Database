@@ -189,6 +189,7 @@ INVENTORY_URL = "http://localhost:8000/inventory/status"
 
 from modules.api_client import *
 from modules import search
+from modules.toggles import create_production_active_group
 
 
 # Tag display functions (copied from modules for compatibility)
@@ -2208,16 +2209,11 @@ tk.Button(category_frame, text="Delete", command=delete_category, fg="red").pack
     side=tk.LEFT
 )
 
-# Production and Active checkboxes
-var_production = tk.BooleanVar(value=False)
-tk.Checkbutton(create_tab, text="Production Ready", variable=var_production).grid(
-    row=3, column=1, sticky="w", pady=5, padx=5
-)
+# Production and Active toggles using new modular approach
+from modules.toggles import create_production_active_group
 
-var_active = tk.BooleanVar(value=True)
-tk.Checkbutton(create_tab, text="Active", variable=var_active).grid(
-    row=3, column=2, sticky="w", pady=5, padx=5
-)
+production_active_group = create_production_active_group(create_tab, start_row=3)
+production_toggles = production_active_group.get_values()
 
 # Search filter variables
 var_include_inactive = tk.BooleanVar(value=False)
