@@ -7,7 +7,7 @@ from app.models import Product
 def test_generate_sku_new_category(db_session, sample_category):
     """Test SKU generation for a new category"""
     sku = crud.generate_sku(db_session, sample_category.id)
-    assert sku == "TT-0001"
+    assert sku == "TTU-0001"
 
 
 def test_generate_sku_existing_products(db_session, sample_category, sample_product):

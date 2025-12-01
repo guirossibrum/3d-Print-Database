@@ -1,4 +1,6 @@
 # frontend/modules/tags.py
+"""Tag management operations"""
+
 import tkinter as tk
 from tkinter import messagebox
 import requests
@@ -8,7 +10,7 @@ from .constants import TAGS_URL
 def add_tag(
     tag_entry, current_tags, update_display_func, all_available_tags, tag_listbox
 ):
-    """Add a tag to the current tags list"""
+    """Add a tag to current tags list"""
     tag_text = tag_entry.get().strip()
     if tag_text and tag_text not in current_tags:
         current_tags.append(tag_text)
@@ -25,7 +27,7 @@ def add_tag(
 
 
 def remove_tag(tag_to_remove, current_tags, update_display_func):
-    """Remove a tag from the current tags list"""
+    """Remove a tag from current tags list"""
     if tag_to_remove in current_tags:
         current_tags.remove(tag_to_remove)
         update_display_func()
@@ -97,7 +99,7 @@ def filter_tag_list(tag_filter_entry, all_available_tags, tag_listbox):
 
 
 def add_tag_from_listbox(listbox, current_tags, update_func):
-    """Generic helper to add tag from listbox"""
+    """Generic helper to add a tag from the listbox"""
     selection = listbox.curselection()
     if selection:
         tag = listbox.get(selection[0])
@@ -107,7 +109,7 @@ def add_tag_from_listbox(listbox, current_tags, update_func):
 
 
 def delete_unused_tag(selected_tag, all_available_tags, tag_listbox, update_list_func):
-    """Delete unused tag"""
+    """Delete an unused tag"""
     if not selected_tag:
         messagebox.showwarning("Warning", "Please select a tag to delete")
         return
@@ -145,73 +147,9 @@ def add_popup_tag(widget, tags_list, display_frame, listbox=None):
         else:
             widget.delete(0, tk.END)
 
-        # Add to available tags if new
-        # Note: This assumes all_available_tags is accessible, may need to pass as param
-        # For now, skip or handle differently
-
 
 def remove_popup_tag(tag_to_remove, tags_list, display_frame):
     """Remove a tag from the popup dialog"""
     if tag_to_remove in tags_list:
         tags_list.remove(tag_to_remove)
         update_tag_display(tags_list, display_frame, "grid")
-
-
-def remove_tag(tag_to_remove):
-    """Remove a tag from the current tags list"""
-    # Implementation
-    pass
-
-
-def update_tag_display():
-    """Update the display of current tags"""
-    # Implementation
-    pass
-
-
-def load_all_tags_for_list():
-    """Load all tags for the listbox"""
-    # Implementation
-    pass
-
-
-def filter_tag_list(event=None):
-    """Filter the tag list"""
-    # Implementation
-    pass
-
-
-def add_tag_from_list(event=None):
-    """Add tag from list"""
-    # Implementation
-    pass
-
-
-def delete_unused_tag():
-    """Delete unused tag"""
-    # Implementation
-    pass
-
-
-def add_popup_tag(widget, tags_list, display_frame, listbox=None):
-    """Add a tag to the popup dialog"""
-    # Implementation
-    pass
-
-
-def remove_popup_tag(tag_to_remove, tags_list, display_frame):
-    """Remove a tag from the popup dialog"""
-    # Implementation
-    pass
-
-
-def update_popup_tag_display(tags_list, display_frame):
-    """Update the tag display in popup dialogs"""
-    # Implementation
-    pass
-
-
-def add_tag_from_listbox(listbox, current_tags, update_func):
-    """Generic helper to add tag from listbox"""
-    # Implementation
-    pass

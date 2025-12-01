@@ -1,6 +1,6 @@
 # frontend/modules/api_client.py
 import requests
-from .constants import API_URL, TAGS_URL, MATERIALS_URL
+from .constants import API_URL, TAGS_URL, MATERIALS_URL, CATEGORIES_URL
 
 
 def api_request(method: str, url: str, data=None):

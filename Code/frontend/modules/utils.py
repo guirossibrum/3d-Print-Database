@@ -1,4 +1,6 @@
 # frontend/modules/utils.py
+"""General utility functions"""
+
 import tkinter as tk
 
 
@@ -16,7 +18,7 @@ def on_time_focus_out(event):
     entry = event.widget
     current_text = entry.get().strip()
 
-    # If it's the placeholder, leave it
+    # If it's placeholder, leave it
     if current_text == "__:__":
         return
 
@@ -52,101 +54,158 @@ def on_time_focus_out(event):
     format_time_complete(entry)
 
 
-def complete_time_with_underscores(entry, text):
-    """Complete time with underscores for formatting"""
-    # Implementation...
-
-
-def complete_partial_time(entry, text):
-    """Complete partial time input"""
-    # Implementation...
-
-
 def format_time_complete(entry):
     """Format time entry completely"""
-    # Implementation...
+    current_text = entry.get()
+
+    # Extract digits
+    digits = "".join(c for c in current_text if c.isdigit())
+
+    if not digits:
+        entry.delete(0, tk.END)
+        entry.insert(0, "__:__")
+        entry.config(fg="gray")
+        return
+
+    # Format based on digit count
+    if len(digits) == 1:
+        formatted = f"{digits}0:00"
+    elif len(digits) == 2:
+        hour_int = int(digits)
+        formatted = f"{hour_int:02d}:00"
+    elif len(digits) == 3:
+        hour_int = int(digits[:2])
+        minute_int = int(digits[2])
+        formatted = f"{hour_int:02d}:{minute_int:02d}"
+    else:  # 4 or more digits
+        hour_int = int(digits[:2])
+        minute_int = min(int(digits[2:4]), 59)
+        formatted = f"{hour_int:02d}:{minute_int:02d}"
+
+    entry.delete(0, tk.END)
+    entry.insert(0, formatted)
+    entry.config(fg="black")
 
 
-def on_time_key_release_popup(event):
-    """Handle key release for time input in popup"""
-    # Implementation...
+def format_time_input_live(entry):
+    """Very conservative formatting - only help when clearly beneficial"""
+    current_text = entry.get()
+
+    # If it's placeholder, don't format
+    if current_text == "__:__":
+        return
+
+    # If the field is empty, don't format
+    if not current_text.strip():
+        return
+
+    # Only format if we have exactly 4 digits and no colon (user typed continuous time)
+    digit_count = sum(1 for c in current_text if c.isdigit())
+    has_colon = ":" in current_text
+
+    if digit_count == 4 and not has_colon:
+        # User typed exactly 4 digits, format as HH:MM
+        digits = "".join(c for c in current_text if c.isdigit())
+        hour_int = int(digits[:2])
+        minute_int = min(int(digits[2:]), 59)
+        formatted = f"{hour_int:02d}:{minute_int:02d}"
+
+        if formatted != current_text:
+            entry.delete(0, tk.END)
+            entry.insert(0, formatted)
+            entry.icursor(len(formatted))  # Move cursor to end
+    # Don't do any other formatting - let user edit freely
 
 
-def format_time_input(entry, placeholder):
-    """Format time input"""
-    # Implementation...
+def show_copyable_error(title, message, root):
+    """Show error dialog with copyable text using Text widget"""
+    dialog = tk.Toplevel()
+    dialog.title(title)
+    dialog.geometry("500x300")
+
+    # Error icon and title
+    header_frame = tk.Frame(dialog)
+    header_frame.pack(pady=10, padx=10, fill="x")
+
+    # Simple error icon using text
+    tk.Label(header_frame, text="⚠", font=("Arial", 24), fg="red").pack(
+        side=tk.LEFT, padx=5
+    )
+    tk.Label(header_frame, text=title, font=("Arial", 14, "bold")).pack(
+        side=tk.LEFT, padx=10
+    )
+
+    # Text widget for copyable message
+    text_frame = tk.Frame(dialog)
+    text_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+
+    text_widget = tk.Text(text_frame, wrap=tk.WORD, height=10, padx=5, pady=5)
+    scrollbar = tk.Scrollbar(text_frame, command=text_widget.yview)
+    text_widget.config(yscrollcommand=scrollbar.set)
+
+    text_widget.pack(side=tk.LEFT, fill="both", expand=True)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    text_widget.insert(tk.END, message)
+    text_widget.config(state=tk.DISABLED)  # Make read-only but selectable
+
+    # Button frame
+    button_frame = tk.Frame(dialog)
+    button_frame.pack(pady=10)
+
+    def copy_to_clipboard():
+        """Copy the error message to clipboard"""
+        root.clipboard_clear()
+        root.clipboard_append(message)
+        # Optional: show brief feedback
+        copy_btn.config(text="Copied!")
+        dialog.after(1000, lambda: copy_btn.config(text="Copy"))
+
+    copy_btn = tk.Button(button_frame, text="Copy", command=copy_to_clipboard)
+    copy_btn.pack(side=tk.LEFT, padx=5)
+
+    tk.Button(button_frame, text="OK", command=dialog.destroy).pack(
+        side=tk.LEFT, padx=5
+    )
+
+    # Make dialog modal
+    dialog.transient(root)
+    dialog.grab_set()
+    root.wait_window(dialog)
 
 
-def clear_form():
-    """Clear the form fields"""
-    # Implementation...
+def add_copy_menu_to_entry(entry_widget, root):
+    """Add right-click context menu and keyboard shortcuts to Entry widget for copying/pasting text"""
+    menu = tk.Menu(entry_widget, tearoff=0)
+    menu.add_command(
+        label="Copy (Ctrl+C)", command=lambda: copy_entry_text(entry_widget)
+    )
+    menu.add_command(
+        label="Paste (Ctrl+V)", command=lambda: paste_to_entry(entry_widget)
+    )
 
+    def show_menu(event):
+        menu.post(event.x_root, event.y_root)
 
-def add_tag():
-    """Add a tag to the current tags"""
-    # Implementation...
+    def copy_entry_text(entry_widget):
+        """Copy text from an Entry widget to clipboard"""
+        text = entry_widget.get()
+        if text:
+            root.clipboard_clear()
+            root.clipboard_append(text)
 
+    def paste_to_entry(entry_widget):
+        """Paste text from clipboard to Entry widget"""
+        try:
+            text = root.clipboard_get()
+            if text:
+                # Clear current selection and insert clipboard content
+                entry_widget.delete(0, tk.END)
+                entry_widget.insert(0, text)
+        except tk.TclError:
+            # Clipboard empty or unavailable
+            pass
 
-def remove_tag(tag_to_remove):
-    """Remove a tag from current tags"""
-    # Implementation...
-
-
-def update_tag_display():
-    """Update the tag display"""
-    # Implementation...
-
-
-def load_all_tags_for_list():
-    """Load all tags for the listbox"""
-    # Implementation...
-
-
-def filter_tag_list(event=None):
-    """Filter the tag list"""
-    # Implementation...
-
-
-def add_tag_from_list(event=None):
-    """Add tag from list"""
-    # Implementation...
-
-
-def delete_unused_tag():
-    """Delete unused tag"""
-    # Implementation...
-
-
-def load_categories():
-    """Load categories from API"""
-    # Implementation...
-
-
-def update_category_dropdown():
-    """Update category dropdown"""
-    # Implementation...
-
-
-def on_category_select(event):
-    """Handle category selection"""
-    # Implementation...
-
-
-def load_inventory_status():
-    """Load inventory status"""
-    # Implementation...
-
-
-def search_products():
-    """Search products"""
-    # Implementation...
-
-
-def display_search_results():
-    """Display search results"""
-    # Implementation...
-
-
-def load_product_from_search():
-    """Load product from search for editing"""
-    # Implementation...
+    entry_widget.bind("<Button-3>", show_menu)  # Right-click
+    entry_widget.bind("<Control-c>", lambda e: copy_entry_text(entry_widget))  # Ctrl+C
+    entry_widget.bind("<Control-v>", lambda e: paste_to_entry(entry_widget))  # Ctrl+V

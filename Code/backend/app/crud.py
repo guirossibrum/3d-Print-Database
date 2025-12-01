@@ -1,12 +1,9 @@
 # backend/app/crud.py
 import os
 import json
-from typing import Optional
+from typing import Optional, List
 from sqlalchemy.orm import Session
-from sqlalchemy import func
-from typing import List
 from . import models, schemas
-from . import tag_utils
 from ensure_file_structure import (
     create_product_folder,
 )  # import function
@@ -256,65 +253,6 @@ def get_product_by_id(db: Session, product_id: int) -> Optional[models.Product]:
     return db.query(models.Product).filter(models.Product.id == product_id).first()
 
 
-def associate_tags_with_product(
-    db: Session, product_db: models.Product, tags: List[str]
-):
-    """
-    Associate normalized and validated tags with a product.
-    """
-    for tag_name in tags:
-        if not tag_name.strip():
-            continue  # Skip empty tags
-
-        # Normalize the tag
-        normalized_tag = tag_utils.normalize_tag(tag_name)
-
-        if not normalized_tag or not tag_utils.validate_tag(normalized_tag):
-            continue  # Skip invalid tags
-
-        # Check if normalized tag already exists
-        tag_obj = (
-            db.query(models.Tag)
-            .filter(func.lower(models.Tag.name) == normalized_tag.lower())
-            .first()
-        )
-
-        if not tag_obj:
-            tag_obj = models.Tag(name=normalized_tag)
-            db.add(tag_obj)
-            db.commit()
-            db.refresh(tag_obj)
-
-        product_db.tags.append(tag_obj)
-
-
-def associate_materials_with_product(
-    db: Session, product_db: models.Product, materials: List[str]
-):
-    """
-    Associate materials with a product.
-    Materials are simpler than tags - no special normalization/validation needed.
-    """
-    for material_name in materials:
-        if not material_name.strip():
-            continue  # Skip empty materials
-
-        # Check if material already exists (case-insensitive)
-        material_obj = (
-            db.query(models.Material)
-            .filter(func.lower(models.Material.name) == material_name.lower())
-            .first()
-        )
-
-        if not material_obj:
-            material_obj = models.Material(name=material_name.strip())
-            db.add(material_obj)
-            db.commit()
-            db.refresh(material_obj)
-
-        product_db.materials.append(material_obj)
-
-
 def get_tag_names_by_ids(db: Session, tag_ids: List[int]) -> List[str]:
     """
     Get tag names by their IDs.
@@ -363,24 +301,6 @@ def associate_materials_with_product_by_ids(
         )
         if material_obj:
             product_db.materials.append(material_obj)
-
-
-def update_product_materials(
-    db: Session, product: models.Product, new_materials: List[str]
-):
-    """
-    Update the materials for a product by clearing existing and adding new ones.
-    """
-    product.materials.clear()
-    associate_materials_with_product(db, product, new_materials)
-
-
-def update_product_tags(db: Session, product: models.Product, new_tags: List[str]):
-    """
-    Update the tags for a product by clearing existing and adding new ones.
-    """
-    product.tags.clear()
-    associate_tags_with_product(db, product, new_tags)
 
 
 def update_product_tags_by_ids(

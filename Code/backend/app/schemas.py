@@ -83,3 +83,37 @@ class ProductBase(BaseModel):
     reorder_point: Optional[int] = 0
     unit_cost: Optional[int] = None  # Cost in cents
     selling_price: Optional[int] = None  # Price in cents
+
+
+# Response schemas for API endpoints
+class TagResponse(TagBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+class MaterialResponse(MaterialBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+class CategoryResponse(CategoryBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+class ProductResponse(ProductBase):
+    id: int
+    sku: str
+    folder_path: str
+    tags: List[TagResponse]
+    materials: List[MaterialResponse]
+    category: Optional[CategoryResponse] = None
+
+    class Config:
+        from_attributes = True

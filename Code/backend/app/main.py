@@ -1,14 +1,9 @@
 # backend/app/main.py
 from fastapi import FastAPI, HTTPException, Path, Query
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy.exc import OperationalError
-from typing import List, Dict, Any
 from . import crud, schemas, models
 from .database import SessionLocal, create_tables
 from . import tag_utils
-from ensure_file_structure import (
-    create_product_folder,
-)  # import function
 
 app = FastAPI()
 
@@ -205,7 +200,7 @@ def get_product(product_id: int = Path(...)):
             raise HTTPException(status_code=404, detail="Product not found")
 
         # Create Product schema with nested response objects
-        product = schemas.Product(
+        product = schemas.ProductResponse(
             name=product_db.name,
             description=product_db.description,
             production=product_db.production,
@@ -243,13 +238,6 @@ def get_product(product_id: int = Path(...)):
         return product
     finally:
         db.close()
-
-
-# DEPRECATED: Replaced by unified /products/ endpoint
-# Old separate create/update endpoints removed in v2.0
-# FRONTEND: Use unified save_product() function instead
-
-# Temporarily removed decorator to debug
 
 
 @app.get("/tags/suggest")
