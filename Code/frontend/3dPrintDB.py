@@ -499,7 +499,7 @@ def format_time_input(entry, placeholder):
 def clear_form():
     entry_name.delete(0, tk.END)
     entry_description.delete(0, tk.END)
-    var_production.set(False)
+    production_toggles["production"].set(False)
     rating_widget.set_rating_direct(0)
     current_tags.clear()
     update_tag_display(current_tags, tags_frame, "grid")
