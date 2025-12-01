@@ -19,63 +19,6 @@ if script_dir not in sys.path:
     sys.path.insert(0, script_dir)
 
 
-def show_copyable_error(title, message):
-    """Show error dialog with copyable text using Text widget"""
-    dialog = tk.Toplevel(root)
-    dialog.title(title)
-    dialog.geometry("500x300")
-
-    # Error icon and title
-    header_frame = tk.Frame(dialog)
-    header_frame.pack(pady=10, padx=10, fill="x")
-
-    # Simple error icon using text
-    tk.Label(header_frame, text="⚠", font=("Arial", 24), fg="red").pack(
-        side=tk.LEFT, padx=5
-    )
-    tk.Label(header_frame, text=title, font=("Arial", 14, "bold")).pack(
-        side=tk.LEFT, padx=10
-    )
-
-    # Text widget for copyable message
-    text_frame = tk.Frame(dialog)
-    text_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
-
-    text_widget = tk.Text(text_frame, wrap=tk.WORD, height=10, padx=5, pady=5)
-    scrollbar = tk.Scrollbar(text_frame, command=text_widget.yview)
-    text_widget.config(yscrollcommand=scrollbar.set)
-
-    text_widget.pack(side=tk.LEFT, fill="both", expand=True)
-    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-    text_widget.insert(tk.END, message)
-    text_widget.config(state=tk.DISABLED)  # Make read-only but selectable
-
-    # Button frame
-    button_frame = tk.Frame(dialog)
-    button_frame.pack(pady=10)
-
-    def copy_to_clipboard():
-        """Copy the error message to clipboard"""
-        root.clipboard_clear()
-        root.clipboard_append(message)
-        # Optional: show brief feedback
-        copy_btn.config(text="Copied!")
-        dialog.after(1000, lambda: copy_btn.config(text="Copy"))
-
-    copy_btn = tk.Button(button_frame, text="Copy", command=copy_to_clipboard)
-    copy_btn.pack(side=tk.LEFT, padx=5)
-
-    tk.Button(button_frame, text="OK", command=dialog.destroy).pack(
-        side=tk.LEFT, padx=5
-    )
-
-    # Make dialog modal
-    dialog.transient(root)
-    dialog.grab_set()
-    root.wait_window(dialog)
-
-
 def add_copy_menu_to_entry(entry_widget):
     """Add right-click context menu and keyboard shortcuts to Entry widget for copying/pasting text"""
     menu = tk.Menu(entry_widget, tearoff=0)
@@ -125,8 +68,8 @@ INVENTORY_URL = "http://localhost:8000/inventory/status"
 
 from modules.api_client import *
 from modules import search
-from modules.toggles import create_production_active_group
-from modules.ui_components import CheckRating
+from modules.toggles import create_production_active_group, create_search_filter_group
+from modules.ui_components import CheckRating, ErrorDialog
 
 
 # Tag display functions (copied from modules for compatibility)
@@ -239,7 +182,7 @@ def add_popup_tag(widget, tags_list, display_frame, listbox=None, item_type="tag
                     for item in available_items:
                         listbox.insert(tk.END, item["name"])
             except Exception as e:
-                show_copyable_error("Error", f"Failed to create {item_type}: {str(e)}")
+                ErrorDialog(root, "Error", f"Failed to create {item_type}: {str(e)}")
                 return
 
         tags_list.append(item_text)
@@ -646,7 +589,8 @@ def load_all_tags_for_list():
             filter_tag_list()
         else:
             # Show error for debugging
-            show_copyable_error(
+            ErrorDialog(
+                root,
                 "Tags Error",
                 f"Failed to load tags: {response.status_code} - {response.text[:200]}",
             )
