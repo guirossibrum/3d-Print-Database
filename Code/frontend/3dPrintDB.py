@@ -13,70 +13,6 @@ import time
 from pathlib import Path
 
 
-class CheckRating(tk.Frame):
-    """5-point rating using [ x ] style — perfectly aligned, no layout jump"""
-
-    def __init__(self, parent, initial_rating=0, callback=None):
-        super().__init__(parent)
-        self.rating = initial_rating
-        self.callback = callback
-        self.buttons = []
-
-        # Use a monospaced font so [   ] and [ x ] have identical width
-        self.font = ("DejaVu Sans Mono", 18, "bold")  # or "Consolas", "Courier New"
-        # Alternative great fonts: "Fira Code", "Source Code Pro", "Ubuntu Mono"
-
-        for i in range(1, 6):  # ratings 1 to 5
-            btn = tk.Label(
-                self,
-                text="     ",
-                font=self.font,
-                fg="black",
-                bg="#f0f0f0",
-                relief="solid",
-                borderwidth=1,
-                width=5,  # Fixed width in characters
-                cursor="hand2",
-            )
-            btn.pack(side=tk.LEFT, padx=2)
-
-            # Hover effect
-            btn.bind("<Enter>", lambda e, b=btn: b.config(bg="#ffffe0"))
-            btn.bind("<Leave>", lambda e, b=btn: b.config(bg="#f0f0f0"))
-
-            # Click handling
-            btn.bind("<Button-1>", lambda e, n=i: self.set_rating(n))
-
-            self.buttons.append(btn)
-
-        self.update_display()
-
-    def set_rating(self, rating):
-        # Toggle behavior: click same rating → decrease by 1 (like stars)
-        if self.rating == rating:
-            self.rating = max(0, rating - 1)
-        else:
-            self.rating = rating
-
-        self.update_display()
-        if self.callback:
-            self.callback(self.rating)
-
-    def update_display(self):
-        for i, btn in enumerate(self.buttons):
-            if i < self.rating:
-                btn.config(text="  X  ", fg="black")
-            else:
-                btn.config(text="     ", fg="black")
-
-    def get_rating(self):
-        return self.rating
-
-    def set_rating_direct(self, rating):
-        self.rating = max(0, min(5, int(rating)))
-        self.update_display()
-
-
 # Ensure modules can be imported regardless of current directory
 script_dir = os.path.dirname(os.path.abspath(__file__))
 if script_dir not in sys.path:
@@ -190,6 +126,7 @@ INVENTORY_URL = "http://localhost:8000/inventory/status"
 from modules.api_client import *
 from modules import search
 from modules.toggles import create_production_active_group
+from modules.ui_components import CheckRating
 
 
 # Tag display functions (copied from modules for compatibility)
