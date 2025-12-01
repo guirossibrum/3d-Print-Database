@@ -71,6 +71,7 @@ class ProductBase(BaseModel):
     description: Optional[str] = None
     tag_ids: List[int] = []  # ID-based for many-to-many relationship
     production: bool = False  # default = prototype / not production
+    active: bool = True  # default = active
     category_id: Optional[int] = None  # ID-based for one-to-many relationship
     material_ids: List[int] = []  # ID-based for many-to-many relationship
     color: Optional[str] = None

@@ -53,7 +53,7 @@ def update_tag_display(tags_list, display_frame, layout="pack"):
         if layout == "pack":
             tag_frame.pack(anchor="w", pady=1)
         else:
-            tag_frame.grid(row=i // 4, column=(i % 4) * 2, padx=2, pady=2, sticky="w")
+            tag_frame.grid(row=i % 5, column=(i // 5) * 2, padx=2, pady=2, sticky="w")
 
         tk.Label(tag_frame, text=tag, bg=bg_color, padx=5, pady=2).pack(side=tk.LEFT)
 

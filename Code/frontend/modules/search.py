@@ -5,7 +5,13 @@ from tkinter import messagebox
 from .constants import SEARCH_URL
 
 
-def search_products(search_query_entry, results_text_widget, search_results_list):
+def search_products(
+    search_query_entry,
+    results_text_widget,
+    search_results_list,
+    include_inactive=False,
+    include_prototype=False,
+):
     """Search for products using unified search (empty query shows all products)"""
     # Get search query (allow empty for "show all")
     query = search_query_entry.get().strip()
@@ -17,6 +23,15 @@ def search_products(search_query_entry, results_text_widget, search_results_list
         response = requests.get(SEARCH_URL, params=params)
         if response.status_code == 200:
             search_results_list[:] = response.json()
+            # Apply filters
+            if not include_inactive:
+                search_results_list[:] = [
+                    p for p in search_results_list if p.get("active")
+                ]
+            if not include_prototype:
+                search_results_list[:] = [
+                    p for p in search_results_list if p.get("production")
+                ]
             # Sort alphabetically by name
             search_results_list.sort(key=lambda x: x.get("name", "").lower())
             display_search_results(results_text_widget, search_results_list)
@@ -61,6 +76,7 @@ def display_search_results(results_text_widget, search_results_list):
         rating_display = " ".join("X" if i < rating else " " for i in range(5))
 
         production = "Production" if product.get("production") else "Prototype"
+        active = "Active" if product.get("active") else "Inactive"
 
         results_text_widget.insert(tk.END, f"{i + 1}. {sku} - {name}\n")
         if description:
@@ -70,7 +86,8 @@ def display_search_results(results_text_widget, search_results_list):
         if materials:
             results_text_widget.insert(tk.END, f"   Materials: {materials}\n")
         results_text_widget.insert(tk.END, f"   Rating: {rating_display}\n")
-        results_text_widget.insert(tk.END, f"   Status: {production}\n\n")
+        results_text_widget.insert(tk.END, f"   Status: {production}\n")
+        results_text_widget.insert(tk.END, f"   Active: {active}\n\n")
 
 
 def load_product_from_search(

@@ -97,6 +97,7 @@ def save_product(db: Session, product: schemas.ProductBase) -> dict:
             description=product.description,
             folder_path=folder_path,
             production=product.production,
+            active=product.active,
             category_id=product.category_id,
             color=product.color,
             print_time=product.print_time,
@@ -151,6 +152,8 @@ def save_product(db: Session, product: schemas.ProductBase) -> dict:
             product_db.description = product.description
         if product.production is not None:
             product_db.production = product.production
+        if product.active is not None:
+            product_db.active = product.active
         if product.color is not None:
             product_db.color = product.color
         if product.print_time is not None:
@@ -170,12 +173,21 @@ def save_product(db: Session, product: schemas.ProductBase) -> dict:
 
         # Rename folder if name changed
         if product.name is not None and old_name != product.name:
-            old_folder = product_db.folder_path
-            new_folder = os.path.join(
-                os.path.dirname(old_folder), f"{product_db.sku} - {product_db.name}"
+            # Convert host paths to container paths for Docker volume access
+            host_products_dir = "/home/grbrum/Work/3d_print/Products"
+            container_products_dir = "/Products"
+
+            old_folder = product_db.folder_path.replace(
+                host_products_dir, container_products_dir, 1
             )
+            new_folder_name = f"{product_db.sku} - {product_db.name}"
+            new_folder = os.path.join(container_products_dir, new_folder_name)
+
             os.rename(old_folder, new_folder)
-            product_db.folder_path = new_folder
+            # Store the new folder path as host path in database
+            product_db.folder_path = new_folder.replace(
+                container_products_dir, host_products_dir, 1
+            )
 
         # Update relationships
         if product.tag_ids is not None:
@@ -212,6 +224,7 @@ def save_product(db: Session, product: schemas.ProductBase) -> dict:
             "tags": tag_names,
             "materials": material_names,
             "production": product_db.production,
+            "active": product_db.active,
             "color": product_db.color,
             "print_time": product_db.print_time,
             "weight": product_db.weight,

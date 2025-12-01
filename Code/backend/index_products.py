@@ -32,6 +32,7 @@ def index_products():
                     description=data.get("description", ""),
                     tags=data.get("tags", []),
                     production=data.get("production", True),
+                    active=data.get("active", True),
                 )
 
                 if product_in_db:
@@ -44,6 +45,7 @@ def index_products():
                             description=data.get("description"),
                             tags=data.get("tags"),
                             production=data.get("production", True),
+                            active=data.get("active", True),
                         ),
                     )
                 else:
@@ -56,6 +58,7 @@ def index_products():
                         description=product_schema.description or "",
                         tags=product_schema.tags,
                         production=product_schema.production,
+                        active=product_schema.active,
                     )
     finally:
         db.close()

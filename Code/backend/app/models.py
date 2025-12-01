@@ -56,6 +56,7 @@ class Product(Base):
     description = Column(Text)
     folder_path = Column(Text, nullable=False)
     production = Column(Boolean, nullable=False, default=True)
+    active = Column(Boolean, nullable=False, default=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
     category_id = Column(Integer, ForeignKey("categories.id"))
 

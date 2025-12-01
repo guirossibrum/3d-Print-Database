@@ -38,6 +38,7 @@ This document provides coding guidelines and requirements for AI agents working 
 
 ## Key Development Rules
 - **Database changes**: Do not modify backend or database without consulting user (to avoid breaking working Python frontend)
+- **Database reset prohibition**: AI agents are NEVER allowed to reset the database under ANY circumstances. This is completely unacceptable.
 - **Version management**: Update version numbers in both Cargo.toml and backend after significant changes
 - **Testing**: Add tests for new features before moving to next feature
 - **Commits**: Commit changes with descriptive messages after each feature completion

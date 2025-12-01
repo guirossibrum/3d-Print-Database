@@ -26,7 +26,7 @@ def db_session():
 @pytest.fixture
 def sample_category(db_session):
     """Create a sample category"""
-    category = models.Category(name="Test Toys", sku_initials="TT")
+    category = models.Category(name="Test Toys Unique", sku_initials="TTU")
     db_session.add(category)
     db_session.commit()
     db_session.refresh(category)
@@ -52,6 +52,7 @@ def test_create_product_api(client, sample_category):
         "tag_ids": [tag1_id, tag2_id],  # ID-based payload
         "material_ids": [material1_id, material2_id],  # ID-based payload
         "production": False,
+        "active": True,
         "category_id": sample_category.id,
     }
 
@@ -60,7 +61,7 @@ def test_create_product_api(client, sample_category):
 
     data = response.json()
     assert "sku" in data
-    assert data["sku"].startswith("TT-")
+    assert data["sku"].startswith("TTU-")
     assert data["message"] == "Product created successfully"
 
 

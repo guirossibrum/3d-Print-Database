@@ -34,7 +34,7 @@ def db_session(engine):
 @pytest.fixture
 def sample_category(db_session):
     """Create a sample category for testing"""
-    category = models.Category(name="Test Toys", sku_initials="TT")
+    category = models.Category(name="Test Toys Unique", sku_initials="TTU")
     db_session.add(category)
     db_session.commit()
     db_session.refresh(category)
@@ -50,6 +50,7 @@ def sample_product(db_session, sample_category):
         description="A test product",
         tags=["test", "sample"],
         production=False,
+        active=True,
         category_id=sample_category.id,
         folder_path="/test/path",
     )

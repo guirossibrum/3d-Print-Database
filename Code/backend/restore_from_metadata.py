@@ -158,7 +158,43 @@ def restore_product_from_metadata(db: Session, metadata: Dict, folder_path: str)
         )
 
         if existing_product:
-            print(f"Product {metadata['sku']} already exists, skipping")
+            # Update existing product with metadata values
+            existing_product.name = metadata["name"]
+            if metadata.get("description") is not None:
+                existing_product.description = metadata["description"]
+            existing_product.production = metadata.get("production", True)
+            existing_product.active = metadata.get("active", True)
+            if metadata.get("color") is not None:
+                existing_product.color = metadata["color"]
+            print_time = metadata.get("print_time")
+            if print_time and print_time != "__:__":
+                existing_product.print_time = print_time
+            if metadata.get("weight") is not None:
+                existing_product.weight = metadata["weight"]
+            existing_product.rating = metadata.get("rating", 0)  # Update rating
+            existing_product.stock_quantity = metadata.get("stock_quantity", 0)
+            existing_product.reorder_point = metadata.get("reorder_point", 0)
+            if metadata.get("unit_cost") is not None:
+                existing_product.unit_cost = metadata["unit_cost"]
+            if metadata.get("selling_price") is not None:
+                existing_product.selling_price = metadata["selling_price"]
+
+            # Update category if needed
+            if category is not None:
+                existing_product.category_id = category.id
+
+            # Clear and re-add tags
+            existing_product.tags.clear()
+            for tag in tags:
+                existing_product.tags.append(tag)
+
+            # Clear and re-add materials
+            existing_product.materials.clear()
+            for material in materials:
+                existing_product.materials.append(material)
+
+            db.commit()
+            print(f"Updated existing product: {metadata['sku']} - {metadata['name']}")
             return
 
         # Create product
@@ -168,13 +204,14 @@ def restore_product_from_metadata(db: Session, metadata: Dict, folder_path: str)
             description=metadata.get("description"),
             folder_path=folder_path,
             production=metadata.get("production", True),
+            active=metadata.get("active", True),
             category_id=category.id,
             color=metadata.get("color"),
             print_time=metadata.get("print_time")
             if metadata.get("print_time") != "__:__"
             else None,
             weight=metadata.get("weight"),
-            rating=0,  # Default rating
+            rating=metadata.get("rating", 0),  # Read rating from metadata
             stock_quantity=metadata.get("stock_quantity", 0),
             reorder_point=metadata.get("reorder_point", 0),
             unit_cost=metadata.get("unit_cost"),

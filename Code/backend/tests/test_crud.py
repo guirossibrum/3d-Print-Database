@@ -23,6 +23,7 @@ def test_create_product_db(db_session, sample_category):
         description="A test product",
         tags=["test"],
         production=False,
+        active=True,
         category_id=sample_category.id,
     )
 

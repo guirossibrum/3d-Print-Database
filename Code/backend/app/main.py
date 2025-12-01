@@ -51,7 +51,14 @@ def search_products(search_term: str = Query("", min_length=0, max_length=100)):
     db: Session = SessionLocal()
     try:
         # Get all products first
-        all_products = db.query(crud.models.Product).all()
+        all_products = (
+            db.query(crud.models.Product)
+            .options(
+                joinedload(crud.models.Product.tags),
+                joinedload(crud.models.Product.materials),
+            )
+            .all()
+        )
 
         # If no search term, return all products
         if not search_term.strip():
@@ -94,7 +101,7 @@ def search_products(search_term: str = Query("", min_length=0, max_length=100)):
                         "reorder_point": p.reorder_point,
                         "unit_cost": p.unit_cost,
                         "selling_price": p.selling_price,
-                        "active": True,  # Default to active for now
+                        "active": p.active,
                     }
                 )
             return results
@@ -105,6 +112,7 @@ def search_products(search_term: str = Query("", min_length=0, max_length=100)):
         results = []
         for p in all_products:
             product_tags = [t.name for t in p.tags]
+            product_materials = [m.name for m in p.materials]
 
             # Count matches in different fields
             name_matches = sum(
@@ -113,14 +121,31 @@ def search_products(search_term: str = Query("", min_length=0, max_length=100)):
             sku_matches = sum(
                 1 for term in search_terms if term.lower() in p.sku.lower()
             )
+            description_matches = sum(
+                1
+                for term in search_terms
+                if term.lower() in (p.description or "").lower()
+            )
             tag_matches = sum(
                 1
                 for term in search_terms
                 for tag in product_tags
                 if term.lower() in tag.lower()
             )
+            material_matches = sum(
+                1
+                for term in search_terms
+                for mat in product_materials
+                if term.lower() in mat.lower()
+            )
 
-            total_matches = name_matches + sku_matches + tag_matches
+            total_matches = (
+                name_matches
+                + sku_matches
+                + description_matches
+                + tag_matches
+                + material_matches
+            )
 
             if total_matches > 0:
                 # Build nested structures for matching products
@@ -156,7 +181,7 @@ def search_products(search_term: str = Query("", min_length=0, max_length=100)):
                         "reorder_point": p.reorder_point,
                         "unit_cost": p.unit_cost,
                         "selling_price": p.selling_price,
-                        "active": True,  # Default to active for now
+                        "active": p.active,
                     }
                 )
 
@@ -515,15 +540,15 @@ def create_category(category: schemas.CategoryCreate):
     """
     db: Session = SessionLocal()
     try:
-        # Validate SKU initials (must be 3 uppercase letters)
+        # Validate SKU initials (must be 3 uppercase alphanumeric characters)
         if (
             len(category.sku_initials) != 3
-            or not category.sku_initials.isalpha()
+            or not category.sku_initials.isalnum()
             or not category.sku_initials.isupper()
         ):
             raise HTTPException(
                 status_code=400,
-                detail="SKU initials must be exactly 3 uppercase letters",
+                detail="SKU initials must be exactly 3 uppercase alphanumeric characters",
             )
 
         db_category = models.Category(
@@ -570,12 +595,12 @@ def update_category(category_id: int, category_update: schemas.CategoryUpdate):
         if category_update.sku_initials is not None:
             if (
                 len(category_update.sku_initials) != 3
-                or not category_update.sku_initials.isalpha()
+                or not category_update.sku_initials.isalnum()
                 or not category_update.sku_initials.isupper()
             ):
                 raise HTTPException(
                     status_code=400,
-                    detail="SKU initials must be exactly 3 uppercase letters",
+                    detail="SKU initials must be exactly 3 uppercase alphanumeric characters",
                 )
 
         # Check for conflicts with other categories
@@ -792,6 +817,7 @@ def get_inventory_status():
             result.append(
                 {
                     "id": p.id,
+                    "sku": p.sku,
                     "name": p.name,
                     "stock_quantity": p.stock_quantity,
                     "reorder_point": p.reorder_point,
