@@ -1243,6 +1243,7 @@ def load_inventory_status():
                 if (
                     not include_out_of_stock_var.get()
                     and item.get("status") == "out_of_stock"
+                    and item.get("reorder_point", 0) != 0
                 ):
                     continue
                 if need_to_produce_var.get() and item.get(
@@ -1304,6 +1305,7 @@ def load_inventory_status():
                         profit_margin,
                         status,
                     ),
+                    tags=(item["id"],),
                 )
 
                 if item["total_value"]:
@@ -1418,7 +1420,12 @@ def add_tag_from_listbox(listbox, current_tags, update_func):
 
 
 def apply_inventory_adjustment(
-    sku: str, operation: str, quantity: int, current_stock: int
+    sku: str,
+    product_id: int,
+    operation,
+    quantity: int,
+    current_stock: int,
+    reorder_point=None,
 ):
     """
     Apply inventory adjustment via API.
@@ -1429,15 +1436,35 @@ def apply_inventory_adjustment(
             f"Cannot sell {quantity} items. Only {current_stock} in stock."
         )
 
-    new_stock = (
-        current_stock + quantity if operation == "printed" else current_stock - quantity
-    )
+    payload = {}
+    if operation:
+        new_stock = (
+            current_stock + quantity
+            if operation == "printed"
+            else current_stock - quantity
+        )
+        payload["stock_quantity"] = new_stock
 
-    payload = {"stock_quantity": new_stock}
-    response = requests.put(f"http://localhost:8000/inventory/{sku}", json=payload)
+    if reorder_point is not None:
+        payload["reorder_point"] = reorder_point
+
+    if not payload:
+        return "No changes made"
+
+    response = requests.put(
+        f"http://localhost:8000/inventory/{product_id}", json=payload
+    )
     if response.status_code == 200:
         operation_text = "added to" if operation == "printed" else "removed from"
-        return f"{quantity} items {operation_text} inventory for {sku}"
+        msg = ""
+        if operation:
+            msg += f"{quantity} items {operation_text} inventory"
+        if reorder_point is not None:
+            if msg:
+                msg += f" and reorder point set to {reorder_point}"
+            else:
+                msg += f"Reorder point set to {reorder_point}"
+        return msg + f" for {sku}"
     else:
         raise Exception(f"Failed to update inventory: {response.text}")
 
@@ -1984,25 +2011,28 @@ def adjust_inventory_dialog():
 
     # Get selected product data
     item_values = inventory_tree.item(selected_item[0], "values")
+    tags = inventory_tree.item(selected_item[0], "tags")
+    product_id = int(tags[0])
     sku = item_values[0]
     product_name = item_values[1]
     current_stock = int(item_values[2]) if item_values[2].isdigit() else 0
+    current_reorder = int(item_values[3]) if item_values[3].isdigit() else 0
 
     # Create simple adjustment dialog
     dialog = tk.Toplevel(root)
     dialog.title(f"Adjust Inventory - {sku}")
-    dialog.geometry("350x250")
+    dialog.geometry("400x300")
 
     # Product info
     tk.Label(dialog, text=f"Product: {product_name}", font=("Arial", 10, "bold")).pack(
         pady=10
     )
     tk.Label(dialog, text=f"Current Stock: {current_stock}").pack(pady=5)
+    tk.Label(dialog, text=f"Current Reorder Point: {current_reorder}").pack(pady=5)
 
     # Quantity input
     tk.Label(dialog, text="Quantity:").pack(pady=5)
     quantity_entry = tk.Entry(dialog, width=10, justify="center")
-    quantity_entry.insert(0, "1")
     quantity_entry.pack(pady=5)
     quantity_entry.focus()
     add_copy_menu_to_entry(quantity_entry)
@@ -2019,18 +2049,29 @@ def adjust_inventory_dialog():
         operation_frame, text="Sold (Remove)", variable=operation_var, value="sold"
     ).pack(side=tk.LEFT, padx=10)
 
+    # Reorder point input
+    tk.Label(dialog, text="New Reorder Point:").pack(pady=5)
+    reorder_entry = tk.Entry(dialog, width=10, justify="center")
+    reorder_entry.insert(0, str(current_reorder) if current_reorder != 0 else "")
+    reorder_entry.pack(pady=5)
+    add_copy_menu_to_entry(reorder_entry)
+
     def adjust_stock():
         """Adjust stock based on selected operation"""
         try:
-            quantity = int(quantity_entry.get().strip())
-            if quantity <= 0:
-                raise ValueError("Quantity must be positive")
+            quantity_str = quantity_entry.get().strip()
+            quantity = int(quantity_str) if quantity_str else 0
+            if quantity < 0:
+                raise ValueError("Quantity cannot be negative")
 
-            operation = operation_var.get()
+            operation = operation_var.get() if quantity > 0 else None
+            reorder_str = reorder_entry.get().strip()
+            new_reorder = int(reorder_str) if reorder_str else 0
+            reorder_point = new_reorder if new_reorder != current_reorder else None
 
             # Apply adjustment
             success_message = apply_inventory_adjustment(
-                sku, operation, quantity, current_stock
+                sku, product_id, operation, quantity, current_stock, reorder_point
             )
 
             messagebox.showinfo("Success", success_message)
